@@ -72,6 +72,10 @@ input[type=range]{width:100%; accent-color:var(--accent);}
 .chip:active{background:var(--accent);color:#fff}
 .sec{font-size:1.05rem;color:var(--steel);margin:26px 2px 12px}
 .note{font-size:.8rem;color:var(--sub);margin:0 0 12px}
+.cap{font-size:.75rem;color:var(--sub);line-height:1.35}
+.why{background:var(--bg);border-left:4px solid var(--accent);border-radius:8px;padding:10px 12px;margin:0 0 12px;font-size:.82rem;line-height:1.5}
+.why p{margin:6px 0 0}
+.why .wg{color:var(--sub)}
 footer{text-align:center; color:var(--sub); font-size:0.75rem; padding:18px 0 6px;}
 </style>
 </head>
@@ -85,13 +89,13 @@ footer{text-align:center; color:var(--sub); font-size:0.75rem; padding:18px 0 6p
 <!-- ===================== BLOQUE 1: ÁNGULO DE INCLINACIÓN ===================== -->
 <div class="card">
   <h2>Módulo 2 · 2.2 — Ángulo de inclinación en curva</h2>
-  <div class="formula">tan(θ) = v² / (g·r)</div><div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"v": 30, "r": 15}'>🏙️ Rotonda urbana</button><button type="button" class="chip" data-set='{"v": 90, "r": 120}'>🛣️ Curva de carretera</button><button type="button" class="chip" data-set='{"v": 180, "r": 250}'>🏁 Curva rápida de circuito</button></div>
+  <div class="formula">tan(θ) = v² / (g·r)</div><div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"v": 180, "r": 170}' data-note="Ilustrativa: 180 km/h con 1,5 g lateral da ~56°; la inclinación máxima pública en MotoGP ronda los 60°. En pista el piloto desplaza el cuerpo (hang-off): la moto se inclina más que el centro de masas.">🏁 MotoGP: curva rápida</button><button type="button" class="chip" data-set='{"v": 120, "r": 90}' data-note="Ilustrativo, sin dato público concreto.">🏁 MotoGP: curva media</button><button type="button" class="chip" data-set='{"v": 90, "r": 120}' data-note="Contraste de realidad: uso en calle.">🛣️ Contraste: carretera</button><div class="cap" style="flex-basis:100%"></div></div>
   <div class="row">
     <div class="col">
       <div class="field"><label>Velocidad <b id="vLbl">90 km/h</b></label>
         <input type="range" id="v" min="20" max="300" value="90" step="1"></div>
       <div class="field"><label>Radio de curva <b id="rLbl">50 m</b></label>
-        <input type="range" id="r" min="8" max="200" value="50" step="1"></div>
+        <input type="range" id="r" min="8" max="400" value="50" step="1"></div>
       <div class="field"><label>Sentido de la curva <b id="dirLbl">Derecha ▶</b></label>
         <button type="button" id="dirBtn" class="seg-btn" style="width:100%">⇄ Cambiar sentido</button></div>
       <div class="out">
@@ -141,12 +145,13 @@ footer{text-align:center; color:var(--sub); font-size:0.75rem; padding:18px 0 6p
     </div>
   </div>
   <div class="calc" id="leanCalc"></div>
+  <div class="why" id="why_lean"><b>💡 Qué está pasando</b><p class="wc">Mueve un control para ver aquí por qué cambia el resultado.</p><p class="wg"></p></div>
 </div>
 
 <!-- ===================== BLOQUE 2: TRANSFERENCIA DE CARGA ===================== -->
 <div class="card">
   <h2>Módulo 2 · 2.3 / 2.4 — Transferencia de carga (frenada / aceleración)</h2>
-  <div class="formula">ΔW = (h / L) · m · a</div><div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"a": -3}'>🚦 Frenada suave</button><button type="button" class="chip" data-set='{"a": -9}'>🛑 Frenada de emergencia</button><button type="button" class="chip" data-set='{"a": 6}'>🚀 Salida fuerte</button><button type="button" class="chip" data-set='{"a": 10}'>🔝 Aceleración extrema</button></div>
+  <div class="formula">ΔW = (h / L) · m · |a|  ·  al frenar pasa a la delantera; al acelerar, a la trasera</div><div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"a": -15, "m": 230, "h": 0.65, "L": 1.45}' data-note="a = 15,0 m/s² calculada con datos publicados por Brembo (342→92 km/h en 279 m, pole Mugello 2025). Masa 230 kg = 157 kg mínimos de la moto + ~73 kg de piloto y equipo (estimación); h y L estimados; reparto 50/50 supuesto. La trasera se descarga: coherente con las stoppies de MotoGP.">🏁 MotoGP: frenada fuerte (−1,5 g)</button><button type="button" class="chip" data-set='{"a": 10, "m": 230, "h": 0.65, "L": 1.45}' data-note="Aceleración estimada (~1 g), sin dato público concreto.">🏁 MotoGP: salida de curva fuerte</button><button type="button" class="chip" data-set='{"a": -12, "m": 220, "h": 0.6, "L": 1.4}' data-note="Moto de serie: se publican ~1,2–1,3 g como orden de magnitud.">🚦 Contraste: emergencia en calle</button><div class="cap" style="flex-basis:100%"></div></div>
   <div class="row">
     <div class="col">
       <div class="field"><label>Masa moto+piloto <b id="mLbl">220 kg</b></label>
@@ -156,7 +161,7 @@ footer{text-align:center; color:var(--sub); font-size:0.75rem; padding:18px 0 6p
       <div class="field"><label>Distancia entre ejes (L) <b id="LLbl">1.40 m</b></label>
         <input type="range" id="L" min="1.20" max="1.65" value="1.40" step="0.01"></div>
       <div class="field"><label>Aceleración (– frena / + acelera) <b id="aLbl">0.0 m/s²</b></label>
-        <input type="range" id="a" min="-10" max="10" value="0" step="0.5"></div>
+        <input type="range" id="a" min="-18" max="18" value="0" step="0.5"></div>
     </div>
     <div class="col">
       <div class="viz">
@@ -176,6 +181,7 @@ footer{text-align:center; color:var(--sub); font-size:0.75rem; padding:18px 0 6p
     </div>
   </div>
   <div class="calc" id="loadCalc"></div>
+  <div class="why" id="why_load"><b>💡 Qué está pasando</b><p class="wc">Mueve un control para ver aquí por qué cambia el resultado.</p><p class="wg"></p></div>
 </div>
 
 <!-- ===================== BLOQUE 3: GEOMETRÍA DE DIRECCIÓN ===================== -->
@@ -218,12 +224,13 @@ footer{text-align:center; color:var(--sub); font-size:0.75rem; padding:18px 0 6p
     </div>
   </div>
   <div class="calc" id="geomCalc"></div>
+  <div class="why" id="why_geom"><b>💡 Qué está pasando</b><p class="wc">Mueve un control para ver aquí por qué cambia el resultado.</p><p class="wg"></p></div>
 </div>
 
 <!-- ===================== MÓDULO 3: CUARTO DE VEHÍCULO ===================== -->
 <div class="card">
   <h2>Módulo 3 · 3.6 — Masa suspendida y no suspendida</h2>
-  <div class="formula">f = 1/(2π) · √(k / m)</div><div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"ms": 60, "mu": 14, "ks": 50000, "kt": 180000}'>🏁 Moto de carreras</button><button type="button" class="chip" data-set='{"ms": 105, "mu": 22, "ks": 28000, "kt": 140000}'>🧳 Trail de viaje cargada</button></div>
+  <div class="formula">f = 1/(2π) · √(k / m)</div><div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"ms": 60, "mu": 14, "ks": 50000, "kt": 180000}' data-note="Ilustrativo: no hay rigideces públicas de MotoGP.">🏁 Moto de carreras (ilustrativo)</button><button type="button" class="chip" data-set='{"ms": 105, "mu": 22, "ks": 28000, "kt": 140000}' data-note="Ilustrativo, sin dato público concreto.">🧳 Contraste: trail cargada</button><div class="cap" style="flex-basis:100%"></div></div>
   <div class="row">
     <div class="col">
       <div class="field"><label>Masa suspendida ms <b id="msLbl"></b></label><input type="range" id="ms" min="30" max="120" value="75" step="1"></div>
@@ -235,6 +242,7 @@ footer{text-align:center; color:var(--sub); font-size:0.75rem; padding:18px 0 6p
     <div class="col viz"><svg id="qSvg" viewBox="0 0 220 230" width="210"></svg></div>
   </div>
   <div class="calc" id="quarterCalc"></div>
+  <div class="why" id="why_quarter"><b>💡 Qué está pasando</b><p class="wc">Mueve un control para ver aquí por qué cambia el resultado.</p><p class="wg"></p></div>
 </div>
 
 <!-- ===================== MÓDULO 4: FATIGA ===================== -->
@@ -255,15 +263,16 @@ footer{text-align:center; color:var(--sub); font-size:0.75rem; padding:18px 0 6p
     <div class="col viz"><svg id="fSvg" viewBox="0 0 230 168" width="230"></svg></div>
   </div>
   <div class="calc" id="fatCalc"></div>
+  <div class="why" id="why_fat"><b>💡 Qué está pasando</b><p class="wc">Mueve un control para ver aquí por qué cambia el resultado.</p><p class="wg"></p></div>
 </div>
 
 <!-- ===================== MÓDULO 5: AERODINÁMICA ===================== -->
 <div class="card">
   <h2>Módulo 5 · 5.1 — Resistencia aerodinámica y potencia</h2>
-  <div class="formula">F<sub>D</sub> = ½ · ρ · v² · C<sub>D</sub> · A  ·  P = F<sub>D</sub> · v</div><div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"av": 50, "cd": 0.75, "af": 0.6}'>🛵 Scooter urbano</button><button type="button" class="chip" data-set='{"av": 120, "cd": 0.65, "af": 0.55}'>🏍️ Naked en autopista</button><button type="button" class="chip" data-set='{"av": 300, "cd": 0.5, "af": 0.42}'>🏁 Superbike a tope</button></div>
+  <div class="formula">F<sub>D</sub> = ½ · ρ · v² · C<sub>D</sub> · A  ·  P = F<sub>D</sub> · v</div><div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"av": 340, "cd": 0.7, "af": 0.44}' data-note="CD·A ≈ 0,31 m² derivado de ~360 km/h de punta y ~290 CV (cifras públicas; no hay potencia oficial). CD y A por separado son estimaciones. A 340 km/h la resistencia (~1,7 kN) equivale a ~0,75 g sobre 230 kg: la aerodinámica ayuda a frenar.">🏁 MotoGP a ~340 km/h</button><button type="button" class="chip" data-set='{"av": 120, "cd": 0.65, "af": 0.55}' data-note="Ilustrativo, sin dato público concreto.">🏍️ Contraste: naked en autopista</button><button type="button" class="chip" data-set='{"av": 50, "cd": 0.75, "af": 0.6}' data-note="Ilustrativo, sin dato público concreto.">🛵 Contraste: scooter urbano</button><div class="cap" style="flex-basis:100%"></div></div>
   <div class="row">
     <div class="col">
-      <div class="field"><label>Velocidad <b id="avLbl"></b></label><input type="range" id="av" min="50" max="350" value="250" step="5"></div>
+      <div class="field"><label>Velocidad <b id="avLbl"></b></label><input type="range" id="av" min="50" max="365" value="250" step="5"></div>
       <div class="field"><label>Coeficiente CD <b id="cdLbl"></b></label><input type="range" id="cd" min="0.35" max="0.80" value="0.55" step="0.01"></div>
       <div class="field"><label>Área frontal A <b id="afLbl"></b></label><input type="range" id="af" min="0.30" max="0.65" value="0.45" step="0.01"></div>
       <div class="out"><div class="pill">Resistencia F<sub>D</sub><b id="fdOut"></b></div><div class="pill">Potencia para vencerla<b id="pOut"></b></div></div>
@@ -271,23 +280,25 @@ footer{text-align:center; color:var(--sub); font-size:0.75rem; padding:18px 0 6p
     <div class="col viz"><svg id="aSvg" viewBox="0 0 230 148" width="230"></svg></div>
   </div>
   <div class="calc" id="aeroCalc"></div>
+  <div class="why" id="why_aero"><b>💡 Qué está pasando</b><p class="wc">Mueve un control para ver aquí por qué cambia el resultado.</p><p class="wg"></p></div>
 </div>
 
 <!-- ===================== MÓDULO 6: FRENOS ===================== -->
 <div class="card">
   <h2>Módulo 6 · 6.2 — Calentamiento del disco de freno</h2>
-  <div class="formula">E = ½ · m · v²  ·  ΔT = E / (m<sub>disco</sub> · c<sub>p</sub>)</div><div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"bm": 250, "bv": 120, "bd": 1.5}'>🛣️ Frenada de carretera 120 km/h</button><button type="button" class="chip" data-set='{"bm": 250, "bv": 300, "bd": 1.5}'>🏁 Frenada de circuito 300 km/h</button></div>
+  <div class="formula">E = ½·m·(v² − v<sub>f</sub>²)  ·  ΔT = E / (2·m<sub>disco</sub>·c<sub>p</sub>)</div><div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"bm": 230, "bv": 342, "bvf": 92, "bd": 1.2, "bc": 1200, "bf": 1000, "bt0": 600}' data-note="Velocidades de la pole 2025 (Brembo). Discos delanteros de carbono de 340 mm, ~1,2 kg cada uno (MotoGP.com). Rango de trabajo público 200–800 °C y >1000 °C medidos en circuitos exigentes. cp del carbono ≈1200 J/kgK es orientativo (varía mucho con la temperatura). Cota superior: no descuenta resistencia aerodinámica ni refrigeración.">🏁 MotoGP: Mugello T1 (342→92)</button><button type="button" class="chip" data-set='{"bm": 230, "bv": 341, "bvf": 154, "bd": 1.2, "bc": 1200, "bf": 1000, "bt0": 600}' data-note="Brembo: 3,8 s y ~1,5 g. Mismas hipótesis de disco y cp que el caso anterior.">🏁 MotoGP: Aragón T16 (341→154)</button><button type="button" class="chip" data-set='{"bm": 250, "bv": 120, "bvf": 0, "bd": 1.5, "bc": 460, "bf": 500, "bt0": 100}' data-note="Disco de acero; umbral de fade orientativo.">🏍️ Contraste: acero en calle (120→0)</button><div class="cap" style="flex-basis:100%"></div></div>
   <div class="row">
     <div class="col">
       <div class="field"><label>Masa moto+piloto <b id="bmLbl"></b></label><input type="range" id="bm" min="150" max="320" value="250" step="5"></div>
-      <div class="field"><label>Velocidad al frenar <b id="bvLbl"></b></label><input type="range" id="bv" min="80" max="350" value="300" step="5"></div>
-      <div class="field"><label>Masa de cada disco (2 delanteros) <b id="bdLbl"></b></label><input type="range" id="bd" min="0.8" max="3" value="1.5" step="0.1"></div>
+      <div class="field"><label>Velocidad al empezar a frenar <b id="bvLbl"></b></label><input type="range" id="bv" min="60" max="365" value="300" step="1"></div><div class="field"><label>Velocidad al terminar (0 = parada) <b id="bvfLbl"></b></label><input type="range" id="bvf" min="0" max="200" value="0" step="1"></div>
+      <div class="field"><label>Masa de cada disco (2 delanteros) <b id="bdLbl"></b></label><input type="range" id="bd" min="0.8" max="3" value="1.5" step="0.1"></div><div class="field"><label>Calor específico del disco cp <b id="bcLbl"></b></label><input type="range" id="bc" min="400" max="1500" value="460" step="10"></div><div class="field"><label>Límite orientativo del material <b id="bfLbl"></b></label><input type="range" id="bf" min="400" max="1100" value="500" step="50"></div><div class="field"><label>Temperatura inicial del disco <b id="bt0Lbl"></b></label><input type="range" id="bt0" min="50" max="800" value="100" step="10"></div>
       <div class="out"><div class="pill">Energía disipada<b id="eOut"></b></div><div class="pill">Subida de temperatura<b id="dtOut"></b></div></div>
       <div class="out" id="bRisk" style="margin-top:10px;"></div>
     </div>
     <div class="col viz"><svg id="bSvg" viewBox="0 0 250 148" width="240"></svg></div>
   </div>
   <div class="calc" id="brakeCalc"></div>
+  <div class="why" id="why_brake"><b>💡 Qué está pasando</b><p class="wc">Mueve un control para ver aquí por qué cambia el resultado.</p><p class="wg"></p></div>
 </div>
 
 <!-- ===================== MÓDULO 8: NYQUIST ===================== -->
@@ -305,6 +316,7 @@ footer{text-align:center; color:var(--sub); font-size:0.75rem; padding:18px 0 6p
     <div class="col viz"><svg id="tSvg" viewBox="0 0 230 130" width="230"></svg></div>
   </div>
   <div class="calc" id="nyqCalc"></div>
+  <div class="why" id="why_nyq"><b>💡 Qué está pasando</b><p class="wc">Mueve un control para ver aquí por qué cambia el resultado.</p><p class="wg"></p></div>
 </div>
 
 <!-- ===================== MÓDULO 9: AMDAHL ===================== -->
@@ -320,14 +332,15 @@ footer{text-align:center; color:var(--sub); font-size:0.75rem; padding:18px 0 6p
     <div class="col viz"><svg id="xSvg" viewBox="0 0 230 140" width="230"></svg></div>
   </div>
   <div class="calc" id="amdCalc"></div>
+  <div class="why" id="why_amd"><b>💡 Qué está pasando</b><p class="wc">Mueve un control para ver aquí por qué cambia el resultado.</p><p class="wg"></p></div>
 </div>
 
 <h3 class="sec">🛠️ Utilidad real en la moto</h3>
 
 <div class="card">
   <h2>Margen de agarre y frenada dentro de la curva</h2>
-  <div class="formula">u = a<sub>lat</sub> / (μ·g)  ·  a<sub>long,máx</sub> = μ·g·√(1 − u²)</div>
-  <div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"mt": 1.0}'>🛞 Neumático de calle</button><button type="button" class="chip" data-set='{"mt": 1.2}'>🏍️ Deportivo</button><button type="button" class="chip" data-set='{"mt": 1.5}'>🏁 Slick</button></div>
+  <div class="formula">u = a<sub>lat</sub> / (μ·g)  ·  a<sub>long,máx</sub> = μ·g·√(1 − u²)</div><div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"mt": 1.0}' data-note="Orden de magnitud.">🛞 Calle</button><button type="button" class="chip" data-set='{"mt": 1.2}' data-note="Orden de magnitud.">🏍️ Deportivo</button><button type="button" class="chip" data-set='{"mt": 1.5}' data-note="Orientativo: no hay cifra pública oficial de μ para MotoGP.">🏁 Neumático de competición</button><button type="button" class="chip" data-set='{"v": 180, "r": 170, "mt": 1.5}' data-note="Con 1,5 g lateral se usa todo el agarre: sin margen para frenar dentro de la curva.">🏁 Curva rápida MotoGP</button><div class="cap" style="flex-basis:100%"></div></div>
+  
   <p class="note">Usa la velocidad y el radio del bloque de inclinación (Módulo 2). Valores de μ orientativos.</p>
   <div class="row"><div class="col">
     <div class="field"><label>Agarre del neumático <b id="mtLbl"></b></label><input type="range" id="mt" min="0.8" max="1.6" value="1.1" step="0.05"></div>
@@ -335,40 +348,43 @@ footer{text-align:center; color:var(--sub); font-size:0.75rem; padding:18px 0 6p
     <div class="out" id="gRisk" style="margin-top:10px;"></div>
   </div><div class="col viz"><svg id="gSvg" viewBox="0 0 230 160" width="230"></svg></div></div>
   <div class="calc" id="gripCalc"></div>
+  <div class="why" id="why_grip"><b>💡 Qué está pasando</b><p class="wc">Mueve un control para ver aquí por qué cambia el resultado.</p><p class="wg"></p></div>
 </div>
 
 <div class="card">
   <h2>Distancia de frenado real (con límite de stoppie)</h2>
-  <div class="formula">d<sub>total</sub> = v·t<sub>r</sub> + v² / (2·a)  ·  a<sub>stoppie</sub> = g·(L/2)/h</div>
-  <div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"dv": 50, "da": 6}'>🛵 Ciudad 50 km/h</button><button type="button" class="chip" data-set='{"dv": 90, "da": 7}'>🛣️ Carretera 90 km/h</button><button type="button" class="chip" data-set='{"dv": 120, "da": 9}'>🚨 Autopista 120, emergencia</button></div>
+  <div class="formula">d = v·t<sub>r</sub> + (v² − v<sub>f</sub>²) / (2·a)  ·  a<sub>media</sub> = (v₁² − v₂²) / (2·d)</div><div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"dv": 342, "vf": 92, "da": 15, "tr": 0}' data-note="Datos publicados por Brembo (pole 2025). a_media = (95,0² − 25,6²)/(2·279) = 15,0 m/s² ≈ 1,5 g, incluye resistencia aerodinámica y freno motor.">🏁 Mugello T1 (342→92 en 279 m)</button><button type="button" class="chip" data-set='{"dv": 341, "vf": 154, "da": 13.7, "tr": 0}' data-note="Brembo: 3,8 s y ~1,5 g de pico. a_media calculada con velocidades y tiempo = 13,7 m/s²; la distancia sale del cálculo.">🏁 Aragón T16 (341→154 en 3,8 s)</button><button type="button" class="chip" data-set='{"dv": 294, "vf": 73, "da": 11.8, "tr": 0}' data-note="Datos publicados; a_media = 11,8 m/s² calculada con velocidades y distancia.">🏁 Sachsenring T1 (294→73 en 265 m)</button><button type="button" class="chip" data-set='{"dv": 90, "vf": 0, "da": 7, "tr": 1}' data-note="Contraste: con 1 s de reacción.">🛣️ Contraste: carretera 90 km/h</button><div class="cap" style="flex-basis:100%"></div></div>
+  
   <p class="note">Usa la altura del CM (h) y la distancia entre ejes (L) del bloque de transferencia de carga.</p>
   <div class="row"><div class="col">
-    <div class="field"><label>Velocidad inicial <b id="dvLbl"></b></label><input type="range" id="dv" min="30" max="200" value="100" step="5"></div>
-    <div class="field"><label>Deceleración que pides <b id="daLbl"></b></label><input type="range" id="da" min="2" max="11" value="7" step="0.5"></div>
-    <div class="field"><label>Tiempo de reacción <b id="trLbl"></b></label><input type="range" id="tr" min="0.5" max="2" value="1" step="0.1"></div>
-    <div class="out"><div class="pill">Parada total<b id="dtOut2"></b></div><div class="pill">Solo frenando<b id="dbOut"></b></div></div>
+    <div class="field"><label>Velocidad inicial <b id="dvLbl"></b></label><input type="range" id="dv" min="30" max="365" value="100" step="1"></div><div class="field"><label>Velocidad final (0 = parada total) <b id="vfLbl"></b></label><input type="range" id="vf" min="0" max="200" value="0" step="1"></div>
+    <div class="field"><label>Deceleración que pides <b id="daLbl"></b></label><input type="range" id="da" min="2" max="18" value="7" step="0.5"></div>
+    <div class="field"><label>Tiempo de reacción <b id="trLbl"></b></label><input type="range" id="tr" min="0" max="2" value="1" step="0.1"></div>
+    <div class="out"><div class="pill">Distancia total<b id="dtOut2"></b></div><div class="pill">Tiempo de frenada<b id="dbOut"></b></div></div>
     <div class="out" id="sRisk" style="margin-top:10px;"></div>
   </div><div class="col viz"><svg id="sSvg" viewBox="0 0 230 160" width="230"></svg></div></div>
   <div class="calc" id="stopCalc"></div>
+  <div class="why" id="why_stop"><b>💡 Qué está pasando</b><p class="wc">Mueve un control para ver aquí por qué cambia el resultado.</p><p class="wg"></p></div>
 </div>
 
 <div class="card">
   <h2>Velocidad punta y ventaja del rebufo</h2>
-  <div class="formula">P<sub>req</sub>(v) = ½·ρ·v³·C<sub>D</sub>·A + C<sub>rr</sub>·m·g·v  ·  v<sub>máx</sub>: P<sub>req</sub> = η·P<sub>motor</sub></div>
-  <div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"pm": 15, "cd": 0.75, "af": 0.6}'>🛵 Scooter 15 CV</button><button type="button" class="chip" data-set='{"pm": 100, "cd": 0.65, "af": 0.55}'>🏍️ Naked 100 CV</button><button type="button" class="chip" data-set='{"pm": 200, "cd": 0.5, "af": 0.42}'>🏁 Superbike 200 CV</button><button type="button" class="chip" data-set='{"rb": 25}'>💨 En rebufo</button></div>
+  <div class="formula">P<sub>req</sub>(v) = ½·ρ·v³·C<sub>D</sub>·A + C<sub>rr</sub>·m·g·v  ·  v<sub>máx</sub>: P<sub>req</sub> = η·P<sub>motor</sub></div><div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"pm": 290, "cd": 0.7, "af": 0.44, "bm": 230, "rb": 0}' data-note="~290 CV y >360 km/h son cifras públicas; CD y A son estimaciones calibradas para que salga ~360 km/h.">🏁 MotoGP ~290 CV</button><button type="button" class="chip" data-set='{"rb": 20}' data-note="Ilustrativo: la ventaja real depende de la distancia y la estela.">💨 En rebufo (−20 %)</button><button type="button" class="chip" data-set='{"pm": 100, "cd": 0.65, "af": 0.55, "bm": 250, "rb": 0}' data-note="Ilustrativo, sin dato público concreto.">🏍️ Contraste: naked 100 CV</button><div class="cap" style="flex-basis:100%"></div></div>
+  
   <p class="note">Usa CD, área y masa de los bloques de aerodinámica y frenos. Rodadura Crr = 0,015 y transmisión η = 0,9.</p>
   <div class="row"><div class="col">
-    <div class="field"><label>Potencia del motor <b id="pmLbl"></b></label><input type="range" id="pm" min="5" max="250" value="130" step="5"></div>
+    <div class="field"><label>Potencia del motor <b id="pmLbl"></b></label><input type="range" id="pm" min="5" max="320" value="130" step="5"></div>
     <div class="field"><label>Reducción de CD·A por rebufo <b id="rbLbl"></b></label><input type="range" id="rb" min="0" max="40" value="0" step="1"></div>
     <div class="out"><div class="pill">Velocidad punta<b id="vmOut"></b></div><div class="pill">Ganancia por rebufo<b id="gnOut"></b></div></div>
   </div><div class="col viz"><svg id="pSvg" viewBox="0 0 230 150" width="230"></svg></div></div>
   <div class="calc" id="topCalc"></div>
+  <div class="why" id="why_top"><b>💡 Qué está pasando</b><p class="wc">Mueve un control para ver aquí por qué cambia el resultado.</p><p class="wg"></p></div>
 </div>
 
 <div class="card">
   <h2>Resonancia en asfalto ondulado</h2>
-  <div class="formula">f<sub>exc</sub> = v / λ  ·  T(r) = √[(1+(2ζr)²) / ((1−r²)²+(2ζr)²)]  ·  r = f<sub>exc</sub>/f<sub>s</sub></div>
-  <div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"lam": 5, "vv": 60}'>〰️ Asfalto ondulado 5 m</button><button type="button" class="chip" data-set='{"lam": 12, "vv": 100}'>🌉 Juntas de puente 12 m</button><button type="button" class="chip" data-set='{"lam": 1.5, "vv": 30}'>🧱 Adoquín 1,5 m</button></div>
+  <div class="formula">f<sub>exc</sub> = v / λ  ·  T(r) = √[(1+(2ζr)²) / ((1−r²)²+(2ζr)²)]  ·  r = f<sub>exc</sub>/f<sub>s</sub></div><div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"lam": 5, "vv": 60}' data-note="Ilustrativo, sin dato público concreto.">〰️ Ondulado 5 m</button><button type="button" class="chip" data-set='{"lam": 12, "vv": 100}' data-note="Ilustrativo, sin dato público concreto.">🌉 Juntas de puente 12 m</button><button type="button" class="chip" data-set='{"lam": 1.5, "vv": 30}' data-note="Ilustrativo, sin dato público concreto.">🧱 Adoquín 1,5 m</button><div class="cap" style="flex-basis:100%"></div></div>
+  
   <p class="note">Usa la frecuencia natural f<sub>s</sub> del bloque de suspensión (Módulo 3).</p>
   <div class="row"><div class="col">
     <div class="field"><label>Velocidad <b id="vvLbl"></b></label><input type="range" id="vv" min="20" max="160" value="60" step="5"></div>
@@ -378,14 +394,35 @@ footer{text-align:center; color:var(--sub); font-size:0.75rem; padding:18px 0 6p
     <div class="out" id="rRisk" style="margin-top:10px;"></div>
   </div><div class="col viz"><svg id="rSvg" viewBox="0 0 230 150" width="230"></svg></div></div>
   <div class="calc" id="resCalc"></div>
+  <div class="why" id="why_res"><b>💡 Qué está pasando</b><p class="wc">Mueve un control para ver aquí por qué cambia el resultado.</p><p class="wg"></p></div>
 </div>
 
-<footer>Formación Simulación / CAE / Digital Engineering — Módulos 2, 3, 4, 5, 6, 8 y 9 · valores con fines pedagógicos</footer>
+<div class="card">
+  <h2>Frenadas repetidas en circuito: ¿entra el disco en el límite?</h2>
+  <div class="formula">ΔT = E / (2·m<sub>disco</sub>·c<sub>p</sub>)  ·  T<sub>sig</sub> = T<sub>amb</sub> + (T<sub>pico</sub> − T<sub>amb</sub>)·e<sup>−t/τ</sup></div>
+  <div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"rv1": 300, "rv2": 100, "rn": 8, "rg": 12, "rt": 45, "bm": 230, "bd": 1.2, "bc": 1200, "bf": 1000, "bt0": 600}' data-note="Ilustrativa: frenadas 300→100 km/h cada 12 s, disco de carbono de 1,2 kg, τ de enfriamiento supuesta (45 s). Enfriamiento exponencial simplificado, T ambiente 40 °C.">🏁 Tanda MotoGP (ilustrativa)</button><button type="button" class="chip" data-set='{"rv1": 200, "rv2": 60, "rn": 5, "rg": 25, "rt": 60, "bm": 250, "bd": 1.5, "bc": 460, "bf": 500, "bt0": 100}' data-note="Ilustrativo, sin dato público concreto.">🏍️ Contraste: acero en calle</button><div class="cap" style="flex-basis:100%"></div></div>
+  <p class="note">Usa masa, masa de disco, cp, límite y temperatura inicial del bloque de frenos (Módulo 6).</p>
+  <div class="row"><div class="col">
+    <div class="field"><label>Velocidad al empezar cada frenada <b id="rv1Lbl"></b></label><input type="range" id="rv1" min="100" max="365" value="300" step="5"></div>
+    <div class="field"><label>Velocidad al terminar <b id="rv2Lbl"></b></label><input type="range" id="rv2" min="30" max="200" value="100" step="5"></div>
+    <div class="field"><label>Número de frenadas <b id="rnLbl"></b></label><input type="range" id="rn" min="2" max="14" value="8" step="1"></div>
+    <div class="field"><label>Tiempo entre frenadas <b id="rgLbl"></b></label><input type="range" id="rg" min="4" max="40" value="12" step="1"></div>
+    <div class="field"><label>Constante de enfriamiento τ <b id="rtLbl"></b></label><input type="range" id="rt" min="10" max="120" value="45" step="5"></div>
+    <div class="out"><div class="pill">Temperatura pico final<b id="rpOut"></b></div><div class="pill">Frenada que pasa el límite<b id="rlOut"></b></div></div>
+  </div><div class="col viz"><svg id="rSvg2" viewBox="0 0 230 150" width="230"></svg></div></div>
+  <div class="calc" id="repCalc"></div>
+  <div class="why" id="why_rep"><b>💡 Qué está pasando</b><p class="wc">Mueve un control para ver aquí por qué cambia el resultado.</p><p class="wg"></p></div>
+</div>
+
+<footer>Formación Simulación / CAE / Digital Engineering — Módulos 2, 3, 4, 5, 6, 8 y 9 · valores con fines pedagógicos. Casos de competición: cifras públicas (Brembo vía Moto.it, MotoGP.com, Box Repsol) o estimaciones marcadas; no son telemetría de ningún equipo</footer>
 
 <script>
 const $ = id => document.getElementById(id);
 const g = 9.81;
 let leanDir = 1; // 1 = curva a la derecha, -1 = izquierda
+const OK=t=>`<div class="pill ok">✓ ${t}</div>`, WARN=t=>`<div class="pill warn">⚠️ ${t}</div>`;
+const AX=(x0,y0,x1,y1)=>`<line x1="${x0}" y1="${y1}" x2="${x1}" y2="${y1}" stroke="currentColor" stroke-opacity=".4"/><line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y1}" stroke="currentColor" stroke-opacity=".4"/>`;
+const TX=(x,y,t,o='')=>`<text x="${x}" y="${y}" font-size="9" fill="currentColor" opacity=".7" ${o}>${t}</text>`;
 
 
 function updateLean(){
@@ -427,8 +464,9 @@ function updateLoad(){
 
   const Wtotal = m * g;
   const Wstatic = Wtotal/2;
-  // a negativo = frenada -> transfiere a delantera; a positivo = acelera -> transfiere a trasera
-  const dW = (h/L) * m * a;
+  // a < 0 = frena: la carga pasa a la delantera. a > 0 = acelera: pasa a la trasera.
+  const dWmag = (h/L) * m * Math.abs(a);
+  const dW = a<0 ? dWmag : -dWmag;   // variación de carga de la delantera (positiva al frenar)
   const Wfront = Wstatic + dW;
   const Wrear = Wstatic - dW;
 
@@ -450,10 +488,11 @@ function updateLoad(){
     risk.innerHTML = '<div class="pill ok">✓ Ambas ruedas con carga positiva</div>';
   }
 
+  const sentido = a<0 ? 'pasa a la rueda delantera (frenada)' : a>0 ? 'pasa a la rueda trasera (aceleración)' : 'sin transferencia';
   $('loadCalc').innerHTML =
-    `ΔW = (h/L)·m·a = (${h.toFixed(2)}/${L.toFixed(2)}) × ${m} × ${a.toFixed(1)} = <b>${dW.toFixed(0)} N</b><br>`+
-    `W_delantera = ${Wstatic.toFixed(0)} + ${dW.toFixed(0)} = <b>${Wfront.toFixed(0)} N</b> · `+
-    `W_trasera = ${Wstatic.toFixed(0)} − ${dW.toFixed(0)} = <b>${Wrear.toFixed(0)} N</b>`;
+    `ΔW = (h/L)·m·|a| = (${h.toFixed(2)}/${L.toFixed(2)}) × ${m} × ${Math.abs(a).toFixed(1)} = <b>${dWmag.toFixed(0)} N</b> → ${sentido}<br>`+
+    `W_delantera = ${Wstatic.toFixed(0)} ${dW>=0?'+':'−'} ${dWmag.toFixed(0)} = <b>${Wfront.toFixed(0)} N</b> · `+
+    `W_trasera = ${Wstatic.toFixed(0)} ${dW>=0?'−':'+'} ${dWmag.toFixed(0)} = <b>${Wrear.toFixed(0)} N</b>`;
 }
 
 function updateGeom(){
@@ -583,13 +622,14 @@ function updateAero(){
 }
 
 function updateBrake(){
-  const m=+$('bm').value, v=+$('bv').value, md=+$('bd').value;
-  $('bmLbl').textContent=m+' kg'; $('bvLbl').textContent=v+' km/h'; $('bdLbl').textContent=md.toFixed(1)+' kg';
-  const vms=v/3.6, E=0.5*m*vms*vms, dT=E/(2*md*460), Tf=100+dT;
+  const m=+$('bm').value, v=+$('bv').value, vf=+$('bvf').value, md=+$('bd').value, cp=+$('bc').value, fT=+$('bf').value, T0=+$('bt0').value;
+  $('bmLbl').textContent=m+' kg'; $('bvLbl').textContent=v+' km/h'; $('bvfLbl').textContent=vf+' km/h'; $('bdLbl').textContent=md.toFixed(1)+' kg';
+  $('bcLbl').textContent=cp+' J/kgK'; $('bfLbl').textContent=fT+' °C'; $('bt0Lbl').textContent=T0+' °C';
+  const vms=v/3.6, wms=vf/3.6, E=0.5*m*Math.max(0,vms*vms-wms*wms), dT=E/(2*md*cp), Tf=T0+dT;
   $('eOut').textContent=(E/1000).toFixed(0)+' kJ'; $('dtOut').textContent='+'+dT.toFixed(0)+' °C';
-  const t=Math.min(Tf,1000)/1000, hue=Math.round(220-t*220), col=`hsl(${hue} 80% 50%)`;
+  const TM=1200, t=Math.min(Tf,TM)/TM, hue=Math.round(220-t*220), col=`hsl(${hue} 80% 50%)`;
   let holes=''; for(let i=0;i<12;i++){const a=i/12*2*Math.PI; holes+=`<circle cx="${(60+30*Math.cos(a)).toFixed(1)}" cy="${(75+30*Math.sin(a)).toFixed(1)}" r="3" fill="var(--card)"/>`;}
-  const gh=t*110, fadeY=125-0.5*110;
+  const gh=t*110, fadeY=125-Math.min(fT,TM)/TM*110;
   $('bSvg').innerHTML=
    `<circle cx="60" cy="75" r="46" fill="${col}" stroke="var(--navy)" stroke-width="3"/>`+holes+
    `<circle cx="60" cy="75" r="12" fill="var(--card)" stroke="var(--navy)" stroke-width="2"/>`+
@@ -597,13 +637,13 @@ function updateBrake(){
    `<rect x="140" y="15" width="22" height="110" rx="4" fill="none" stroke="currentColor" stroke-opacity=".4"/>`+
    `<rect x="140" y="${125-gh}" width="22" height="${gh}" rx="4" fill="${col}"/>`+
    `<line x1="134" y1="${fadeY}" x2="168" y2="${fadeY}" stroke="var(--accent)" stroke-dasharray="3,2"/>`+
-   `<text x="172" y="${fadeY+3}" font-size="9" fill="var(--accent)">fade ≳500 °C</text>`+
-   `<text x="140" y="11" font-size="9" fill="currentColor" opacity=".7">1000 °C</text><text x="140" y="137" font-size="9" fill="currentColor" opacity=".7">0</text>`;
-  $('bRisk').innerHTML = Tf>500 ? '<div class="pill warn">⚠️ Zona de <b>fade</b>: el freno pierde eficacia</div>' : '<div class="pill ok">✓ Temperatura dentro del rango de trabajo</div>';
+   `<text x="172" y="${fadeY+3}" font-size="9" fill="var(--accent)">límite ${fT} °C</text>`+
+   `<text x="140" y="11" font-size="9" fill="currentColor" opacity=".7">1200 °C</text><text x="140" y="137" font-size="9" fill="currentColor" opacity=".7">0</text>`;
+  $('bRisk').innerHTML = Tf>fT ? WARN('Supera el límite orientativo del material ('+fT+' °C)') : OK('Dentro del rango de trabajo del material');
   $('brakeCalc').innerHTML=
-   `E = ½·${m}·${vms.toFixed(1)}² = <b>${(E/1000).toFixed(0)} kJ</b><br>`+
-   `ΔT = E / (2·${md.toFixed(1)}·460) = <b>${dT.toFixed(0)} °C</b> → T final ≈ 100 + ${dT.toFixed(0)} = ${Tf.toFixed(0)} °C<br>`+
-   `<span style="opacity:.65">Acero (cp = 460 J/kgK), 2 discos, T inicial supuesta 100 °C; el umbral de fade es orientativo.</span>`;
+   `E = ½·${m}·(${vms.toFixed(1)}² − ${wms.toFixed(1)}²) = <b>${(E/1000).toFixed(0)} kJ</b><br>`+
+   `ΔT = E / (2·${md.toFixed(1)}·${cp}) = <b>${dT.toFixed(0)} °C</b> → T final = ${T0} + ${dT.toFixed(0)} = <b>${Tf.toFixed(0)} °C</b><br>`+
+   `<span style="opacity:.65">Cota superior: toda la energía va a los 2 discos delanteros; no descuenta resistencia aerodinámica, freno trasero ni refrigeración durante la frenada.</span>`;
 }
 
 ['ms','mu','ks','kt'].forEach(id=>$(id).addEventListener('input', updateQuarter));
@@ -683,10 +723,7 @@ function updateAmdahl(){
 ['fsig','fsmp','nch'].forEach(id=>$(id).addEventListener('input', updateNyq));
 ['pp','nx'].forEach(id=>$(id).addEventListener('input', updateAmdahl));
 
-updateQuarter(); updateAero(); updateBrake(); const OK=t=>`<div class="pill ok">✓ ${t}</div>`, WARN=t=>`<div class="pill warn">⚠️ ${t}</div>`;
-const AX=(x0,y0,x1,y1)=>`<line x1="${x0}" y1="${y1}" x2="${x1}" y2="${y1}" stroke="currentColor" stroke-opacity=".4"/><line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y1}" stroke="currentColor" stroke-opacity=".4"/>`;
-const TX=(x,y,t,o='')=>`<text x="${x}" y="${y}" font-size="9" fill="currentColor" opacity=".7" ${o}>${t}</text>`;
-
+updateQuarter(); updateAero(); updateBrake(); 
 function updateGrip(){
   const mu=+$('mt').value, v=+$('v').value/3.6, r=+$('r').value;
   $('mtLbl').textContent='μ = '+mu.toFixed(2);
@@ -707,20 +744,20 @@ function updateGrip(){
 }
 
 function updateStop(){
-  const dv=+$('dv').value, da=+$('da').value, tr=+$('tr').value, h=+$('h').value, L=+$('L').value, alim=g*0.5*L/h;
-  $('dvLbl').textContent=dv+' km/h'; $('daLbl').textContent=da.toFixed(1)+' m/s² ('+(da/g).toFixed(2)+' g)'; $('trLbl').textContent=tr.toFixed(1)+' s';
-  const D=s=>{const v=s/3.6;return [v*tr,v*v/(2*da)]}, [dr,db]=D(dv);
-  $('dtOut2').textContent=(dr+db).toFixed(0)+' m'; $('dbOut').textContent=db.toFixed(0)+' m';
-  $('sRisk').innerHTML=da>alim?WARN('Pides '+da.toFixed(1)+' m/s², más que el límite de stoppie ('+alim.toFixed(1)+')'):OK('Por debajo del límite de stoppie ('+alim.toFixed(1)+' m/s²)');
-  const rows=[50,90,120,dv], tot=rows.map(s=>D(s)[0]+D(s)[1]), mx=Math.max(...tot);
+  const dv=+$('dv').value, vf=+$('vf').value, da=+$('da').value, tr=+$('tr').value, h=+$('h').value, L=+$('L').value, alim=g*0.5*L/h;
+  $('dvLbl').textContent=dv+' km/h'; $('vfLbl').textContent=vf+' km/h'; $('daLbl').textContent=da.toFixed(1)+' m/s² ('+(da/g).toFixed(2)+' g)'; $('trLbl').textContent=tr.toFixed(1)+' s';
+  const D=s=>{const v=s/3.6,w=vf/3.6;return [v*tr,Math.max(0,v*v-w*w)/(2*da)]}, [dr,db]=D(dv), tb=Math.max(0,dv-vf)/3.6/da;
+  $('dtOut2').textContent=(dr+db).toFixed(0)+' m'; $('dbOut').textContent=tb.toFixed(1)+' s';
+  $('sRisk').innerHTML=da>alim?WARN('Supera el límite de stoppie del modelo de masa puntual ('+alim.toFixed(1)+' m/s²)'):OK('Por debajo del límite de stoppie ('+alim.toFixed(1)+' m/s²)');
+  const rows=[100,200,300,dv], tot=rows.map(s=>D(s)[0]+D(s)[1]), mx=Math.max(...tot,1);
   let svg=''; rows.forEach((s,i)=>{const y=14+i*32,[a,b]=D(s),wr=a/mx*130,wb=b/mx*130;
    svg+=`<text x="2" y="${y+13}" font-size="10" fill="currentColor" ${i==3?'font-weight="700"':'opacity=".8"'}>${s} km/h</text>`+
     `<rect x="58" y="${y}" width="${wr.toFixed(1)}" height="18" fill="var(--steel)"/><rect x="${(58+wr).toFixed(1)}" y="${y}" width="${wb.toFixed(1)}" height="18" fill="var(--accent)"/>`+
     `<text x="${(62+wr+wb).toFixed(1)}" y="${y+13}" font-size="10" fill="currentColor">${tot[i].toFixed(0)} m</text>`;});
-  $('sSvg').innerHTML=svg+`<text x="58" y="150" font-size="9" fill="var(--steel)">■ reacción</text><text x="120" y="150" font-size="9" fill="var(--accent)">■ frenada</text>`;
+  $('sSvg').innerHTML=svg+`<text x="58" y="150" font-size="9" fill="var(--steel)">■ reacción</text><text x="120" y="150" font-size="9" fill="var(--accent)">■ frenada (hasta ${vf} km/h)</text>`;
   $('stopCalc').innerHTML=
    `reacción = ${(dv/3.6).toFixed(1)} m/s × ${tr.toFixed(1)} s = <b>${dr.toFixed(0)} m</b><br>`+
-   `frenada = ${(dv/3.6).toFixed(1)}² / (2·${da.toFixed(1)}) = <b>${db.toFixed(0)} m</b> · a_stoppie = 9.81·(${L.toFixed(2)}/2)/${h.toFixed(2)} = <b>${alim.toFixed(1)} m/s²</b>`;
+   `frenada = (${(dv/3.6).toFixed(1)}² − ${(vf/3.6).toFixed(1)}²) / (2·${da.toFixed(1)}) = <b>${db.toFixed(0)} m</b> en <b>${tb.toFixed(1)} s</b> · a_stoppie (modelo) = ${alim.toFixed(1)} m/s²`;
 }
 
 function updateTop(){
@@ -763,13 +800,117 @@ function updateRes(){
    `T(r) = <b>${Tv.toFixed(2)}×</b> · velocidad crítica = f_s·λ = ${fs.toFixed(2)}×${lam.toFixed(1)} = <b>${vc.toFixed(0)} km/h</b>`;
 }
 
+function updateRep(){
+  const v1=+$('rv1').value, v2=+$('rv2').value, n=+$('rn').value, tg=+$('rg').value, tau=+$('rt').value;
+  const m=+$('bm').value, md=+$('bd').value, cp=+$('bc').value, fT=+$('bf').value, T0=+$('bt0').value, Ta=40;
+  $('rv1Lbl').textContent=v1+' km/h'; $('rv2Lbl').textContent=v2+' km/h'; $('rnLbl').textContent=n; $('rgLbl').textContent=tg+' s'; $('rtLbl').textContent=tau+' s';
+  const a=v1/3.6,b=v2/3.6, E=0.5*m*Math.max(0,a*a-b*b), dT=E/(2*md*cp), k=Math.exp(-tg/tau);
+  let Tb=T0, pts=[], peaks=[], first=0;
+  for(let i=0;i<n;i++){const Tp=Tb+dT; peaks.push(Tp); if(!first&&Tp>fT) first=i+1;
+    pts.push([i*tg,Tb],[i*tg,Tp]); for(let j=1;j<=8;j++) pts.push([i*tg+tg*j/8, Ta+(Tp-Ta)*Math.exp(-tg*j/8/tau)]);
+    Tb=Ta+(Tp-Ta)*k;}
+  const pk=Math.max(...peaks), ym=Math.max(1200,pk*1.05), X=t=>30+t/(n*tg)*185, Y=T=>115-Math.min(T,ym)/ym*100;
+  $('rpOut').textContent=peaks[n-1].toFixed(0)+' °C'; $('rlOut').textContent=first?('nº '+first):'ninguna';
+  $('rSvg2').innerHTML=AX(30,12,215,115)+
+   `<line x1="30" y1="${Y(fT)}" x2="215" y2="${Y(fT)}" stroke="var(--accent)" stroke-dasharray="4,3"/>`+TX(212,Y(fT)-3,'límite '+fT+' °C','text-anchor="end"')+
+   `<polyline points="${pts.map(q=>X(q[0]).toFixed(1)+','+Y(q[1]).toFixed(1)).join(' ')}" fill="none" stroke="var(--steel)" stroke-width="2"/>`+
+   peaks.map((T,i)=>`<circle cx="${X(i*tg).toFixed(1)}" cy="${Y(T).toFixed(1)}" r="3.5" fill="${T>fT?'var(--accent)':'var(--green)'}"/>`).join('')+
+   TX(30,127,'0 s')+TX(215,127,(n*tg)+' s','text-anchor="end"')+TX(26,20,ym.toFixed(0),'text-anchor="end"')+TX(122,142,'temperatura del disco en cada frenada','text-anchor="middle"');
+  $('repCalc').innerHTML=
+   `ΔT por frenada = ½·${m}·(${a.toFixed(1)}²−${b.toFixed(1)}²) / (2·${md.toFixed(1)}·${cp}) = <b>${dT.toFixed(0)} °C</b><br>`+
+   `enfriamiento entre frenadas = e^(−${tg}/${tau}) = <b>${k.toFixed(2)}</b> · pico tras ${n} frenadas = <b>${peaks[n-1].toFixed(0)} °C</b>`+
+   `<br><span style="opacity:.65">Enfriamiento exponencial simplificado hacia ${Ta} °C; τ es una suposición.</span>`;
+}
+
 ['mt','v','r'].forEach(id=>$(id).addEventListener('input', updateGrip));
-['dv','da','tr','h','L'].forEach(id=>$(id).addEventListener('input', updateStop));
+['dv','vf','da','tr','h','L'].forEach(id=>$(id).addEventListener('input', updateStop));
+['bvf','bc','bf','bt0'].forEach(id=>$(id).addEventListener('input', updateBrake));
+['rv1','rv2','rn','rg','rt','bm','bd','bc','bf','bt0'].forEach(id=>$(id).addEventListener('input', updateRep));
 ['pm','rb','cd','af','bm'].forEach(id=>$(id).addEventListener('input', updateTop));
 ['vv','lam','zt','ks','ms'].forEach(id=>$(id).addEventListener('input', updateRes));
-document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{const o=JSON.parse(b.dataset.set);for(const k in o){const e=$(k);e.value=o[k];e.dispatchEvent(new Event('input'));}}));
+document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{const o=JSON.parse(b.dataset.set);for(const k in o){const e=$(k);e.value=o[k];e.dispatchEvent(new Event('input'));} const c=b.parentElement.querySelector('.cap'); if(c) c.textContent=b.dataset.note||''; for(const k in o) PREV[k]=+o[k]; showWhy(null); const w=b.closest('.card').querySelector('.wc'); if(w) w.innerHTML='<b>Caso cargado:</b> los valores de arriba. Mueve cualquier control para ver por qué cambia el resultado.';}));
 
-updateFatigue(); updateNyq(); updateAmdahl(); updateGrip(); updateStop(); updateTop(); updateRes();
+updateFatigue(); updateNyq(); updateAmdahl(); updateGrip(); updateStop(); updateTop(); updateRes(); updateRep();
+const ud=(u,a,b)=>u?a:b, V=id=>+$(id).value, T=id=>$(id).textContent, N=id=>parseFloat(T(id).replace('+',''));
+const CH={
+ v:u=>`la fuerza lateral que exige la curva es a = v²/r y crece con el cuadrado de la velocidad: ${ud(u,'a más velocidad hace falta mucha más fuerza para curvar y la moto se tumba más','a menos velocidad hace falta menos fuerza lateral y la moto se incorpora')}.`,
+ r:u=>`${ud(u,'una curva más abierta pide menos fuerza lateral para la misma velocidad (a = v²/r): la moto se incorpora','una curva más cerrada pide más fuerza lateral para la misma velocidad: la moto se tumba más')}.`,
+ m:u=>`la masa multiplica a la vez el peso estático y la transferencia (ΔW = h/L·m·|a|), por eso el porcentaje de carga que se mueve apenas cambia: ${ud(u,'más masa, más fuerza en las dos ruedas','menos masa, menos fuerza en las dos ruedas')}.`,
+ h:u=>`la altura del centro de masas es el brazo de palanca de la inercia: ${ud(u,'más alto, más carga se traslada y antes se levanta una rueda','más bajo, se traslada menos carga y la moto es más estable al frenar y acelerar')}.`,
+ L:u=>`la distancia entre ejes reparte el momento sobre las dos ruedas: ${ud(u,'más larga, la palanca h/L baja y se traslada menos carga (por eso las motos de drag son largas)','más corta, la palanca h/L sube y es más fácil levantar una rueda')}.`,
+ a:u=>`ahora a = ${V('a').toFixed(1)} m/s²: ${V('a')<0?'frenando, la inercia empuja la masa hacia delante y la carga pasa a la rueda delantera':V('a')>0?'acelerando, la inercia empuja hacia atrás y la carga pasa a la trasera':'sin aceleración, el reparto es el estático 50/50'}. Cuanto mayor es |a|, más carga se traslada.`,
+ rake:u=>`el rake inclina el eje de dirección y alarga o acorta el trail: ${ud(u,'más inclinado, trail más largo: moto más estable pero de dirección más pesada y lenta','más vertical, trail más corto: moto más ágil pero más nerviosa')}.`,
+ offset:u=>`el offset desplaza el eje de dirección respecto al centro de la rueda y resta trail: ${ud(u,'más offset, trail más corto y más agilidad','menos offset, trail más largo y más estabilidad')}.`,
+ rw:u=>`el radio de rueda aleja el punto de contacto del eje: ${ud(u,'rueda mayor, trail más largo','rueda menor, trail más corto')}.`,
+ ms:u=>`fs = √(ks/ms)/2π: ${ud(u,'más masa suspendida sobre el mismo muelle baja la frecuencia: la carrocería oscila más lenta y pesada','menos masa suspendida sube la frecuencia: la carrocería oscila más rápido')}.`,
+ mu:u=>`la masa no suspendida es la que debe mover la rueda al seguir el terreno: ${ud(u,'más masa baja su frecuencia fu, la rueda reacciona más lenta y pierde contacto con más facilidad','menos masa sube fu: la rueda sigue mejor el terreno y mejora el agarre')}.`,
+ ks:u=>`el muelle sostiene la masa suspendida y trabaja con el neumático: ${ud(u,'más rígido sube fs y fu: respuesta más firme, menos recorrido usado y más golpes transmitidos','más blando baja las frecuencias: más confort y más recorrido usado')}.`,
+ kt:u=>`la rigidez del neumático solo afecta al movimiento de la rueda: ${ud(u,'más rígido sube fu (rueda más viva) y apenas toca fs','más blando baja fu')}.`,
+ av:u=>`la resistencia crece con v² y la potencia con v³: ${ud(u,'subir la velocidad cuesta cada vez más potencia','bajar la velocidad ahorra mucha potencia')}. Duplicar v multiplica por 8 la potencia aerodinámica.`,
+ cd:u=>`el coeficiente de resistencia mide lo fina que es la forma, y la fuerza es proporcional a él: ${ud(u,'forma menos fina, más resistencia y más potencia a la misma velocidad','forma más fina, menos resistencia')}.`,
+ af:u=>`el área frontal es lo que ve el aire (solo importa el producto CD·A): ${ud(u,'más área (piloto más erguido), más resistencia','menos área (piloto tumbado en posición tuck), menos resistencia')}.`,
+ bm:u=>`la energía cinética es ½·m·v²: ${ud(u,'más masa, más energía que disipar y más subida de temperatura','menos masa, menos energía y menos temperatura')}.`,
+ bv:u=>`la energía crece con el cuadrado de la velocidad: ${ud(u,'empezar a frenar más rápido calienta mucho más el disco','empezar a frenar más despacio reduce mucho la energía a disipar')}.`,
+ bvf:u=>`se disipa la diferencia ½m(v² − vf²): ${ud(u,'terminar de frenar a más velocidad deja menos energía por disipar','terminar más despacio obliga a disipar más energía')}.`,
+ bd:u=>`la masa del disco es su masa térmica: ${ud(u,'más masa absorbe la misma energía con menos subida de temperatura, pero pesa más (masa no suspendida)','menos masa sube más la temperatura con la misma energía')}.`,
+ bc:u=>`el calor específico es lo que el material puede absorber por kg y grado: ${ud(u,'mayor cp (carbono), menos subida para la misma energía','menor cp (acero), la temperatura sube más')}.`,
+ bf:u=>`es solo la referencia del material: no cambia la física, cambia a partir de qué temperatura salta el aviso.`,
+ bt0:u=>`la subida ΔT es la misma; ${ud(u,'un disco que parte más caliente termina más caliente (el carbono necesita estar caliente para funcionar bien)','un disco que parte más frío termina más frío')}.`,
+ sf:u=>`el coeficiente Sf' escala toda la curva S-N: ${ud(u,'material más resistente, aguanta más ciclos a la misma tensión','material menos resistente, falla antes')}.`,
+ bx:u=>`el exponente b es la pendiente de la curva S-N (N ∝ S^(1/b)): ${ud(u,'curva más plana, una pequeña subida de tensión reduce muchísimo la vida','curva más inclinada, la vida cae de forma más gradual al subir la tensión')}.`,
+ s1:u=>`la vida depende de la tensión elevada a 1/b ≈ ${(1/V('bx')).toFixed(0)}: ${ud(u,'más tensión en el nivel 1, la vida N₁ se desploma','menos tensión en el nivel 1, la vida N₁ se alarga enormemente')}.`,
+ n1:u=>`el daño de un nivel es n/N: ${ud(u,'más ciclos en el nivel 1, más daño acumulado','menos ciclos en el nivel 1, menos daño')}.`,
+ s2:u=>`la vida depende de la tensión elevada a 1/b ≈ ${(1/V('bx')).toFixed(0)}: ${ud(u,'más tensión en el nivel 2, la vida N₂ se desploma','menos tensión en el nivel 2, la vida N₂ se alarga enormemente')}.`,
+ n2:u=>`el daño de un nivel es n/N: ${ud(u,'más ciclos en el nivel 2, más daño acumulado','menos ciclos en el nivel 2, menos daño')}.`,
+ fsig:u=>`${ud(u,'una señal más rápida exige muestrear más rápido (fs ≥ 2·f)','una señal más lenta se captura bien con menos muestras')}.`,
+ fsmp:u=>`${ud(u,'más muestras por segundo reconstruyen mejor la señal, pero crece el volumen de datos','menos muestras por segundo: si fs baja de 2·f aparece aliasing, un fenómeno falso en los datos')}.`,
+ nch:u=>`los canales no cambian la señal, solo el volumen de datos (canales × fs × 4 B × tiempo).`,
+ pp:u=>`${ud(u,'más parte paralelizable: sube el límite 1/(1−P) y se aprovechan más núcleos','más parte secuencial: ese tramo no se acelera con más núcleos y el límite baja')}.`,
+ nx:u=>`${ud(u,'más núcleos: la aceleración sube, pero cada vez menos, y baja la eficiencia','menos núcleos: cada núcleo se aprovecha mejor')}.`,
+ mt:u=>`el agarre μ fija el tamaño del círculo de fricción: ${ud(u,'con más agarre el mismo esfuerzo lateral usa un porcentaje menor y queda más margen para frenar','con menos agarre ya gastas más porcentaje girando y queda menos margen')}.`,
+ dv:u=>`la distancia de frenado crece con v²: ${ud(u,'a más velocidad se dispara (el doble de velocidad pide cuatro veces más distancia)','a menos velocidad se acorta mucho')}; la de reacción solo crece linealmente.`,
+ vf:u=>`${ud(u,'terminar a más velocidad: se frena menos, así que distancia y tiempo son menores','terminar a menos velocidad: se frena más, con más distancia y tiempo')}. En competición se frena hasta la velocidad de la curva, no hasta parar.`,
+ da:u=>`${ud(u,'más deceleración acorta distancia y tiempo, pero gasta más agarre y se acerca al límite de stoppie','menos deceleración alarga la distancia')}.`,
+ tr:u=>`la reacción son metros recorridos sin frenar: ${ud(u,'más tiempo de reacción, más distancia a velocidad constante','menos tiempo de reacción, menos metros')}. En competición el piloto frena en un punto fijo (tr ≈ 0).`,
+ pm:u=>`la velocidad punta es donde la potencia necesaria iguala a la disponible (P ∝ v³): ${ud(u,'más potencia da más velocidad, con rendimientos decrecientes','menos potencia, menos velocidad punta')}.`,
+ rb:u=>`en rebufo la estela reduce la resistencia efectiva: ${ud(u,'más ventaja, menor CD·A efectivo y mayor velocidad punta','menos ventaja')}.`,
+ vv:u=>`la moto recibe las ondulaciones con frecuencia f = v/λ: ${ud(u,'más velocidad sube f, y al acercarse a la natural fs entras en resonancia','menos velocidad baja f')}.`,
+ lam:u=>`${ud(u,'ondulaciones más largas: f baja a igual velocidad y la velocidad crítica sube','ondulaciones más cortas: f sube y la resonancia aparece a menos velocidad')}.`,
+ zt:u=>`el amortiguamiento disipa energía: ${ud(u,'más amortiguamiento reduce el pico de resonancia (aunque transmite más en alta frecuencia)','menos amortiguamiento hace crecer mucho el pico de resonancia')}.`,
+ rv1:u=>`la energía por frenada crece con v², y con ella el salto de temperatura: ${ud(u,'frenar desde más rápido calienta mucho más el disco','frenar desde más despacio lo calienta menos')}.`,
+ rv2:u=>`${ud(u,'terminar de frenar a más velocidad: menos energía por frenada','terminar a menos velocidad: más energía por frenada')}.`,
+ rn:u=>`${ud(u,'más frenadas seguidas: el calor se acumula hasta un equilibrio entre lo que añade cada frenada y lo que se pierde','menos frenadas: no da tiempo a acumular calor')}.`,
+ rg:u=>`${ud(u,'más tiempo entre frenadas: el disco se enfría más (e^(−t/τ)) y el pico baja','menos tiempo entre frenadas: se enfría menos y se acumula más calor')}.`,
+ rt:u=>`τ mide lo rápido que se enfría el disco: ${ud(u,'τ mayor, enfría más despacio y se acumula más calor','τ menor, enfría más rápido; una mejor ventilación equivale a un τ menor')}.`
+};
+const GR={
+ lean:()=>{const t=N('thetaOut');return `con ${T('vLbl')} y una curva de ${T('rLbl')}, la moto necesita ${T('latgOut')} de fuerza lateral y se inclina <b>${T('thetaOut')}</b> (la masa no influye en el ángulo). ${t>50?'Es una inclinación de competición: solo es posible con neumático de mucho agarre.':t>35?'Inclinación deportiva.':'Inclinación suave, de calle.'}`},
+ load:()=>`delantera <b>${T('wFrontOut')}</b>, trasera <b>${T('wRearOut')}</b> (en reposo, ${(V('m')*g/2).toFixed(0)} N cada una). ${$('riskBox').textContent.trim()}`,
+ geom:()=>{const t=N('trailOut');return `trail <b>${T('trailOut')}</b> con rake ${V('rake').toFixed(1)}°. ${t>=110?'Trail largo: muy estable en recta, más pesada de girar.':t<90?'Trail corto: muy ágil, más sensible a las perturbaciones.':'Trail en torno al de una moto deportiva (orientativo: 90–110 mm).'}`},
+ quarter:()=>{const r=N('fuOut')/N('fsOut');return `la carrocería oscila a <b>${T('fsOut')}</b> y la rueda a <b>${T('fuOut')}</b>; cociente ${r.toFixed(1)}. ${r>=4?'Están bien separadas: no se acoplan.':'Están poco separadas: pueden acoplarse y amplificarse.'}`},
+ aero:()=>`a ${T('avLbl')} el aire ejerce <b>${T('fdOut')}</b> y absorbe <b>${T('pOut')}</b>, con CD·A = ${(V('cd')*V('af')).toFixed(2)} m². Como la potencia crece con v³, los últimos km/h son los más caros.`,
+ brake:()=>{const dT=N('dtOut'),Tf=V('bt0')+dT;return `el disco absorbe <b>${T('eOut')}</b> y sube <b>${T('dtOut')}</b>: de ${V('bt0')} °C a <b>${Tf.toFixed(0)} °C</b>. ${$('bRisk').textContent.trim()}`},
+ fat:()=>{const Nf=S=>0.5*Math.pow(S/V('sf'),1/V('bx')),d1=V('n1')/Nf(V('s1')),d2=V('n2')/Nf(V('s2'));return `daño del bloque <b>${T('dOut')}</b>, unos ${T('repOut')} bloques hasta D=1. El nivel ${d1>=d2?1:2} aporta el ${(100*Math.max(d1,d2)/(d1+d2)).toFixed(0)} % del daño. ${$('fRisk').textContent.trim()}`},
+ nyq:()=>`muestreas a ${T('fsmpLbl')} una señal de ${T('fsigLbl')}. ${$('nyqRisk').textContent.trim()} Datos por sesión: ${T('mbOut')}.`,
+ amd:()=>`con P = ${T('ppLbl')} el límite teórico es <b>${T('smaxOut')}</b>; con ${T('nxLbl')} consigues <b>${T('spOut')}</b> (eficiencia ${T('efOut')}). ${N('efOut')<50?'Estás pagando muchos núcleos poco aprovechados.':'Uso razonable de los núcleos.'}`,
+ grip:()=>`girando usas el <b>${T('uOut')}</b> del agarre y te quedan <b>${T('alOut')}</b> para frenar sin salirte del círculo. ${$('gRisk').textContent.trim()}`,
+ stop:()=>`distancia total <b>${T('dtOut2')}</b>, de las que ${(V('dv')/3.6*V('tr')).toFixed(0)} m son solo de reacción, y ${T('dbOut')} de frenada. ${$('sRisk').textContent.trim()}`,
+ top:()=>`velocidad punta <b>${T('vmOut')}</b>${T('gnOut')!=='—'?' ('+T('gnOut')+' con rebufo)':''}: el punto donde la resistencia y la rodadura consumen toda la potencia que llega a la rueda (η·P motor).`,
+ res:()=>`la moto recibe el bache a ${T('feOut')} y lo amplifica <b>${T('tOut')}</b>; la velocidad crítica de este asfalto es <b>${T('vcOut')}</b>. ${$('rRisk').textContent.trim()}`,
+ rep:()=>`pico tras la última frenada <b>${T('rpOut')}</b>; primera frenada que supera el límite: <b>${T('rlOut')}</b>.`
+};
+const CARDS=[['lean','leanCalc'],['load','loadCalc'],['geom','geomCalc'],['quarter','quarterCalc'],['aero','aeroCalc'],['brake','brakeCalc'],['fat','fatCalc'],['nyq','nyqCalc'],['amd','amdCalc'],['grip','gripCalc'],['stop','stopCalc'],['top','topCalc'],['res','resCalc'],['rep','repCalc']];
+const PREV={}; document.querySelectorAll('input[type=range]').forEach(i=>PREV[i.id]=+i.value);
+function showWhy(own,id,u){
+  CARDS.forEach(([k])=>{const w=$('why_'+k); if(!w) return;
+    w.querySelector('.wg').innerHTML='<b>Lectura actual:</b> '+GR[k]();
+    if(k===own&&id&&CH[id]){const lab=$(id).closest('.field').querySelector('label').firstChild.textContent.trim();
+      w.querySelector('.wc').innerHTML=`<b>Has ${u?'subido':'bajado'} «${lab}»:</b> `+CH[id](u);}});
+}
+document.addEventListener('input',e=>{const t=e.target; if(!t.matches||!t.matches('input[type=range]')) return;
+  const nv=+t.value; if(nv===PREV[t.id]) return; const u=nv>PREV[t.id]; PREV[t.id]=nv;
+  const own=CARDS.find(c=>$(c[1]).closest('.card')===t.closest('.card')); showWhy(own&&own[0],t.id,u);});
+showWhy(null);
 </script>
 </body>
 </html>
