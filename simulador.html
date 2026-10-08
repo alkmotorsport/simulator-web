@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Simulador interactivo — Formación CAE de motos</title>
+<style>
+:root{
+  --navy:#14283c; --steel:#466e96; --accent:#d25028; --green:#3c8256;
+  --bg:#f7f8fa; --card:#ffffff; --text:#1a2430; --sub:#5a6676; --border:#e1e5ea;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#11161d; --card:#1a212b; --text:#e9edf2; --sub:#9aa7b5; --border:#2b3542;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11161d; --card:#1a212b; --text:#e9edf2; --sub:#9aa7b5; --border:#2b3542;
+}
+*{box-sizing:border-box;}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  padding:16px; max-width:760px; margin:0 auto;
+}
+header{padding:10px 2px 18px;}
+header h1{font-size:1.3rem; margin:0 0 4px; color:var(--navy);}
+:root[data-theme="dark"] header h1, body:has(:root:not([data-theme="light"])) header h1{color:#cfe0f5;}
+header p{margin:0; color:var(--sub); font-size:0.88rem; line-height:1.4;}
+.card{
+  background:var(--card); border:1px solid var(--border); border-radius:14px;
+  padding:16px; margin-bottom:16px; overflow-x:auto;
+}
+.card h2{font-size:1.02rem; margin:0 0 4px; color:var(--steel);}
+.card .formula{font-size:0.82rem; color:var(--sub); margin-bottom:12px; font-family:ui-monospace,Menlo,Consolas,monospace;}
+.row{display:flex; flex-wrap:wrap; gap:18px;}
+.col{flex:1 1 220px; min-width:200px;}
+.field{margin-bottom:14px;}
+.field label{display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:6px; color:var(--text);}
+.field label b{color:var(--accent); font-variant-numeric:tabular-nums;}
+input[type=range]{width:100%; accent-color:var(--accent);}
+.viz{display:flex; justify-content:center; margin:8px 0;}
+.viz svg{max-width:100%; height:auto;}
+.out{
+  display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;
+}
+.pill{
+  background:var(--bg); border:1px solid var(--border); border-radius:10px;
+  padding:8px 12px; font-size:0.85rem; flex:1 1 140px; text-align:center;
+}
+.pill b{display:block; font-size:1.15rem; color:var(--navy); margin-top:2px;}
+:root[data-theme="dark"] .pill b{color:#cfe0f5;}
+.warn{background:#fdecea; border-color:#e7b3a8; color:#8a2f1d;}
+:root[data-theme="dark"] .warn{background:#3a1f19; border-color:#6b3326; color:#f0b3a3;}
+.ok{background:#eaf5ee; border-color:#b9ddc3; color:#1f6b3a;}
+:root[data-theme="dark"] .ok{background:#17301f; border-color:#2d5a3c; color:#a9dcba;}
+.calc{
+  font-family:ui-monospace,Menlo,Consolas,monospace; font-size:0.78rem;
+  background:var(--bg); border:1px dashed var(--border); border-radius:8px;
+  padding:8px 10px; margin:4px 0 12px; color:var(--text); word-break:break-word;
+}
+.calc b{color:var(--accent);}
+.seg-btn{flex:1; padding:9px 6px; border:1px solid var(--border); background:var(--bg); color:var(--text); border-radius:10px; font-size:0.85rem; cursor:pointer;}
+.seg-btn.active{background:var(--accent); color:#fff; border-color:var(--accent);}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;align-items:center}
+.chips span{font-size:.78rem;color:var(--sub)}
+.chip{padding:6px 10px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:999px;font-size:.78rem;cursor:pointer}
+.chip:active{background:var(--accent);color:#fff}
+.sec{font-size:1.05rem;color:var(--steel);margin:26px 2px 12px}
+.note{font-size:.8rem;color:var(--sub);margin:0 0 12px}
+footer{text-align:center; color:var(--sub); font-size:0.75rem; padding:18px 0 6px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏍️ Simulador interactivo de la formación</h1>
+  <p>Mueve los controles y observa en tiempo real cómo cambia cada capítulo: Vehicle Dynamics (M2), suspensión (M3), fatiga (M4), aerodinámica (M5), frenos (M6), telemetría (M8) y HPC (M9).</p>
+</header>
+
+<!-- ===================== BLOQUE 1: ÁNGULO DE INCLINACIÓN ===================== -->
+<div class="card">
+  <h2>Módulo 2 · 2.2 — Ángulo de inclinación en curva</h2>
+  <div class="formula">tan(θ) = v² / (g·r)</div><div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"v": 30, "r": 15}'>🏙️ Rotonda urbana</button><button type="button" class="chip" data-set='{"v": 90, "r": 120}'>🛣️ Curva de carretera</button><button type="button" class="chip" data-set='{"v": 180, "r": 250}'>🏁 Curva rápida de circuito</button></div>
+  <div class="row">
+    <div class="col">
+      <div class="field"><label>Velocidad <b id="vLbl">90 km/h</b></label>
+        <input type="range" id="v" min="20" max="300" value="90" step="1"></div>
+      <div class="field"><label>Radio de curva <b id="rLbl">50 m</b></label>
+        <input type="range" id="r" min="8" max="200" value="50" step="1"></div>
+      <div class="field"><label>Sentido de la curva <b id="dirLbl">Derecha ▶</b></label>
+        <button type="button" id="dirBtn" class="seg-btn" style="width:100%">⇄ Cambiar sentido</button></div>
+      <div class="out">
+        <div class="pill">Ángulo θ<b id="thetaOut">—</b></div>
+        <div class="pill">Fuerza lateral (g)<b id="latgOut">—</b></div>
+      </div>
+    </div>
+    <div class="col viz">
+      <svg viewBox="0 0 220 195" width="210">
+        <line x1="6" y1="165" x2="214" y2="165" stroke="currentColor" stroke-opacity="0.25" stroke-width="2"/>
+        <ellipse cx="110" cy="165" rx="10" ry="2.5" fill="currentColor" opacity="0.25"/>
+        <!-- vertical de referencia -->
+        <line x1="110" y1="165" x2="110" y2="26" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.2" stroke-dasharray="3,3"/>
+        <!-- moto + piloto vistos por detrás; todo el conjunto pivota en el punto de contacto (110,165) -->
+        <g id="leanGroup">
+          <line x1="110" y1="165" x2="110" y2="26" stroke="var(--accent)" stroke-opacity="0.55" stroke-width="1.5" stroke-dasharray="5,3"/>
+          <!-- neumático trasero (perfil visto de frente/detrás) -->
+          <rect x="102" y="124" width="16" height="41" rx="7" fill="var(--text)" opacity="0.88"/>
+          <!-- escape -->
+          <rect x="124" y="120" width="8" height="30" rx="4" fill="var(--sub)"/>
+          <!-- guardabarros / colín -->
+          <path d="M98 124 L122 124 L117 108 L103 108 Z" fill="var(--steel)"/>
+          <ellipse cx="110" cy="104" rx="17" ry="7" fill="var(--navy)"/>
+          <!-- piernas del piloto -->
+          <polyline points="101,98 89,112 93,136" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="119,98 131,112 127,136" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- manillar con retrovisores -->
+          <line x1="72" y1="84" x2="148" y2="84" stroke="var(--navy)" stroke-width="4" stroke-linecap="round"/>
+          <line x1="78" y1="84" x2="74" y2="70" stroke="var(--navy)" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="142" y1="84" x2="146" y2="70" stroke="var(--navy)" stroke-width="2.5" stroke-linecap="round"/>
+          <ellipse cx="73" cy="67" rx="5" ry="3.5" fill="var(--steel)"/>
+          <ellipse cx="147" cy="67" rx="5" ry="3.5" fill="var(--steel)"/>
+          <!-- espalda del piloto -->
+          <rect x="95" y="56" width="30" height="46" rx="12" fill="var(--accent)"/>
+          <!-- brazos al manillar -->
+          <line x1="99" y1="63" x2="78" y2="84" stroke="var(--accent)" stroke-width="5" stroke-linecap="round"/>
+          <line x1="121" y1="63" x2="142" y2="84" stroke="var(--accent)" stroke-width="5" stroke-linecap="round"/>
+          <!-- casco visto por detrás -->
+          <circle cx="110" cy="44" r="13" fill="var(--text)" opacity="0.9"/>
+          <rect x="108" y="32" width="4" height="24" rx="2" fill="var(--card)" opacity="0.55"/>
+        </g>
+        <!-- arco del ángulo respecto a la vertical -->
+        <path id="leanArc" d="" fill="none" stroke="var(--accent)" stroke-width="2"/>
+        <text id="leanArcTxt" x="110" y="20" text-anchor="middle" font-size="11" font-weight="600" fill="var(--accent)"></text>
+        <text id="leanDirTxt" x="110" y="188" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65"></text>
+      </svg>
+    </div>
+  </div>
+  <div class="calc" id="leanCalc"></div>
+</div>
+
+<!-- ===================== BLOQUE 2: TRANSFERENCIA DE CARGA ===================== -->
+<div class="card">
+  <h2>Módulo 2 · 2.3 / 2.4 — Transferencia de carga (frenada / aceleración)</h2>
+  <div class="formula">ΔW = (h / L) · m · a</div><div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"a": -3}'>🚦 Frenada suave</button><button type="button" class="chip" data-set='{"a": -9}'>🛑 Frenada de emergencia</button><button type="button" class="chip" data-set='{"a": 6}'>🚀 Salida fuerte</button><button type="button" class="chip" data-set='{"a": 10}'>🔝 Aceleración extrema</button></div>
+  <div class="row">
+    <div class="col">
+      <div class="field"><label>Masa moto+piloto <b id="mLbl">220 kg</b></label>
+        <input type="range" id="m" min="150" max="320" value="220" step="5"></div>
+      <div class="field"><label>Altura CM (h) <b id="hLbl">0.60 m</b></label>
+        <input type="range" id="h" min="0.40" max="0.85" value="0.60" step="0.01"></div>
+      <div class="field"><label>Distancia entre ejes (L) <b id="LLbl">1.40 m</b></label>
+        <input type="range" id="L" min="1.20" max="1.65" value="1.40" step="0.01"></div>
+      <div class="field"><label>Aceleración (– frena / + acelera) <b id="aLbl">0.0 m/s²</b></label>
+        <input type="range" id="a" min="-10" max="10" value="0" step="0.5"></div>
+    </div>
+    <div class="col">
+      <div class="viz">
+        <svg viewBox="0 0 220 140" width="210">
+          <line x1="10" y1="120" x2="210" y2="120" stroke="currentColor" stroke-opacity="0.25" stroke-width="2"/>
+          <rect id="barTrasera" x="40" y="60" width="34" height="60" fill="var(--steel)" rx="4"/>
+          <rect id="barDelantera" x="146" y="60" width="34" height="60" fill="var(--accent)" rx="4"/>
+          <text x="57" y="135" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">trasera</text>
+          <text x="163" y="135" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">delantera</text>
+        </svg>
+      </div>
+      <div class="out">
+        <div class="pill">Carga trasera<b id="wRearOut">—</b></div>
+        <div class="pill">Carga delantera<b id="wFrontOut">—</b></div>
+      </div>
+      <div class="out" id="riskBox" style="margin-top:10px;"></div>
+    </div>
+  </div>
+  <div class="calc" id="loadCalc"></div>
+</div>
+
+<!-- ===================== BLOQUE 3: GEOMETRÍA DE DIRECCIÓN ===================== -->
+<div class="card">
+  <h2>Módulo 2 · 2.7 — Geometría de dirección (rake / trail)</h2>
+  <div class="formula">trail ≈ (Rw·sin(λ) − offset) / cos(λ)</div>
+  <div class="row">
+    <div class="col">
+      <div class="field"><label>Rake λ <b id="rakeLbl">24°</b></label>
+        <input type="range" id="rake" min="18" max="32" value="24" step="0.5"></div>
+      <div class="field"><label>Offset horquilla <b id="offsetLbl">32 mm</b></label>
+        <input type="range" id="offset" min="15" max="55" value="32" step="1"></div>
+      <div class="field"><label>Radio rueda delantera <b id="rwLbl">300 mm</b></label>
+        <input type="range" id="rw" min="270" max="330" value="300" step="1"></div>
+      <div class="out">
+        <div class="pill">Trail<b id="trailOut">—</b></div>
+      </div>
+    </div>
+    <div class="col viz">
+      <svg viewBox="0 0 240 200" width="230">
+        <line x1="10" y1="170" x2="230" y2="170" stroke="currentColor" stroke-opacity="0.25" stroke-width="2"/>
+        <!-- referencia vertical discontinua para medir el rake -->
+        <line id="vertRef" x1="155" y1="118" x2="155" y2="55" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.5" stroke-dasharray="3,3"/>
+        <path id="rakeArc" d="" fill="none" stroke="var(--sub)" stroke-width="1.5"/>
+        <text id="rakeTxt" x="163" y="70" font-size="10" fill="var(--sub)"></text>
+
+        <circle id="wheelC" cx="155" cy="118" r="48" fill="none" stroke="var(--steel)" stroke-width="3"/>
+        <!-- radio Rw etiquetado -->
+        <line id="rwLine" x1="155" y1="118" x2="155" y2="70" stroke="var(--steel)" stroke-width="1.5" stroke-dasharray="2,2"/>
+        <text id="rwTxt" x="159" y="95" font-size="10" fill="var(--steel)"></text>
+
+        <line id="axisLine" x1="155" y1="118" x2="155" y2="118" stroke="var(--accent)" stroke-width="3"/>
+        <!-- offset: marca perpendicular al eje de dirección, en el cabezal -->
+        <line id="offsetTick" x1="155" y1="118" x2="155" y2="118" stroke="var(--navy)" stroke-width="3" stroke-linecap="round"/>
+        <text id="offsetTxt" x="155" y="118" font-size="10" fill="var(--navy)"></text>
+
+        <line id="trailLine" x1="155" y1="170" x2="155" y2="170" stroke="var(--green)" stroke-width="4" stroke-linecap="round"/>
+        <text id="trailTxt" x="155" y="186" text-anchor="middle" font-size="10" fill="var(--green)"></text>
+      </svg>
+    </div>
+  </div>
+  <div class="calc" id="geomCalc"></div>
+</div>
+
+<!-- ===================== MÓDULO 3: CUARTO DE VEHÍCULO ===================== -->
+<div class="card">
+  <h2>Módulo 3 · 3.6 — Masa suspendida y no suspendida</h2>
+  <div class="formula">f = 1/(2π) · √(k / m)</div><div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"ms": 60, "mu": 14, "ks": 50000, "kt": 180000}'>🏁 Moto de carreras</button><button type="button" class="chip" data-set='{"ms": 105, "mu": 22, "ks": 28000, "kt": 140000}'>🧳 Trail de viaje cargada</button></div>
+  <div class="row">
+    <div class="col">
+      <div class="field"><label>Masa suspendida ms <b id="msLbl"></b></label><input type="range" id="ms" min="30" max="120" value="75" step="1"></div>
+      <div class="field"><label>Masa no suspendida mu <b id="muLbl"></b></label><input type="range" id="mu" min="8" max="30" value="18" step="0.5"></div>
+      <div class="field"><label>Rigidez del muelle ks <b id="ksLbl"></b></label><input type="range" id="ks" min="15000" max="60000" value="35000" step="500"></div>
+      <div class="field"><label>Rigidez del neumático kt <b id="ktLbl"></b></label><input type="range" id="kt" min="100000" max="220000" value="150000" step="1000"></div>
+      <div class="out"><div class="pill">f suspendida<b id="fsOut"></b></div><div class="pill">f no suspendida<b id="fuOut"></b></div></div>
+    </div>
+    <div class="col viz"><svg id="qSvg" viewBox="0 0 220 230" width="210"></svg></div>
+  </div>
+  <div class="calc" id="quarterCalc"></div>
+</div>
+
+<!-- ===================== MÓDULO 4: FATIGA ===================== -->
+<div class="card">
+  <h2>Módulo 4 · 4.5 — Fatiga: curva S-N y regla de Miner</h2>
+  <div class="formula">S = Sf'·(2N)<sup>b</sup>  ·  D = Σ nᵢ / Nᵢ</div>
+  <div class="row">
+    <div class="col">
+      <div class="field"><label>Coef. resistencia Sf' <b id="sfLbl"></b></label><input type="range" id="sf" min="400" max="1200" value="600" step="10"></div>
+      <div class="field"><label>Exponente b <b id="bxLbl"></b></label><input type="range" id="bx" min="-0.15" max="-0.05" value="-0.09" step="0.01"></div>
+      <div class="field"><label>Nivel 1: tensión S₁ <b id="s1Lbl"></b></label><input type="range" id="s1" min="50" max="400" value="250" step="5"></div>
+      <div class="field"><label>Nivel 1: ciclos n₁ <b id="n1Lbl"></b></label><input type="range" id="n1" min="100" max="100000" value="1000" step="100"></div>
+      <div class="field"><label>Nivel 2: tensión S₂ <b id="s2Lbl"></b></label><input type="range" id="s2" min="30" max="300" value="150" step="5"></div>
+      <div class="field"><label>Nivel 2: ciclos n₂ <b id="n2Lbl"></b></label><input type="range" id="n2" min="1000" max="1000000" value="10000" step="1000"></div>
+      <div class="out"><div class="pill">Daño D del bloque<b id="dOut"></b></div><div class="pill">Bloques hasta D=1<b id="repOut"></b></div></div>
+      <div class="out" id="fRisk" style="margin-top:10px;"></div>
+    </div>
+    <div class="col viz"><svg id="fSvg" viewBox="0 0 230 168" width="230"></svg></div>
+  </div>
+  <div class="calc" id="fatCalc"></div>
+</div>
+
+<!-- ===================== MÓDULO 5: AERODINÁMICA ===================== -->
+<div class="card">
+  <h2>Módulo 5 · 5.1 — Resistencia aerodinámica y potencia</h2>
+  <div class="formula">F<sub>D</sub> = ½ · ρ · v² · C<sub>D</sub> · A  ·  P = F<sub>D</sub> · v</div><div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"av": 50, "cd": 0.75, "af": 0.6}'>🛵 Scooter urbano</button><button type="button" class="chip" data-set='{"av": 120, "cd": 0.65, "af": 0.55}'>🏍️ Naked en autopista</button><button type="button" class="chip" data-set='{"av": 300, "cd": 0.5, "af": 0.42}'>🏁 Superbike a tope</button></div>
+  <div class="row">
+    <div class="col">
+      <div class="field"><label>Velocidad <b id="avLbl"></b></label><input type="range" id="av" min="50" max="350" value="250" step="5"></div>
+      <div class="field"><label>Coeficiente CD <b id="cdLbl"></b></label><input type="range" id="cd" min="0.35" max="0.80" value="0.55" step="0.01"></div>
+      <div class="field"><label>Área frontal A <b id="afLbl"></b></label><input type="range" id="af" min="0.30" max="0.65" value="0.45" step="0.01"></div>
+      <div class="out"><div class="pill">Resistencia F<sub>D</sub><b id="fdOut"></b></div><div class="pill">Potencia para vencerla<b id="pOut"></b></div></div>
+    </div>
+    <div class="col viz"><svg id="aSvg" viewBox="0 0 230 148" width="230"></svg></div>
+  </div>
+  <div class="calc" id="aeroCalc"></div>
+</div>
+
+<!-- ===================== MÓDULO 6: FRENOS ===================== -->
+<div class="card">
+  <h2>Módulo 6 · 6.2 — Calentamiento del disco de freno</h2>
+  <div class="formula">E = ½ · m · v²  ·  ΔT = E / (m<sub>disco</sub> · c<sub>p</sub>)</div><div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"bm": 250, "bv": 120, "bd": 1.5}'>🛣️ Frenada de carretera 120 km/h</button><button type="button" class="chip" data-set='{"bm": 250, "bv": 300, "bd": 1.5}'>🏁 Frenada de circuito 300 km/h</button></div>
+  <div class="row">
+    <div class="col">
+      <div class="field"><label>Masa moto+piloto <b id="bmLbl"></b></label><input type="range" id="bm" min="150" max="320" value="250" step="5"></div>
+      <div class="field"><label>Velocidad al frenar <b id="bvLbl"></b></label><input type="range" id="bv" min="80" max="350" value="300" step="5"></div>
+      <div class="field"><label>Masa de cada disco (2 delanteros) <b id="bdLbl"></b></label><input type="range" id="bd" min="0.8" max="3" value="1.5" step="0.1"></div>
+      <div class="out"><div class="pill">Energía disipada<b id="eOut"></b></div><div class="pill">Subida de temperatura<b id="dtOut"></b></div></div>
+      <div class="out" id="bRisk" style="margin-top:10px;"></div>
+    </div>
+    <div class="col viz"><svg id="bSvg" viewBox="0 0 250 148" width="240"></svg></div>
+  </div>
+  <div class="calc" id="brakeCalc"></div>
+</div>
+
+<!-- ===================== MÓDULO 8: NYQUIST ===================== -->
+<div class="card">
+  <h2>Módulo 8 · 8.2 — Muestreo de telemetría (Nyquist y aliasing)</h2>
+  <div class="formula">f<sub>s</sub> ≥ 2·f<sub>máx</sub>  ·  f<sub>aparente</sub> = |f − f<sub>s</sub>·round(f/f<sub>s</sub>)|</div>
+  <div class="row">
+    <div class="col">
+      <div class="field"><label>Frecuencia de la señal (ej. wobble) <b id="fsigLbl"></b></label><input type="range" id="fsig" min="1" max="40" value="10" step="1"></div>
+      <div class="field"><label>Frecuencia de muestreo fs <b id="fsmpLbl"></b></label><input type="range" id="fsmp" min="5" max="200" value="100" step="1"></div>
+      <div class="field"><label>Canales <b id="nchLbl"></b></label><input type="range" id="nch" min="10" max="80" value="40" step="1"></div>
+      <div class="out"><div class="pill">Frecuencia aparente<b id="faOut"></b></div><div class="pill">Datos por sesión (45 min)<b id="mbOut"></b></div></div>
+      <div class="out" id="nyqRisk" style="margin-top:10px;"></div>
+    </div>
+    <div class="col viz"><svg id="tSvg" viewBox="0 0 230 130" width="230"></svg></div>
+  </div>
+  <div class="calc" id="nyqCalc"></div>
+</div>
+
+<!-- ===================== MÓDULO 9: AMDAHL ===================== -->
+<div class="card">
+  <h2>Módulo 9 · 9.5 — HPC: ley de Amdahl</h2>
+  <div class="formula">S(N) = 1 / ((1 − P) + P/N)</div>
+  <div class="row">
+    <div class="col">
+      <div class="field"><label>Fracción paralelizable P <b id="ppLbl"></b></label><input type="range" id="pp" min="50" max="99.9" value="90" step="0.1"></div>
+      <div class="field"><label>Núcleos N (2^k) <b id="nxLbl"></b></label><input type="range" id="nx" min="0" max="10" value="4" step="1"></div>
+      <div class="out"><div class="pill">Aceleración S(N)<b id="spOut"></b></div><div class="pill">Eficiencia S/N<b id="efOut"></b></div><div class="pill">Límite con N→∞<b id="smaxOut"></b></div></div>
+    </div>
+    <div class="col viz"><svg id="xSvg" viewBox="0 0 230 140" width="230"></svg></div>
+  </div>
+  <div class="calc" id="amdCalc"></div>
+</div>
+
+<h3 class="sec">🛠️ Utilidad real en la moto</h3>
+
+<div class="card">
+  <h2>Margen de agarre y frenada dentro de la curva</h2>
+  <div class="formula">u = a<sub>lat</sub> / (μ·g)  ·  a<sub>long,máx</sub> = μ·g·√(1 − u²)</div>
+  <div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"mt": 1.0}'>🛞 Neumático de calle</button><button type="button" class="chip" data-set='{"mt": 1.2}'>🏍️ Deportivo</button><button type="button" class="chip" data-set='{"mt": 1.5}'>🏁 Slick</button></div>
+  <p class="note">Usa la velocidad y el radio del bloque de inclinación (Módulo 2). Valores de μ orientativos.</p>
+  <div class="row"><div class="col">
+    <div class="field"><label>Agarre del neumático <b id="mtLbl"></b></label><input type="range" id="mt" min="0.8" max="1.6" value="1.1" step="0.05"></div>
+    <div class="out"><div class="pill">Agarre usado<b id="uOut"></b></div><div class="pill">Inclinación máx.<b id="tmOut"></b></div><div class="pill">Frenada posible en curva<b id="alOut"></b></div></div>
+    <div class="out" id="gRisk" style="margin-top:10px;"></div>
+  </div><div class="col viz"><svg id="gSvg" viewBox="0 0 230 160" width="230"></svg></div></div>
+  <div class="calc" id="gripCalc"></div>
+</div>
+
+<div class="card">
+  <h2>Distancia de frenado real (con límite de stoppie)</h2>
+  <div class="formula">d<sub>total</sub> = v·t<sub>r</sub> + v² / (2·a)  ·  a<sub>stoppie</sub> = g·(L/2)/h</div>
+  <div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"dv": 50, "da": 6}'>🛵 Ciudad 50 km/h</button><button type="button" class="chip" data-set='{"dv": 90, "da": 7}'>🛣️ Carretera 90 km/h</button><button type="button" class="chip" data-set='{"dv": 120, "da": 9}'>🚨 Autopista 120, emergencia</button></div>
+  <p class="note">Usa la altura del CM (h) y la distancia entre ejes (L) del bloque de transferencia de carga.</p>
+  <div class="row"><div class="col">
+    <div class="field"><label>Velocidad inicial <b id="dvLbl"></b></label><input type="range" id="dv" min="30" max="200" value="100" step="5"></div>
+    <div class="field"><label>Deceleración que pides <b id="daLbl"></b></label><input type="range" id="da" min="2" max="11" value="7" step="0.5"></div>
+    <div class="field"><label>Tiempo de reacción <b id="trLbl"></b></label><input type="range" id="tr" min="0.5" max="2" value="1" step="0.1"></div>
+    <div class="out"><div class="pill">Parada total<b id="dtOut2"></b></div><div class="pill">Solo frenando<b id="dbOut"></b></div></div>
+    <div class="out" id="sRisk" style="margin-top:10px;"></div>
+  </div><div class="col viz"><svg id="sSvg" viewBox="0 0 230 160" width="230"></svg></div></div>
+  <div class="calc" id="stopCalc"></div>
+</div>
+
+<div class="card">
+  <h2>Velocidad punta y ventaja del rebufo</h2>
+  <div class="formula">P<sub>req</sub>(v) = ½·ρ·v³·C<sub>D</sub>·A + C<sub>rr</sub>·m·g·v  ·  v<sub>máx</sub>: P<sub>req</sub> = η·P<sub>motor</sub></div>
+  <div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"pm": 15, "cd": 0.75, "af": 0.6}'>🛵 Scooter 15 CV</button><button type="button" class="chip" data-set='{"pm": 100, "cd": 0.65, "af": 0.55}'>🏍️ Naked 100 CV</button><button type="button" class="chip" data-set='{"pm": 200, "cd": 0.5, "af": 0.42}'>🏁 Superbike 200 CV</button><button type="button" class="chip" data-set='{"rb": 25}'>💨 En rebufo</button></div>
+  <p class="note">Usa CD, área y masa de los bloques de aerodinámica y frenos. Rodadura Crr = 0,015 y transmisión η = 0,9.</p>
+  <div class="row"><div class="col">
+    <div class="field"><label>Potencia del motor <b id="pmLbl"></b></label><input type="range" id="pm" min="5" max="250" value="130" step="5"></div>
+    <div class="field"><label>Reducción de CD·A por rebufo <b id="rbLbl"></b></label><input type="range" id="rb" min="0" max="40" value="0" step="1"></div>
+    <div class="out"><div class="pill">Velocidad punta<b id="vmOut"></b></div><div class="pill">Ganancia por rebufo<b id="gnOut"></b></div></div>
+  </div><div class="col viz"><svg id="pSvg" viewBox="0 0 230 150" width="230"></svg></div></div>
+  <div class="calc" id="topCalc"></div>
+</div>
+
+<div class="card">
+  <h2>Resonancia en asfalto ondulado</h2>
+  <div class="formula">f<sub>exc</sub> = v / λ  ·  T(r) = √[(1+(2ζr)²) / ((1−r²)²+(2ζr)²)]  ·  r = f<sub>exc</sub>/f<sub>s</sub></div>
+  <div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"lam": 5, "vv": 60}'>〰️ Asfalto ondulado 5 m</button><button type="button" class="chip" data-set='{"lam": 12, "vv": 100}'>🌉 Juntas de puente 12 m</button><button type="button" class="chip" data-set='{"lam": 1.5, "vv": 30}'>🧱 Adoquín 1,5 m</button></div>
+  <p class="note">Usa la frecuencia natural f<sub>s</sub> del bloque de suspensión (Módulo 3).</p>
+  <div class="row"><div class="col">
+    <div class="field"><label>Velocidad <b id="vvLbl"></b></label><input type="range" id="vv" min="20" max="160" value="60" step="5"></div>
+    <div class="field"><label>Distancia entre ondulaciones λ <b id="lamLbl"></b></label><input type="range" id="lam" min="1" max="12" value="5" step="0.5"></div>
+    <div class="field"><label>Amortiguamiento ζ <b id="ztLbl"></b></label><input type="range" id="zt" min="0.1" max="0.8" value="0.3" step="0.05"></div>
+    <div class="out"><div class="pill">f excitación<b id="feOut"></b></div><div class="pill">Velocidad crítica<b id="vcOut"></b></div><div class="pill">Amplificación T<b id="tOut"></b></div></div>
+    <div class="out" id="rRisk" style="margin-top:10px;"></div>
+  </div><div class="col viz"><svg id="rSvg" viewBox="0 0 230 150" width="230"></svg></div></div>
+  <div class="calc" id="resCalc"></div>
+</div>
+
+<footer>Formación Simulación / CAE / Digital Engineering — Módulos 2, 3, 4, 5, 6, 8 y 9 · valores con fines pedagógicos</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const g = 9.81;
+let leanDir = 1; // 1 = curva a la derecha, -1 = izquierda
+
+
+function updateLean(){
+  const vKmh = +$('v').value, r = +$('r').value;
+  const v = vKmh/3.6;
+  const latg = (v*v)/(g*r);
+  const theta = Math.atan(latg) * 180/Math.PI;
+  const th = theta*Math.PI/180;
+  $('vLbl').textContent = vKmh + ' km/h';
+  $('rLbl').textContent = r + ' m';
+  $('thetaOut').textContent = theta.toFixed(1) + '°';
+  $('latgOut').textContent = latg.toFixed(2) + ' g';
+  // vista trasera: la moto se inclina hacia el interior de la curva
+  $('leanGroup').setAttribute('transform', `rotate(${leanDir*theta} 110 165)`);
+  const R = 52;
+  const ex = 110 + leanDir*R*Math.sin(th), ey = 165 - R*Math.cos(th);
+  $('leanArc').setAttribute('d', `M 110 ${165-R} A ${R} ${R} 0 0 ${leanDir>0?1:0} ${ex.toFixed(1)} ${ey.toFixed(1)}`);
+  const mx = 110 + leanDir*(R+13)*Math.sin(th/2), my = 165 - (R+13)*Math.cos(th/2);
+  $('leanArcTxt').setAttribute('x', mx.toFixed(1)); $('leanArcTxt').setAttribute('y', my.toFixed(1));
+  $('leanArcTxt').textContent = theta.toFixed(0) + '°';
+  $('leanDirTxt').textContent = leanDir>0 ? 'curva a la derecha ▶' : '◀ curva a la izquierda';
+  $('leanCalc').innerHTML =
+    `tan(θ) = v²/(g·r) = ${v.toFixed(2)}² / (9.81 × ${r}) = <b>${latg.toFixed(3)}</b><br>`+
+    `θ = atan(${latg.toFixed(3)}) = <b>${theta.toFixed(1)}°</b> hacia el interior de la curva`;
+}
+function setDir(d){
+  leanDir = d;
+  $('dirLbl').textContent = d>0 ? 'Derecha ▶' : '◀ Izquierda';
+  updateLean();
+}
+
+
+function updateLoad(){
+  const m = +$('m').value, h = +$('h').value, L = +$('L').value, a = +$('a').value;
+  $('mLbl').textContent = m + ' kg';
+  $('hLbl').textContent = h.toFixed(2) + ' m';
+  $('LLbl').textContent = L.toFixed(2) + ' m';
+  $('aLbl').textContent = a.toFixed(1) + ' m/s²';
+
+  const Wtotal = m * g;
+  const Wstatic = Wtotal/2;
+  // a negativo = frenada -> transfiere a delantera; a positivo = acelera -> transfiere a trasera
+  const dW = (h/L) * m * a;
+  const Wfront = Wstatic + dW;
+  const Wrear = Wstatic - dW;
+
+  $('wFrontOut').textContent = Math.max(Wfront,0).toFixed(0) + ' N';
+  $('wRearOut').textContent = Math.max(Wrear,0).toFixed(0) + ' N';
+
+  const maxBar = 60, scale = maxBar / (Wtotal*0.95);
+  $('barDelantera').setAttribute('height', Math.max(Math.min(Wfront*scale,100),2));
+  $('barDelantera').setAttribute('y', 120-Math.max(Math.min(Wfront*scale,100),2));
+  $('barTrasera').setAttribute('height', Math.max(Math.min(Wrear*scale,100),2));
+  $('barTrasera').setAttribute('y', 120-Math.max(Math.min(Wrear*scale,100),2));
+
+  const risk = $('riskBox');
+  if(Wrear<=0){
+    risk.innerHTML = '<div class="pill warn">⚠️ Rueda trasera al límite de levantarse — posible <b>stoppie</b></div>';
+  } else if(Wfront<=0){
+    risk.innerHTML = '<div class="pill warn">⚠️ Rueda delantera al límite de levantarse — posible <b>wheelie</b></div>';
+  } else {
+    risk.innerHTML = '<div class="pill ok">✓ Ambas ruedas con carga positiva</div>';
+  }
+
+  $('loadCalc').innerHTML =
+    `ΔW = (h/L)·m·a = (${h.toFixed(2)}/${L.toFixed(2)}) × ${m} × ${a.toFixed(1)} = <b>${dW.toFixed(0)} N</b><br>`+
+    `W_delantera = ${Wstatic.toFixed(0)} + ${dW.toFixed(0)} = <b>${Wfront.toFixed(0)} N</b> · `+
+    `W_trasera = ${Wstatic.toFixed(0)} − ${dW.toFixed(0)} = <b>${Wrear.toFixed(0)} N</b>`;
+}
+
+function updateGeom(){
+  const rakeDeg = +$('rake').value, offset = +$('offset').value, rw = +$('rw').value;
+  $('rakeLbl').textContent = rakeDeg + '°';
+  $('offsetLbl').textContent = offset + ' mm';
+  $('rwLbl').textContent = rw + ' mm';
+
+  const rakeRad = rakeDeg * Math.PI/180;
+  const trail = (rw*Math.sin(rakeRad) - offset) / Math.cos(rakeRad);
+  $('trailOut').textContent = trail.toFixed(0) + ' mm';
+
+  // --- geometría del dibujo ---
+  const cx=155, cy=118;                 // centro de la rueda (punto fijo)
+  const Rpx = 30 + (rw-270)*(18/60);    // radio dibujado ~30-48px según Rw real
+  $('wheelC').setAttribute('r', Rpx.toFixed(1));
+
+  // radio Rw dibujado hacia arriba, con etiqueta
+  $('rwLine').setAttribute('y2', cy-Rpx);
+  $('rwTxt').setAttribute('y', (cy-Rpx/2).toFixed(1));
+  $('rwTxt').textContent = `Rw=${rw}mm`;
+
+  // eje de dirección: pasa a distancia "offset" (exagerada x3 para que se vea) del centro de rueda
+  const offsetPx = (offset*0.16)*3;     // mismo factor 0.16 que usaríamos en mm->px, x3 solo visual
+  const axisLen = Rpx + 36;
+  // punto sobre el eje, desplazado "offsetPx" perpendicular a la dirección del eje respecto al centro de rueda
+  const nx = Math.cos(rakeRad), ny = Math.sin(rakeRad);      // perpendicular al eje
+  const px0 = cx + offsetPx*nx, py0 = cy + offsetPx*ny;
+  const dx = Math.sin(rakeRad), dy = -Math.cos(rakeRad);     // dirección del eje (hacia arriba)
+  const topX = px0 + dx*axisLen, topY = py0 + dy*axisLen;
+  $('axisLine').setAttribute('x1', px0.toFixed(1)); $('axisLine').setAttribute('y1', py0.toFixed(1));
+  $('axisLine').setAttribute('x2', topX.toFixed(1)); $('axisLine').setAttribute('y2', topY.toFixed(1));
+
+  // marca de offset: segmento corto perpendicular, del centro de rueda al punto del eje
+  $('offsetTick').setAttribute('x1', cx); $('offsetTick').setAttribute('y1', cy);
+  $('offsetTick').setAttribute('x2', px0.toFixed(1)); $('offsetTick').setAttribute('y2', py0.toFixed(1));
+  $('offsetTxt').setAttribute('x', (px0+8).toFixed(1)); $('offsetTxt').setAttribute('y', (py0-2).toFixed(1));
+  $('offsetTxt').textContent = `offset=${offset}mm`;
+
+  // eje extendido hasta el suelo
+  const groundY=170;
+  const s = (groundY - py0)/dy;
+  const groundX = px0 - s*dx;
+
+  // arco de rake entre la vertical de referencia y el eje
+  const arcR = 26;
+  const ax = px0, ay = py0-18;
+  const arcEndX = px0 + Math.sin(rakeRad)*arcR, arcEndY = (py0-18) - Math.cos(rakeRad)*arcR;
+  $('rakeArc').setAttribute('d', `M ${px0} ${py0-18} A ${arcR} ${arcR} 0 0 1 ${arcEndX.toFixed(1)} ${arcEndY.toFixed(1)}`);
+  $('rakeTxt').setAttribute('x', (px0+14).toFixed(1)); $('rakeTxt').setAttribute('y', (py0-24).toFixed(1));
+  $('rakeTxt').textContent = `λ=${rakeDeg}°`;
+  $('vertRef').setAttribute('x1', px0.toFixed(1)); $('vertRef').setAttribute('x2', px0.toFixed(1));
+  $('vertRef').setAttribute('y1', (py0+4).toFixed(1)); $('vertRef').setAttribute('y2', (py0-55).toFixed(1));
+
+  // trail dibujado a partir del VALOR REAL calculado (escala propia, independiente del resto)
+  const contactX = cx; // contacto de la rueda, justo bajo su centro
+  const trailPx = trail*0.12;
+  const gStart = contactX; // el segmento de trail sale del punto de contacto
+  $('trailLine').setAttribute('x1', contactX.toFixed(1)); $('trailLine').setAttribute('y1', groundY);
+  $('trailLine').setAttribute('x2', (contactX-trailPx).toFixed(1)); $('trailLine').setAttribute('y2', groundY);
+  $('trailTxt').setAttribute('x', (contactX-trailPx/2).toFixed(1));
+  $('trailTxt').textContent = `trail=${trail.toFixed(0)}mm`;
+
+  const rwSin = rw*Math.sin(rakeRad);
+  $('geomCalc').innerHTML =
+    `trail = (Rw·sin λ − offset) / cos λ<br>`+
+    `= (${rw}×sin(${rakeDeg}°) − ${offset}) / cos(${rakeDeg}°) = (${rwSin.toFixed(1)} − ${offset}) / ${Math.cos(rakeRad).toFixed(3)} = <b>${trail.toFixed(0)} mm</b>`+
+    `<br><span style="opacity:.65">(offset dibujado x3 para que se aprecie; el resto sí está a escala relativa)</span>`;
+}
+
+['v','r'].forEach(id=>$(id).addEventListener('input', updateLean));
+['m','h','L','a'].forEach(id=>$(id).addEventListener('input', updateLoad));
+['rake','offset','rw'].forEach(id=>$(id).addEventListener('input', updateGeom));
+
+$('dirBtn').addEventListener('click',()=>setDir(-leanDir));
+
+function zz(x,y1,y2,n,a){const dy=(y2-y1)/(n+1);const p=[[x,y1]];for(let i=1;i<=n;i++)p.push([x+(i%2?a:-a),y1+dy*i]);p.push([x,y2]);return p.map(q=>q.map(t=>t.toFixed(1)).join(',')).join(' ');}
+
+function updateQuarter(){
+  const ms=+$('ms').value, mu=+$('mu').value, ks=+$('ks').value, kt=+$('kt').value;
+  $('msLbl').textContent=ms+' kg'; $('muLbl').textContent=mu.toFixed(1)+' kg';
+  $('ksLbl').textContent=ks+' N/m'; $('ktLbl').textContent=kt+' N/m';
+  const fs=Math.sqrt(ks/ms)/(2*Math.PI), fu=Math.sqrt((ks+kt)/mu)/(2*Math.PI);
+  $('fsOut').textContent=fs.toFixed(2)+' Hz'; $('fuOut').textContent=fu.toFixed(1)+' Hz';
+  const hu=14+mu*0.7, huTop=165-hu, hs=16+ms*0.35, msBot=huTop-55, msTop=msBot-hs, mid=(huTop+msBot)/2;
+  const sw1=(1.5+ks/20000).toFixed(1), sw2=(1.5+kt/60000).toFixed(1);
+  $('qSvg').innerHTML=
+   `<line x1="10" y1="215" x2="210" y2="215" stroke="currentColor" stroke-opacity=".25" stroke-width="2"/>`+
+   `<polyline points="${zz(110,215,165,6,11)}" fill="none" stroke="var(--steel)" stroke-width="${sw2}" stroke-linejoin="round"/>`+
+   `<text x="128" y="196" font-size="9" fill="currentColor" opacity=".8">kt = ${kt}</text>`+
+   `<rect x="75" y="${huTop}" width="70" height="${hu}" rx="5" fill="var(--accent)"/>`+
+   `<text x="110" y="${huTop+hu/2+4}" text-anchor="middle" font-size="11" fill="#fff">mu = ${mu.toFixed(1)} kg</text>`+
+   `<polyline points="${zz(95,huTop,msBot,7,9)}" fill="none" stroke="var(--steel)" stroke-width="${sw1}" stroke-linejoin="round"/>`+
+   `<line x1="128" y1="${huTop}" x2="128" y2="${msBot}" stroke="var(--navy)" stroke-width="3"/>`+
+   `<rect x="121" y="${mid-8}" width="14" height="16" rx="2" fill="var(--navy)"/>`+
+   `<text x="142" y="${mid+3}" font-size="9" fill="currentColor" opacity=".8">ks = ${ks}</text>`+
+   `<rect x="60" y="${msTop}" width="100" height="${hs}" rx="6" fill="var(--navy)"/>`+
+   `<text x="110" y="${msTop+hs/2+4}" text-anchor="middle" font-size="11" fill="#fff">ms = ${ms} kg</text>`;
+  $('quarterCalc').innerHTML=
+   `f_s = 1/(2π)·√(${ks}/${ms}) = <b>${fs.toFixed(2)} Hz</b><br>`+
+   `f_u = 1/(2π)·√((${ks}+${kt})/${mu.toFixed(1)}) = <b>${fu.toFixed(1)} Hz</b><br>`+
+   `<span style="opacity:.65">Cuanto menor mu, mayor f_u: la rueda sigue mejor el terreno.</span>`;
+}
+
+function updateAero(){
+  const v=+$('av').value, cd=+$('cd').value, A=+$('af').value, rho=1.225;
+  $('avLbl').textContent=v+' km/h'; $('cdLbl').textContent=cd.toFixed(2); $('afLbl').textContent=A.toFixed(2)+' m²';
+  const P=s=>0.5*rho*Math.pow(s/3.6,3)*cd*A/735.5;
+  const vms=v/3.6, FD=0.5*rho*vms*vms*cd*A, Pw=FD*vms, cv=Pw/735.5;
+  $('fdOut').textContent=FD.toFixed(0)+' N'; $('pOut').textContent=cv.toFixed(0)+' CV';
+  const X=s=>30+(s-50)/300*180, ymax=P(350), Y=c=>115-c/ymax*100;
+  let pts=''; for(let s=50;s<=350;s+=10) pts+=`${X(s).toFixed(1)},${Y(P(s)).toFixed(1)} `;
+  $('aSvg').innerHTML=
+   `<line x1="30" y1="115" x2="215" y2="115" stroke="currentColor" stroke-opacity=".4"/><line x1="30" y1="12" x2="30" y2="115" stroke="currentColor" stroke-opacity=".4"/>`+
+   `<polyline points="${pts}" fill="none" stroke="var(--steel)" stroke-width="2.5"/>`+
+   `<line x1="${X(v)}" y1="${Y(cv)}" x2="${X(v)}" y2="115" stroke="var(--accent)" stroke-dasharray="3,3"/>`+
+   `<line x1="30" y1="${Y(cv)}" x2="${X(v)}" y2="${Y(cv)}" stroke="var(--accent)" stroke-dasharray="3,3"/>`+
+   `<circle cx="${X(v)}" cy="${Y(cv)}" r="5" fill="var(--accent)"/>`+
+   `<text x="${Math.min(X(v)+8,120)}" y="${Math.max(Y(cv)-8,22)}" font-size="10" font-weight="600" fill="var(--accent)">${v} km/h · ${cv.toFixed(0)} CV</text>`+
+   `<text x="30" y="128" font-size="9" fill="currentColor" opacity=".7">50</text><text x="215" y="128" text-anchor="end" font-size="9" fill="currentColor" opacity=".7">350 km/h</text>`+
+   `<text x="26" y="20" text-anchor="end" font-size="9" fill="currentColor" opacity=".7">${ymax.toFixed(0)}</text>`+
+   `<text x="122" y="142" text-anchor="middle" font-size="9" fill="currentColor" opacity=".6">potencia (CV) frente a velocidad</text>`;
+  $('aeroCalc').innerHTML=
+   `F_D = ½·1.225·${vms.toFixed(1)}²·${cd.toFixed(2)}·${A.toFixed(2)} = <b>${FD.toFixed(0)} N</b><br>`+
+   `P = F_D·v = ${FD.toFixed(0)} × ${vms.toFixed(1)} = ${(Pw/1000).toFixed(1)} kW = <b>${cv.toFixed(0)} CV</b><br>`+
+   `<span style="opacity:.65">La potencia crece con v³: la curva se dispara a alta velocidad.</span>`;
+}
+
+function updateBrake(){
+  const m=+$('bm').value, v=+$('bv').value, md=+$('bd').value;
+  $('bmLbl').textContent=m+' kg'; $('bvLbl').textContent=v+' km/h'; $('bdLbl').textContent=md.toFixed(1)+' kg';
+  const vms=v/3.6, E=0.5*m*vms*vms, dT=E/(2*md*460), Tf=100+dT;
+  $('eOut').textContent=(E/1000).toFixed(0)+' kJ'; $('dtOut').textContent='+'+dT.toFixed(0)+' °C';
+  const t=Math.min(Tf,1000)/1000, hue=Math.round(220-t*220), col=`hsl(${hue} 80% 50%)`;
+  let holes=''; for(let i=0;i<12;i++){const a=i/12*2*Math.PI; holes+=`<circle cx="${(60+30*Math.cos(a)).toFixed(1)}" cy="${(75+30*Math.sin(a)).toFixed(1)}" r="3" fill="var(--card)"/>`;}
+  const gh=t*110, fadeY=125-0.5*110;
+  $('bSvg').innerHTML=
+   `<circle cx="60" cy="75" r="46" fill="${col}" stroke="var(--navy)" stroke-width="3"/>`+holes+
+   `<circle cx="60" cy="75" r="12" fill="var(--card)" stroke="var(--navy)" stroke-width="2"/>`+
+   `<text x="60" y="140" text-anchor="middle" font-size="10" fill="currentColor">disco: ${Tf.toFixed(0)} °C</text>`+
+   `<rect x="140" y="15" width="22" height="110" rx="4" fill="none" stroke="currentColor" stroke-opacity=".4"/>`+
+   `<rect x="140" y="${125-gh}" width="22" height="${gh}" rx="4" fill="${col}"/>`+
+   `<line x1="134" y1="${fadeY}" x2="168" y2="${fadeY}" stroke="var(--accent)" stroke-dasharray="3,2"/>`+
+   `<text x="172" y="${fadeY+3}" font-size="9" fill="var(--accent)">fade ≳500 °C</text>`+
+   `<text x="140" y="11" font-size="9" fill="currentColor" opacity=".7">1000 °C</text><text x="140" y="137" font-size="9" fill="currentColor" opacity=".7">0</text>`;
+  $('bRisk').innerHTML = Tf>500 ? '<div class="pill warn">⚠️ Zona de <b>fade</b>: el freno pierde eficacia</div>' : '<div class="pill ok">✓ Temperatura dentro del rango de trabajo</div>';
+  $('brakeCalc').innerHTML=
+   `E = ½·${m}·${vms.toFixed(1)}² = <b>${(E/1000).toFixed(0)} kJ</b><br>`+
+   `ΔT = E / (2·${md.toFixed(1)}·460) = <b>${dT.toFixed(0)} °C</b> → T final ≈ 100 + ${dT.toFixed(0)} = ${Tf.toFixed(0)} °C<br>`+
+   `<span style="opacity:.65">Acero (cp = 460 J/kgK), 2 discos, T inicial supuesta 100 °C; el umbral de fade es orientativo.</span>`;
+}
+
+['ms','mu','ks','kt'].forEach(id=>$(id).addEventListener('input', updateQuarter));
+['av','cd','af'].forEach(id=>$(id).addEventListener('input', updateAero));
+['bm','bv','bd'].forEach(id=>$(id).addEventListener('input', updateBrake));
+
+updateLean(); updateLoad(); updateGeom(); function updateFatigue(){
+  const Sf=+$('sf').value,b=+$('bx').value,S1=+$('s1').value,n1=+$('n1').value,S2=+$('s2').value,n2=+$('n2').value;
+  $('sfLbl').textContent=Sf+' MPa'; $('bxLbl').textContent=b.toFixed(2);
+  $('s1Lbl').textContent=S1+' MPa'; $('n1Lbl').textContent=n1; $('s2Lbl').textContent=S2+' MPa'; $('n2Lbl').textContent=n2;
+  const Nf=S=>0.5*Math.pow(S/Sf,1/b), N1=Nf(S1), N2=Nf(S2), D=n1/N1+n2/N2;
+  const sci=x=>x.toExponential(1).replace('e+','×10^');
+  $('dOut').textContent=D.toFixed(3); const rep=1/D; $('repOut').textContent=rep>1e5?sci(rep):rep.toFixed(0);
+  $('fRisk').innerHTML=D>=1?'<div class="pill warn">⚠️ D ≥ 1: fallo por fatiga previsto</div>':'<div class="pill ok">✓ Consume el '+(D*100).toFixed(1)+' % de la vida</div>';
+  const lx=N=>30+(Math.log10(N)-3)/6*185, ly=S=>115-(Math.log10(S)-Math.log10(30))/(Math.log10(600)-Math.log10(30))*100;
+  const cl=(x,a,c)=>Math.max(a,Math.min(c,x));
+  let pts=''; for(let e=3;e<=9;e+=0.25){const N=Math.pow(10,e),S=Sf*Math.pow(2*N,b); pts+=`${lx(N).toFixed(1)},${cl(ly(S),12,115).toFixed(1)} `;}
+  const pt=(S,N,c)=>{const x=cl(lx(N),30,215),y=cl(ly(S),12,115),an=x>130?'end':'start',dx=x>130?-8:8;
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" fill="${c}"/><text x="${(x+dx).toFixed(1)}" y="${(y-7).toFixed(1)}" text-anchor="${an}" font-size="9" fill="${c}">${S} MPa · N=${sci(N)}</text>`;};
+  const dc=D>=1?'var(--accent)':D>0.5?'#e0a030':'var(--green)';
+  $('fSvg').innerHTML=
+   `<line x1="30" y1="115" x2="215" y2="115" stroke="currentColor" stroke-opacity=".4"/><line x1="30" y1="12" x2="30" y2="115" stroke="currentColor" stroke-opacity=".4"/>`+
+   `<polyline points="${pts}" fill="none" stroke="var(--steel)" stroke-width="2.5"/>`+pt(S1,N1,'var(--accent)')+pt(S2,N2,'var(--navy)')+
+   `<text x="30" y="127" font-size="9" fill="currentColor" opacity=".7">10³</text><text x="215" y="127" text-anchor="end" font-size="9" fill="currentColor" opacity=".7">10⁹ ciclos</text><text x="26" y="20" text-anchor="end" font-size="9" fill="currentColor" opacity=".7">600</text><text x="26" y="115" text-anchor="end" font-size="9" fill="currentColor" opacity=".7">30</text>`+
+   `<rect x="30" y="136" width="185" height="10" rx="3" fill="none" stroke="currentColor" stroke-opacity=".4"/><rect x="30" y="136" width="${(Math.min(D,1)*185).toFixed(1)}" height="10" rx="3" fill="${dc}"/>`+
+   `<text x="30" y="162" font-size="10" fill="currentColor">daño D = ${D.toFixed(3)} (${(D*100).toFixed(1)} %)</text>`;
+  $('fatCalc').innerHTML=
+   `N₁ = ½·(${S1}/${Sf})^(1/${b.toFixed(2)}) = <b>${sci(N1)}</b> · N₂ = ½·(${S2}/${Sf})^(1/${b.toFixed(2)}) = <b>${sci(N2)}</b><br>`+
+   `D = ${n1}/${sci(N1)} + ${n2}/${sci(N2)} = <b>${D.toFixed(4)}</b><br><span style="opacity:.65">Mucho más daño en el nivel de tensión alta: la curva es muy empinada.</span>`;
+}
+
+function updateNyq(){
+  const f=+$('fsig').value, fs=+$('fsmp').value, nch=+$('nch').value;
+  $('fsigLbl').textContent=f+' Hz'; $('fsmpLbl').textContent=fs+' Hz'; $('nchLbl').textContent=nch;
+  const rd=Math.round(f/fs), fa=f-fs*rd, ok=fs>=2*f, mb=nch*fs*4*2700/1e6;
+  $('faOut').textContent=Math.abs(fa).toFixed(1)+' Hz'; $('mbOut').textContent=mb.toFixed(0)+' MB';
+  $('nyqRisk').innerHTML=ok?'<div class="pill ok">✓ Se cumple Nyquist: fs ≥ 2·f</div>':'<div class="pill warn">⚠️ Aliasing: la señal de '+f+' Hz parece de '+Math.abs(fa).toFixed(1)+' Hz</div>';
+  const X=t=>25+t*190, Y=y=>70-y*50;
+  let sig='',al=''; for(let i=0;i<=400;i++){const t=i/400; sig+=`${X(t).toFixed(1)},${Y(Math.sin(2*Math.PI*f*t)).toFixed(1)} `; if(!ok) al+=`${X(t).toFixed(1)},${Y(Math.sin(2*Math.PI*fa*t)).toFixed(1)} `;}
+  let dots=''; for(let k=0;k<=fs;k++){const t=k/fs; dots+=`<circle cx="${X(t).toFixed(1)}" cy="${Y(Math.sin(2*Math.PI*f*t)).toFixed(1)}" r="2.4" fill="var(--accent)"/>`;}
+  $('tSvg').innerHTML=
+   `<line x1="25" y1="70" x2="215" y2="70" stroke="currentColor" stroke-opacity=".3"/>`+
+   `<polyline points="${sig}" fill="none" stroke="var(--steel)" stroke-width="1.5" opacity=".7"/>`+
+   (ok?'':`<polyline points="${al}" fill="none" stroke="var(--green)" stroke-width="2" stroke-dasharray="4,3"/>`)+dots+
+   `<text x="25" y="10" font-size="9" fill="var(--steel)">señal real ${f} Hz</text>`+
+   (ok?'':`<text x="25" y="22" font-size="9" fill="var(--green)">lo que vería el dato: ${Math.abs(fa).toFixed(1)} Hz</text>`)+
+   `<text x="25" y="122" font-size="9" fill="currentColor" opacity=".7">0 s</text><text x="215" y="122" text-anchor="end" font-size="9" fill="currentColor" opacity=".7">1 s · puntos = muestras (fs ${fs} Hz)</text>`;
+  $('nyqCalc').innerHTML=
+   `Nyquist: fs ≥ 2·f = ${2*f} Hz → <b>${ok?'se cumple':'NO se cumple'}</b><br>`+
+   `f_aparente = |${f} − ${fs}·${rd}| = <b>${Math.abs(fa).toFixed(1)} Hz</b><br>`+
+   `Datos/sesión = ${nch}·${fs}·4 B·2700 s = <b>${mb.toFixed(0)} MB</b>`;
+}
+
+function updateAmdahl(){
+  const P=+$('pp').value/100, N=Math.pow(2,+$('nx').value);
+  $('ppLbl').textContent=(P*100).toFixed(1)+' %'; $('nxLbl').textContent=N+' núcleos';
+  const S=n=>1/((1-P)+P/n), Sv=S(N), Smax=1/(1-P), ymax=Math.min(Smax*1.15,1100);
+  $('spOut').textContent=Sv.toFixed(1)+'×'; $('efOut').textContent=(Sv/N*100).toFixed(0)+' %'; $('smaxOut').textContent=Smax.toFixed(1)+'×';
+  const X=n=>30+Math.log2(n)/10*185, Y=s=>115-Math.min(s,ymax)/ymax*100;
+  let c='',id=''; for(let e=0;e<=10;e+=0.25){const n=Math.pow(2,e); c+=`${X(n).toFixed(1)},${Y(S(n)).toFixed(1)} `; id+=`${X(n).toFixed(1)},${Y(n).toFixed(1)} `;}
+  $('xSvg').innerHTML=
+   `<line x1="30" y1="115" x2="215" y2="115" stroke="currentColor" stroke-opacity=".4"/><line x1="30" y1="12" x2="30" y2="115" stroke="currentColor" stroke-opacity=".4"/>`+
+   `<polyline points="${id}" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-dasharray="3,3"/>`+
+   `<polyline points="${c}" fill="none" stroke="var(--steel)" stroke-width="2.5"/>`+
+   `<line x1="30" y1="${Y(Smax)}" x2="215" y2="${Y(Smax)}" stroke="var(--accent)" stroke-dasharray="4,3"/>`+
+   `<text x="212" y="${Y(Smax)-3}" text-anchor="end" font-size="9" fill="var(--accent)">límite = ${Smax.toFixed(1)}×</text>`+
+   `<circle cx="${X(N)}" cy="${Y(Sv)}" r="5" fill="var(--accent)"/>`+
+   `<text x="${Math.min(X(N)+8,150)}" y="${Math.min(Y(Sv)+14,110)}" font-size="10" font-weight="600" fill="var(--accent)">N=${N} → ${Sv.toFixed(1)}×</text>`+
+   `<text x="30" y="127" font-size="9" fill="currentColor" opacity=".7">1</text><text x="215" y="127" text-anchor="end" font-size="9" fill="currentColor" opacity=".7">1024 núcleos</text>`+
+   `<text x="122" y="138" text-anchor="middle" font-size="9" fill="currentColor" opacity=".6">aceleración real (azul) frente a ideal (gris)</text>`;
+  $('amdCalc').innerHTML=
+   `S(N) = 1 / ((1−${P.toFixed(3)}) + ${P.toFixed(3)}/${N}) = <b>${Sv.toFixed(2)}×</b><br>`+
+   `S máx (N→∞) = 1/(1−P) = <b>${Smax.toFixed(1)}×</b><br><span style="opacity:.65">Con P = 90 %: 16 núcleos → 6.4×, 128 núcleos → 9.1× (Módulo 9).</span>`;
+}
+
+['sf','bx','s1','n1','s2','n2'].forEach(id=>$(id).addEventListener('input', updateFatigue));
+['fsig','fsmp','nch'].forEach(id=>$(id).addEventListener('input', updateNyq));
+['pp','nx'].forEach(id=>$(id).addEventListener('input', updateAmdahl));
+
+updateQuarter(); updateAero(); updateBrake(); const OK=t=>`<div class="pill ok">✓ ${t}</div>`, WARN=t=>`<div class="pill warn">⚠️ ${t}</div>`;
+const AX=(x0,y0,x1,y1)=>`<line x1="${x0}" y1="${y1}" x2="${x1}" y2="${y1}" stroke="currentColor" stroke-opacity=".4"/><line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y1}" stroke="currentColor" stroke-opacity=".4"/>`;
+const TX=(x,y,t,o='')=>`<text x="${x}" y="${y}" font-size="9" fill="currentColor" opacity=".7" ${o}>${t}</text>`;
+
+function updateGrip(){
+  const mu=+$('mt').value, v=+$('v').value/3.6, r=+$('r').value;
+  $('mtLbl').textContent='μ = '+mu.toFixed(2);
+  const al=v*v/r, u=al/(mu*g), th=Math.atan(mu)*180/Math.PI, along=u<1?mu*g*Math.sqrt(1-u*u):0;
+  $('uOut').textContent=(u*100).toFixed(0)+' %'; $('tmOut').textContent=th.toFixed(0)+'°'; $('alOut').textContent=along.toFixed(1)+' m/s²';
+  $('gRisk').innerHTML=u>1?WARN('Supera el agarre: el neumático pierde adherencia'):u>0.8?WARN('Casi al límite: casi sin margen para frenar'):OK('Margen suficiente para frenar en la curva');
+  const R=60,cx=115,cy=82,uu=Math.min(u,1.25),py=cy-R*uu,col=u>1?'var(--accent)':u>.8?'#e0a030':'var(--green)',hc=R*Math.sqrt(Math.max(0,1-Math.min(u,1)**2));
+  $('gSvg').innerHTML=
+   `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--steel)" stroke-width="2.5"/>`+
+   `<line x1="${cx-R-8}" y1="${cy}" x2="${cx+R+8}" y2="${cy}" stroke="currentColor" stroke-opacity=".3"/><line x1="${cx}" y1="${cy-R-8}" x2="${cx}" y2="${cy+R+8}" stroke="currentColor" stroke-opacity=".3"/>`+
+   `<line x1="${cx-hc}" y1="${py}" x2="${cx+hc}" y2="${py}" stroke="${col}" stroke-width="3" stroke-dasharray="5,3"/>`+
+   `<line x1="${cx}" y1="${cy}" x2="${cx}" y2="${py}" stroke="${col}" stroke-width="3"/><circle cx="${cx}" cy="${py}" r="5" fill="${col}"/>`+
+   `<text x="${cx+8}" y="${(cy+py)/2+3}" font-size="10" font-weight="600" fill="${col}">${(u*100).toFixed(0)} % lateral</text>`+
+   TX(cx+R,cy+14,'frenar / acelerar →','text-anchor="end"')+TX(cx,9,'fuerza lateral','text-anchor="middle"')+TX(cx,cy+R+16,'círculo = agarre total μ·g','text-anchor="middle"');
+  $('gripCalc').innerHTML=
+   `a_lat = v²/r = ${v.toFixed(1)}²/${r} = ${al.toFixed(1)} m/s² → u = ${al.toFixed(1)}/(${mu.toFixed(2)}·9.81) = <b>${(u*100).toFixed(0)} %</b><br>`+
+   `a_long,máx = ${mu.toFixed(2)}·9.81·√(1−${Math.min(u,1).toFixed(2)}²) = <b>${along.toFixed(1)} m/s²</b> · θ_máx = atan(μ) = <b>${th.toFixed(0)}°</b>`;
+}
+
+function updateStop(){
+  const dv=+$('dv').value, da=+$('da').value, tr=+$('tr').value, h=+$('h').value, L=+$('L').value, alim=g*0.5*L/h;
+  $('dvLbl').textContent=dv+' km/h'; $('daLbl').textContent=da.toFixed(1)+' m/s² ('+(da/g).toFixed(2)+' g)'; $('trLbl').textContent=tr.toFixed(1)+' s';
+  const D=s=>{const v=s/3.6;return [v*tr,v*v/(2*da)]}, [dr,db]=D(dv);
+  $('dtOut2').textContent=(dr+db).toFixed(0)+' m'; $('dbOut').textContent=db.toFixed(0)+' m';
+  $('sRisk').innerHTML=da>alim?WARN('Pides '+da.toFixed(1)+' m/s², más que el límite de stoppie ('+alim.toFixed(1)+')'):OK('Por debajo del límite de stoppie ('+alim.toFixed(1)+' m/s²)');
+  const rows=[50,90,120,dv], tot=rows.map(s=>D(s)[0]+D(s)[1]), mx=Math.max(...tot);
+  let svg=''; rows.forEach((s,i)=>{const y=14+i*32,[a,b]=D(s),wr=a/mx*130,wb=b/mx*130;
+   svg+=`<text x="2" y="${y+13}" font-size="10" fill="currentColor" ${i==3?'font-weight="700"':'opacity=".8"'}>${s} km/h</text>`+
+    `<rect x="58" y="${y}" width="${wr.toFixed(1)}" height="18" fill="var(--steel)"/><rect x="${(58+wr).toFixed(1)}" y="${y}" width="${wb.toFixed(1)}" height="18" fill="var(--accent)"/>`+
+    `<text x="${(62+wr+wb).toFixed(1)}" y="${y+13}" font-size="10" fill="currentColor">${tot[i].toFixed(0)} m</text>`;});
+  $('sSvg').innerHTML=svg+`<text x="58" y="150" font-size="9" fill="var(--steel)">■ reacción</text><text x="120" y="150" font-size="9" fill="var(--accent)">■ frenada</text>`;
+  $('stopCalc').innerHTML=
+   `reacción = ${(dv/3.6).toFixed(1)} m/s × ${tr.toFixed(1)} s = <b>${dr.toFixed(0)} m</b><br>`+
+   `frenada = ${(dv/3.6).toFixed(1)}² / (2·${da.toFixed(1)}) = <b>${db.toFixed(0)} m</b> · a_stoppie = 9.81·(${L.toFixed(2)}/2)/${h.toFixed(2)} = <b>${alim.toFixed(1)} m/s²</b>`;
+}
+
+function updateTop(){
+  const pm=+$('pm').value, rb=+$('rb').value/100, cd=+$('cd').value, A=+$('af').value, m=+$('bm').value, eta=0.9, rho=1.225, crr=0.015;
+  $('pmLbl').textContent=pm+' CV'; $('rbLbl').textContent=(rb*100).toFixed(0)+' %';
+  const Pr=(s,k)=>(0.5*rho*Math.pow(s/3.6,3)*cd*A*(1-k)+crr*m*g*s/3.6)/735.5, av=pm*eta;
+  const vmax=k=>{let s=20;while(s<500&&Pr(s,k)<av)s+=0.5;return s;}, v0=vmax(0), v1=vmax(rb);
+  $('vmOut').textContent=v0.toFixed(0)+' km/h'; $('gnOut').textContent=rb>0?'+'+(v1-v0).toFixed(0)+' km/h':'—';
+  const X=s=>30+(Math.min(Math.max(s,50),350)-50)/300*180, ymax=Math.max(Pr(350,0),av)*1.1, Y=c=>Math.max(115-c/ymax*100,12);
+  let a='',b=''; for(let s=50;s<=350;s+=10){a+=`${X(s).toFixed(1)},${Y(Pr(s,0)).toFixed(1)} `; b+=`${X(s).toFixed(1)},${Y(Pr(s,rb)).toFixed(1)} `;}
+  $('pSvg').innerHTML=AX(30,12,215,115)+
+   `<polyline points="${a}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>`+(rb>0?`<polyline points="${b}" fill="none" stroke="var(--green)" stroke-width="2" stroke-dasharray="4,3"/>`:'')+
+   `<line x1="30" y1="${Y(av)}" x2="215" y2="${Y(av)}" stroke="var(--steel)" stroke-width="2"/>`+TX(212,Y(av)-3,'potencia en rueda '+av.toFixed(0)+' CV','text-anchor="end"')+
+   `<line x1="${X(v0)}" y1="${Y(av)}" x2="${X(v0)}" y2="115" stroke="var(--accent)" stroke-dasharray="3,3"/><circle cx="${X(v0)}" cy="${Y(av)}" r="5" fill="var(--accent)"/>`+
+   (rb>0?`<circle cx="${X(v1)}" cy="${Y(av)}" r="5" fill="var(--green)"/>`:'')+
+   `<text x="${Math.min(X(v0),150)}" y="127" font-size="10" font-weight="600" fill="var(--accent)">${v0.toFixed(0)} km/h</text>`+(rb>0?`<text x="${Math.min(X(v1)+4,175)}" y="139" font-size="10" font-weight="600" fill="var(--green)">${v1.toFixed(0)} km/h</text>`:'')+
+   TX(30,127,'50')+TX(215,147,'350 km/h','text-anchor="end"')+TX(122,10,'potencia necesaria (CV)','text-anchor="middle"');
+  $('topCalc').innerHTML=
+   `P_rueda = η·P_motor = 0.9 × ${pm} = ${av.toFixed(0)} CV · P_req(120 km/h) = <b>${Pr(120,0).toFixed(0)} CV</b><br>`+
+   `v_máx = <b>${v0.toFixed(0)} km/h</b>`+(rb>0?` · con rebufo (CD·A −${(rb*100).toFixed(0)} %) = <b>${v1.toFixed(0)} km/h</b>`:'');
+}
+
+function updateRes(){
+  const vv=+$('vv').value, lam=+$('lam').value, z=+$('zt').value, ks=+$('ks').value, ms=+$('ms').value;
+  $('vvLbl').textContent=vv+' km/h'; $('lamLbl').textContent=lam.toFixed(1)+' m'; $('ztLbl').textContent=z.toFixed(2);
+  const fs=Math.sqrt(ks/ms)/(2*Math.PI), f=vv/3.6/lam, r=f/fs, vc=fs*lam*3.6;
+  const T=x=>Math.sqrt((1+Math.pow(2*z*x,2))/(Math.pow(1-x*x,2)+Math.pow(2*z*x,2))), Tv=T(r);
+  $('feOut').textContent=f.toFixed(1)+' Hz'; $('vcOut').textContent=vc.toFixed(0)+' km/h'; $('tOut').textContent=Tv.toFixed(2)+'×';
+  $('rRisk').innerHTML=Tv>1.3?WARN('Cerca de resonancia: la moto rebota ('+Tv.toFixed(1)+'×)'):Tv<1?OK('Por encima de la resonancia: la suspensión filtra'):OK('Fuera de la zona de resonancia');
+  let peak=1; for(let x=0;x<=3;x+=0.02) peak=Math.max(peak,T(x));
+  const ym=Math.min(5,Math.max(2,peak*1.1)), X=x=>30+Math.min(x,3)/3*185, Y=t=>Math.max(115-t/ym*100,12);
+  let c=''; for(let x=0;x<=3;x+=0.03) c+=`${X(x).toFixed(1)},${Y(T(x)).toFixed(1)} `;
+  $('rSvg').innerHTML=AX(30,12,215,115)+
+   `<line x1="30" y1="${Y(1)}" x2="215" y2="${Y(1)}" stroke="currentColor" stroke-opacity=".4" stroke-dasharray="3,3"/><line x1="${X(1)}" y1="12" x2="${X(1)}" y2="115" stroke="var(--accent)" stroke-opacity=".5" stroke-dasharray="3,3"/>`+
+   `<polyline points="${c}" fill="none" stroke="var(--steel)" stroke-width="2.5"/>`+
+   `<circle cx="${X(r)}" cy="${Y(Tv)}" r="5" fill="var(--accent)"/><text x="${Math.min(X(r)+8,140)}" y="${Math.max(Y(Tv)-8,22)}" font-size="10" font-weight="600" fill="var(--accent)">${vv} km/h · ${Tv.toFixed(2)}×</text>`+
+   TX(X(1)+3,24,'resonancia')+TX(30,127,'0')+TX(215,127,'r = f/fs = 3','text-anchor="end"')+TX(26,Y(1)+3,'1','text-anchor="end"')+TX(122,142,'amplificación frente a frecuencia','text-anchor="middle"');
+  $('resCalc').innerHTML=
+   `f_s = ${fs.toFixed(2)} Hz (bloque de suspensión) · f_exc = ${(vv/3.6).toFixed(1)}/${lam.toFixed(1)} = <b>${f.toFixed(2)} Hz</b> · r = <b>${r.toFixed(2)}</b><br>`+
+   `T(r) = <b>${Tv.toFixed(2)}×</b> · velocidad crítica = f_s·λ = ${fs.toFixed(2)}×${lam.toFixed(1)} = <b>${vc.toFixed(0)} km/h</b>`;
+}
+
+['mt','v','r'].forEach(id=>$(id).addEventListener('input', updateGrip));
+['dv','da','tr','h','L'].forEach(id=>$(id).addEventListener('input', updateStop));
+['pm','rb','cd','af','bm'].forEach(id=>$(id).addEventListener('input', updateTop));
+['vv','lam','zt','ks','ms'].forEach(id=>$(id).addEventListener('input', updateRes));
+document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{const o=JSON.parse(b.dataset.set);for(const k in o){const e=$(k);e.value=o[k];e.dispatchEvent(new Event('input'));}}));
+
+updateFatigue(); updateNyq(); updateAmdahl(); updateGrip(); updateStop(); updateTop(); updateRes();
+</script>
+</body>
+</html>
