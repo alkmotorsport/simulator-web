@@ -76,6 +76,25 @@ input[type=range]{width:100%; accent-color:var(--accent);}
 .why{background:var(--bg);border-left:4px solid var(--accent);border-radius:8px;padding:10px 12px;margin:0 0 12px;font-size:.82rem;line-height:1.5}
 .why p{margin:6px 0 0}
 .why .wg{color:var(--sub)}
+#home.hidden{display:none}
+.grp{margin:0 0 22px}.grp h2{font-size:1.1rem;margin:0 2px 2px;color:var(--navy)}
+:root[data-theme="dark"] .grp h2{color:#cfe0f5}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .grp h2{color:#cfe0f5}}
+.gd{margin:0 2px 10px;font-size:.82rem;color:var(--sub)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:10px}
+.tile{text-align:left;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;cursor:pointer;color:var(--text);font:inherit;display:flex;flex-direction:column;gap:4px}
+.tile:hover,.tile:focus-visible{border-color:var(--accent)}
+.tile .ti{font-size:1.4rem}.tile b{font-size:.95rem}.tile i{font-style:normal;font-size:.72rem;color:var(--steel)}
+.tile span.td{font-size:.8rem;color:var(--sub);line-height:1.35}.tile em{font-style:normal;font-size:.72rem;color:var(--sub);margin-top:2px}
+.page{display:none}.page.active{display:block}
+.back{background:none;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:7px 12px;font:inherit;font-size:.85rem;cursor:pointer;margin:0 0 10px}
+.crumb{font-size:.78rem;color:var(--steel);margin:0 2px 2px}.ptitle{font-size:1.25rem;margin:0 2px 12px;color:var(--navy)}
+:root[data-theme="dark"] .ptitle{color:#cfe0f5}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .ptitle{color:#cfe0f5}}
+.intro{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 16px 14px;margin:0 0 16px}
+.intro h3{font-size:.9rem;color:var(--steel);margin:14px 0 4px}.intro p,.intro li{font-size:.85rem;line-height:1.5}
+.intro ul{margin:4px 0 0;padding-left:20px}.intro .try{background:var(--bg);border-left:4px solid var(--green);border-radius:8px;padding:8px 10px;margin-top:12px}
+.linked{border:1px dashed var(--border);border-radius:10px;padding:8px 10px 0;margin:0 0 12px}.linked .note{margin:0 0 8px}
 footer{text-align:center; color:var(--sub); font-size:0.75rem; padding:18px 0 6px;}
 </style>
 </head>
@@ -85,6 +104,7 @@ footer{text-align:center; color:var(--sub); font-size:0.75rem; padding:18px 0 6p
   <h1>🏍️ Simulador interactivo de la formación</h1>
   <p>Mueve los controles y observa en tiempo real cómo cambia cada capítulo: Vehicle Dynamics (M2), suspensión (M3), fatiga (M4), aerodinámica (M5), frenos (M6), telemetría (M8) y HPC (M9).</p>
 </header>
+<div id="home"></div>
 
 <!-- ===================== BLOQUE 1: ÁNGULO DE INCLINACIÓN ===================== -->
 <div class="card">
@@ -335,7 +355,7 @@ footer{text-align:center; color:var(--sub); font-size:0.75rem; padding:18px 0 6p
   <div class="why" id="why_amd"><b>💡 Qué está pasando</b><p class="wc">Mueve un control para ver aquí por qué cambia el resultado.</p><p class="wg"></p></div>
 </div>
 
-<h3 class="sec">🛠️ Utilidad real en la moto</h3>
+
 
 <div class="card">
   <h2>Margen de agarre y frenada dentro de la curva</h2>
@@ -412,6 +432,24 @@ footer{text-align:center; color:var(--sub); font-size:0.75rem; padding:18px 0 6p
   </div><div class="col viz"><svg id="rSvg2" viewBox="0 0 230 150" width="230"></svg></div></div>
   <div class="calc" id="repCalc"></div>
   <div class="why" id="why_rep"><b>💡 Qué está pasando</b><p class="wc">Mueve un control para ver aquí por qué cambia el resultado.</p><p class="wg"></p></div>
+</div>
+
+<div class="card">
+  <h2>Círculo de fricción (diagrama g-g)</h2>
+  <div class="formula">u = √[ (a<sub>x</sub> / μ<sub>x</sub>·g)² + (a<sub>y</sub> / μ<sub>y</sub>·g)² ]  ·  límite: u = 1  ·  a<sub>x,máx</sub> = μ<sub>x</sub>·g·√(1 − (a<sub>y</sub>/μ<sub>y</sub>·g)²)</div>
+  <div class="chips"><span>Casos reales:</span><button type="button" class="chip" data-set='{"gx": -1.5, "gy": 0, "mx": 1.5, "my": 1.5}' data-note="Frenada de ~1,5 g: cifra publicada por Brembo (Mugello, Aragón). μ = 1,5 es orientativo.">🏁 MotoGP: frenada recta (−1,5 g)</button><button type="button" class="chip" data-set='{"gx": -0.9, "gy": 1.1, "mx": 1.5, "my": 1.5}' data-note="Punto ilustrativo: se frena y se gira a la vez, cerca del borde de la elipse.">🏁 MotoGP: trail braking</button><button type="button" class="chip" data-set='{"gx": 0, "gy": 1.5, "mx": 1.5, "my": 1.5}' data-note="Ilustrativo: ~1,5 g lateral es el orden de magnitud de una curva rápida (ver el panel de inclinación).">🏁 MotoGP: vértice (1,5 g lateral)</button><button type="button" class="chip" data-set='{"gx": 0.8, "gy": 1.2, "mx": 1.5, "my": 1.5}' data-note="Ilustrativo. En la práctica la tracción también la limitan el wheelie y el control de tracción.">🏁 MotoGP: salida (+0,8 g)</button><button type="button" class="chip" data-set='{"gx": -1.0, "gy": 0, "mx": 1.0, "my": 1.0}' data-note="μ ≈ 1,0: orden de magnitud de un neumático de calle.">🛣️ Contraste: emergencia en calle</button><button type="button" class="chip" data-set='{"gx": -0.2, "gy": 0.4, "mx": 1.0, "my": 1.0}' data-note="Curva normal de carretera con un poco de freno.">🛣️ Contraste: curva de carretera</button><div class="cap" style="flex-basis:100%"></div></div>
+  <p class="note">Convención: la aceleración lateral va en el eje horizontal y la longitudinal en el vertical (la frenada, hacia abajo). Si μx = μy el límite es un círculo; si no, una elipse.</p>
+  <div class="row"><div class="col">
+    <div class="field"><label>Aceleración lateral aᵧ <b id="gyLbl"></b></label><input type="range" id="gy" min="0" max="2" value="1.0" step="0.05"></div>
+    <div class="field"><label>Aceleración longitudinal aₓ (− frena / + acelera) <b id="gxLbl"></b></label><input type="range" id="gx" min="-2" max="1.5" value="-0.5" step="0.05"></div>
+    <div class="field"><label>Agarre longitudinal μx <b id="mxLbl"></b></label><input type="range" id="mx" min="0.8" max="2" value="1.5" step="0.05"></div>
+    <div class="field"><label>Agarre lateral μy <b id="myLbl"></b></label><input type="range" id="my" min="0.8" max="2" value="1.5" step="0.05"></div>
+    <div class="out"><div class="pill">Uso del agarre u<b id="ggU"></b></div><div class="pill">Aceleración total<b id="ggTot"></b></div></div>
+    <div class="out"><div class="pill">Longitudinal máx. con esta lateral<b id="ggLx"></b></div><div class="pill">Lateral máx. con esta longitudinal<b id="ggLy"></b></div></div>
+    <div class="out" id="ggRisk" style="margin-top:10px;"></div>
+  </div><div class="col viz"><svg id="ggSvg" viewBox="0 0 230 210" width="230"></svg></div></div>
+  <div class="calc" id="ggCalc"></div>
+  <div class="why" id="why_gg"><b>💡 Qué está pasando</b><p class="wc">Mueve un control para ver aquí por qué cambia el resultado.</p><p class="wg"></p></div>
 </div>
 
 <footer>Formación Simulación / CAE / Digital Engineering — Módulos 2, 3, 4, 5, 6, 8 y 9 · valores con fines pedagógicos. Casos de competición: cifras públicas (Brembo vía Moto.it, MotoGP.com, Box Repsol) o estimaciones marcadas; no son telemetría de ningún equipo</footer>
@@ -899,7 +937,38 @@ const GR={
  res:()=>`la moto recibe el bache a ${T('feOut')} y lo amplifica <b>${T('tOut')}</b>; la velocidad crítica de este asfalto es <b>${T('vcOut')}</b>. ${$('rRisk').textContent.trim()}`,
  rep:()=>`pico tras la última frenada <b>${T('rpOut')}</b>; primera frenada que supera el límite: <b>${T('rlOut')}</b>.`
 };
-const CARDS=[['lean','leanCalc'],['load','loadCalc'],['geom','geomCalc'],['quarter','quarterCalc'],['aero','aeroCalc'],['brake','brakeCalc'],['fat','fatCalc'],['nyq','nyqCalc'],['amd','amdCalc'],['grip','gripCalc'],['stop','stopCalc'],['top','topCalc'],['res','resCalc'],['rep','repCalc']];
+function updateGG(){
+  const gy=V('gy'), gx=V('gx'), mx=V('mx'), my=V('my');
+  $('gyLbl').textContent=gy.toFixed(2)+' g'; $('gxLbl').textContent=gx.toFixed(2)+' g ('+(gx<0?'frenando':gx>0?'acelerando':'sin frenar')+')';
+  $('mxLbl').textContent='μx = '+mx.toFixed(2); $('myLbl').textContent='μy = '+my.toFixed(2);
+  const nx=gx/mx, ny=gy/my, u=Math.sqrt(nx*nx+ny*ny), tot=Math.hypot(gx,gy);
+  const lxm=mx*Math.sqrt(Math.max(0,1-ny*ny)), lym=my*Math.sqrt(Math.max(0,1-nx*nx));
+  $('ggU').textContent=(u*100).toFixed(0)+' %'; $('ggTot').textContent=tot.toFixed(2)+' g';
+  $('ggLx').textContent=lxm.toFixed(2)+' g'; $('ggLy').textContent=lym.toFixed(2)+' g';
+  $('ggRisk').innerHTML=u>1?WARN('Fuera del límite: el neumático pierde adherencia'):u>0.9?WARN('Casi al límite: solo queda un '+((1-u)*100).toFixed(0)+' % de margen'):OK('Dentro del límite, con un '+((1-u)*100).toFixed(0)+' % de margen');
+  const R=Math.max(mx,my,Math.abs(gx),gy,1)*1.12, S=82/R, cx=115, cy=102, px=cx+gy*S, py=cy-gx*S;
+  const col=u>1?'var(--accent)':u>.9?'#e0a030':'var(--green)';
+  $('ggSvg').innerHTML=
+   `<line x1="${cx-96}" y1="${cy}" x2="${cx+96}" y2="${cy}" stroke="currentColor" stroke-opacity=".3"/><line x1="${cx}" y1="${cy-92}" x2="${cx}" y2="${cy+92}" stroke="currentColor" stroke-opacity=".3"/>`+
+   `<ellipse cx="${cx}" cy="${cy}" rx="${(my*S).toFixed(1)}" ry="${(mx*S).toFixed(1)}" fill="${col}" fill-opacity=".08" stroke="var(--steel)" stroke-width="2.5"/>`+
+   `<line x1="${px.toFixed(1)}" y1="${(cy-lxm*S).toFixed(1)}" x2="${px.toFixed(1)}" y2="${(cy+lxm*S).toFixed(1)}" stroke="var(--steel)" stroke-dasharray="3,3"/>`+
+   `<line x1="${(cx-lym*S).toFixed(1)}" y1="${py.toFixed(1)}" x2="${(cx+lym*S).toFixed(1)}" y2="${py.toFixed(1)}" stroke="var(--steel)" stroke-dasharray="3,3"/>`+
+   `<line x1="${cx}" y1="${cy}" x2="${px.toFixed(1)}" y2="${py.toFixed(1)}" stroke="${col}" stroke-width="3"/><circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="5.5" fill="${col}"/>`+
+   TX(cx,10,'+ acelera','text-anchor="middle"')+TX(cx,cy+100,'− frena','text-anchor="middle"')+TX(cx+98,cy-4,'lateral →','text-anchor="end"')+
+   `<text x="${Math.min(px+8,150).toFixed(1)}" y="${Math.max(py-8,22).toFixed(1)}" font-size="10" font-weight="600" fill="${col}">${(u*100).toFixed(0)} %</text>`;
+  $('ggCalc').innerHTML=
+   `u = √[(${gx.toFixed(2)}/${mx.toFixed(2)})² + (${gy.toFixed(2)}/${my.toFixed(2)})²] = √(${(nx*nx).toFixed(3)} + ${(ny*ny).toFixed(3)}) = <b>${(u*100).toFixed(0)} %</b><br>`+
+   `a_total = √(${gx.toFixed(2)}² + ${gy.toFixed(2)}²) = <b>${tot.toFixed(2)} g</b> = ${(tot*g).toFixed(1)} m/s²<br>`+
+   `a_x,máx = ${mx.toFixed(2)}·√(1 − ${(ny*ny).toFixed(3)}) = <b>${lxm.toFixed(2)} g</b> · a_y,máx = ${my.toFixed(2)}·√(1 − ${(nx*nx).toFixed(3)}) = <b>${lym.toFixed(2)} g</b>`;
+}
+['gy','gx','mx','my'].forEach(id=>$(id).addEventListener('input', updateGG));
+updateGG();
+GR.gg=()=>`usas el <b>${T('ggU')}</b> del agarre (aceleración total ${T('ggTot')}). Con esta aceleración lateral aún podrías frenar o acelerar hasta <b>${T('ggLx')}</b>; con esta longitudinal, girar hasta <b>${T('ggLy')}</b>. ${$('ggRisk').textContent.trim()}`;
+CH.gy=u=>`la curva pide fuerza lateral y eso gasta agarre: ${ud(u,'más aceleración lateral aleja el punto del centro y deja menos margen para frenar o acelerar','menos aceleración lateral devuelve margen para frenar o acelerar')}; al ser una elipse, lo que queda es μx·g·√(1 − (a_y/μy·g)²).`;
+CH.gx=u=>`${V('gx')<0?'frenando':V('gx')>0?'acelerando':'sin frenar ni acelerar'}: cuanto mayor es |a_x|, más se acerca el punto al borde, y el agarre que gastas frenando ya no puedes gastarlo girando.`;
+CH.mx=u=>`μx es el agarre al frenar o acelerar: ${ud(u,'más agarre alarga la elipse en vertical y permite frenar o acelerar más fuerte','menos agarre la acorta y el mismo esfuerzo gasta más porcentaje')}.`;
+CH.my=u=>`μy es el agarre al girar: ${ud(u,'más agarre ensancha la elipse y permite más fuerza lateral','menos agarre la estrecha y el mismo esfuerzo gasta más porcentaje')}.`;
+const CARDS=[['lean','leanCalc'],['load','loadCalc'],['geom','geomCalc'],['quarter','quarterCalc'],['aero','aeroCalc'],['brake','brakeCalc'],['fat','fatCalc'],['nyq','nyqCalc'],['amd','amdCalc'],['grip','gripCalc'],['gg','ggCalc'],['stop','stopCalc'],['top','topCalc'],['res','resCalc'],['rep','repCalc']];
 const PREV={}; document.querySelectorAll('input[type=range]').forEach(i=>PREV[i.id]=+i.value);
 function showWhy(own,id,u){
   CARDS.forEach(([k])=>{const w=$('why_'+k); if(!w) return;
@@ -907,10 +976,142 @@ function showWhy(own,id,u){
     if(k===own&&id&&CH[id]){const lab=$(id).closest('.field').querySelector('label').firstChild.textContent.trim();
       w.querySelector('.wc').innerHTML=`<b>Has ${u?'subido':'bajado'} «${lab}»:</b> `+CH[id](u);}});
 }
-document.addEventListener('input',e=>{const t=e.target; if(!t.matches||!t.matches('input[type=range]')) return;
+document.addEventListener('input',e=>{const t=e.target; if(!t.matches||!t.matches('input[type=range]')||t.id.indexOf('x_')===0) return;
   const nv=+t.value; if(nv===PREV[t.id]) return; const u=nv>PREV[t.id]; PREV[t.id]=nv;
   const own=CARDS.find(c=>$(c[1]).closest('.card')===t.closest('.card')); showWhy(own&&own[0],t.id,u);});
 showWhy(null);
+const META={
+ lean:{i:'📐',t:'Ángulo de inclinación',m:'Módulo 2',d:'Cuánto se tumba la moto según la velocidad y el radio de la curva.'},
+ grip:{i:'⭕',t:'Margen de agarre en curva',m:'Módulo 2',d:'Círculo de fricción: cuánto agarre queda para frenar mientras giras.'},
+ geom:{i:'📏',t:'Geometría de dirección',m:'Módulo 2',d:'Rake, offset y trail: estabilidad frente a agilidad.'},
+ load:{i:'⚖️',t:'Transferencia de carga',m:'Módulo 2',d:'Cómo se reparte el peso al frenar y acelerar; stoppie y wheelie.'},
+ stop:{i:'🛑',t:'Distancia de frenado',m:'Módulos 2 y 6',d:'Metros y segundos de frenada, en calle y en MotoGP.'},
+ brake:{i:'🔥',t:'Calentamiento del disco',m:'Módulo 6',d:'Energía de frenada y subida de temperatura: acero frente a carbono.'},
+ rep:{i:'🔁',t:'Frenadas repetidas',m:'Módulo 6',d:'Calor acumulado en una tanda de circuito con enfriamiento.'},
+ quarter:{i:'🔩',t:'Masa suspendida y no suspendida',m:'Módulo 3',d:'Frecuencias naturales de la carrocería y de la rueda.'},
+ res:{i:'〰️',t:'Resonancia en asfalto ondulado',m:'Módulo 3',d:'A qué velocidad rebota más la moto en baches periódicos.'},
+ fat:{i:'🧱',t:'Fatiga de una pieza',m:'Módulo 4',d:'Curva S-N y daño acumulado de Miner.'},
+ aero:{i:'💨',t:'Resistencia aerodinámica',m:'Módulo 5',d:'Fuerza del aire y potencia necesaria frente a la velocidad.'},
+ top:{i:'🚀',t:'Velocidad punta y rebufo',m:'Módulo 5',d:'Dónde se cruzan potencia disponible y necesaria; ventaja de la estela.'},
+ nyq:{i:'📡',t:'Muestreo de telemetría',m:'Módulo 8',d:'Nyquist y aliasing al registrar señales de la moto.'},
+ amd:{i:'🖥️',t:'Ley de Amdahl',m:'Módulo 9',d:'Cuánto acelera un clúster de HPC una simulación.'}
+};
+const GROUPS=[
+ {t:'🌀 Dinámica en curva',d:'Inclinación, agarre del neumático y geometría de dirección.',items:['lean','grip','geom']},
+ {t:'🛑 Frenada y frenos',d:'Reparto de carga, distancias de frenado y temperatura del disco.',items:['load','stop','brake','rep']},
+ {t:'🔧 Suspensión y estructura',d:'Frecuencias de la suspensión, asfalto ondulado y fatiga de piezas.',items:['quarter','res','fat']},
+ {t:'💨 Aerodinámica y velocidad',d:'Resistencia del aire, potencia necesaria y rebufo.',items:['aero','top']},
+ {t:'📡 Datos y computación',d:'Telemetría y simulación en clúster.',items:['nyq','amd']}
+];
+const INTRO={
+ lean:{s:`Calcula cuánto debe inclinarse una moto para tomar una curva a una velocidad dada. Sirve para entender por qué la inclinación crece tan deprisa con la velocidad y cuánta fuerza lateral tiene que dar el neumático.`,
+  p:[['Velocidad','velocidad de paso por la curva (km/h); entra al cuadrado en la fórmula.'],['Radio de curva','radio de la trayectoria (m); radio pequeño = curva cerrada.'],['Sentido de la curva','solo cambia hacia qué lado se dibuja la inclinación; el ángulo es el mismo.']],
+  a:[`tan θ = v² / (g·r): el ángulo no depende de la masa de la moto.`,`La fuerza lateral en g es igual a tan θ: a 45° el neumático da 1 g lateral.`,`Es un modelo de punto de masa: en pista el piloto saca el cuerpo (hang-off), así que la moto se inclina más que el centro de masas.`,`La inclinación máxima real la limita el agarre (ver «Margen de agarre en curva»).`],
+  t:`Prueba el caso «MotoGP: curva rápida» (180 km/h, 170 m) y luego baja el radio a 80 m.`},
+ grip:{s:`Muestra cuánto del agarre del neumático gastas girando y cuánto te queda para frenar o acelerar dentro de la curva (círculo de fricción).`,
+  p:[['Agarre μ','coeficiente de agarre del neumático (calle ≈ 1, deportivo ≈ 1,2, competición orientativo 1,5).'],['Controles vinculados','velocidad y radio de la curva, del panel de inclinación: fijan la fuerza lateral.']],
+  a:[`u = a_lat / (μ·g): fracción del agarre que gastas girando.`,`a_long máx = μ·g·√(1 − u²): lo que queda para frenar o acelerar.`,`Si u llega a 1, el neumático pierde adherencia.`,`Los valores de μ son orientativos, no datos de un neumático concreto.`],
+  t:`Carga «Curva rápida MotoGP» y baja μ a 1,2.`},
+ geom:{s:`Calcula el trail (la distancia que hace de autocentrado de la dirección) a partir del rake, el offset y el tamaño de la rueda. Sirve para entender el compromiso entre estabilidad y agilidad.`,
+  p:[['Rake λ','inclinación del eje de dirección respecto a la vertical (°).'],['Offset de horquilla','desplazamiento entre el eje de dirección y el eje de la rueda (mm).'],['Radio de rueda delantera','radio de la rueda (mm).']],
+  a:[`trail ≈ (Rw·sin λ − offset) / cos λ.`,`Más trail: más estabilidad en recta y dirección más pesada. Menos trail: más agilidad y más sensibilidad.`,`Subir el rake o el radio de rueda alarga el trail; subir el offset lo acorta.`,`En el dibujo el offset se amplifica ×3 para que se vea; el trail se calcula con el valor real.`],
+  t:`Sube el rake de 24° a 28° y mira cuánto sube el trail.`},
+ load:{s:`Muestra cómo se reparte el peso entre las dos ruedas al frenar o acelerar. Sirve para entender por qué manda el freno delantero y cuándo se levanta una rueda (stoppie o wheelie).`,
+  p:[['Masa moto+piloto','masa total (kg); escala las fuerzas pero no el porcentaje de carga que se traslada.'],['Altura del centro de masas (h)','altura del CM sobre el suelo (m): es la palanca de la inercia.'],['Distancia entre ejes (L)','distancia entre los puntos de contacto de las ruedas (m).'],['Aceleración','negativa = frenando, positiva = acelerando (m/s²); 1 g ≈ 9,81 m/s².']],
+  a:[`ΔW = (h/L)·m·|a|: al frenar la carga pasa a la delantera; al acelerar, a la trasera.`,`En reposo el reparto es 50/50 (supuesto del modelo).`,`Cuando una rueda llega a 0 N pierde el contacto: stoppie (trasera) o wheelie (delantera).`,`Es un modelo sencillo: sin aerodinámica ni movimiento de la suspensión.`],
+  t:`Pon −9 m/s² y sube la altura del centro de masas: la trasera se descarga antes.`},
+ stop:{s:`Calcula la distancia y el tiempo de frenada desde una velocidad hasta otra, incluyendo la reacción. Sirve para comparar la calle con la competición.`,
+  p:[['Velocidad inicial / final','km/h; final 0 = parada total.'],['Deceleración','lo que pides al freno (m/s²; 9,81 = 1 g).'],['Tiempo de reacción','segundos antes de frenar (en competición ≈ 0).'],['Controles vinculados','altura del CM y distancia entre ejes, del panel de transferencia de carga: fijan el límite de stoppie.']],
+  a:[`d = v·t_r + (v² − vf²) / (2·a); la distancia de frenada crece con v².`,`a_media = (v₁² − v₂²) / (2·d) permite calcular la deceleración a partir de datos publicados.`,`La deceleración medida incluye resistencia aerodinámica y freno motor.`,`El límite de stoppie es el del modelo de masa puntual.`],
+  t:`Carga Mugello T1 y comprueba que la distancia sale 279 m.`},
+ brake:{s:`Calcula cuánta energía absorbe el disco al frenar y cuánto sube su temperatura. Sirve para entender la gestión térmica y el límite del material.`,
+  p:[['Masa moto+piloto','masa total (kg).'],['Velocidad al empezar / al terminar','km/h; 0 = parada.'],['Masa de cada disco','masa de cada uno de los 2 discos delanteros (kg).'],['Calor específico cp','energía por kg y grado (J/kgK): acero ≈ 460; carbono mucho mayor y variable.'],['Límite orientativo','temperatura a partir de la cual salta el aviso.'],['Temperatura inicial','temperatura del disco al empezar a frenar (°C).']],
+  a:[`E = ½·m·(v² − vf²); ΔT = E / (2·m_disco·cp).`,`Es una cota superior: toda la energía va a los discos delanteros, sin resistencia aerodinámica, freno trasero ni refrigeración.`,`El carbono trabaja caliente (rango público de trabajo 200–800 °C); el acero llega antes al fade.`,`El cp del carbono es orientativo y varía mucho con la temperatura.`],
+  t:`Carga Mugello T1 y baja la masa del disco de 1,2 a 0,9 kg.`},
+ rep:{s:`Simula varias frenadas seguidas con enfriamiento entre ellas. Sirve para ver cuándo el calor se acumula hasta pasar el límite.`,
+  p:[['Velocidad al empezar / al terminar','km/h de entrada y salida de cada zona de frenada.'],['Número de frenadas','cuántas frenadas se encadenan.'],['Tiempo entre frenadas','segundos entre una frenada y la siguiente.'],['Constante de enfriamiento τ','segundos que tarda el disco en perder el 63 % del exceso sobre el ambiente; menor = mejor refrigerado.'],['Controles vinculados','masa, disco, cp, límite y temperatura inicial del panel de frenos.']],
+  a:[`Cada frenada suma ΔT y entre frenadas el disco se enfría: T = Tamb + (Tpico − Tamb)·e^(−t/τ).`,`El calor se acumula hasta un equilibrio entre lo que aporta cada frenada y lo que se pierde.`,`La temperatura ambiente se fija en 40 °C y τ es un supuesto.`],
+  t:`Reduce el tiempo entre frenadas de 12 a 6 s.`},
+ quarter:{s:`Modelo de cuarto de vehículo: una masa suspendida sobre el muelle y una masa no suspendida sobre el neumático. Sirve para ver a qué frecuencias oscilan la carrocería y la rueda.`,
+  p:[['Masa suspendida ms','parte de la moto y el piloto que carga esa rueda (kg).'],['Masa no suspendida mu','rueda, neumático, freno y parte de la suspensión (kg).'],['Rigidez del muelle ks','rigidez de la suspensión (N/m).'],['Rigidez del neumático kt','rigidez vertical del neumático (N/m).']],
+  a:[`f = (1/2π)·√(k/m) para cada masa; la de la rueda usa ks + kt.`,`Interesa que la frecuencia de la rueda sea mucho mayor que la de la carrocería (cociente ≥ 4) para que no se acoplen.`,`Menos masa no suspendida: rueda más viva y mejor contacto.`,`No incluye el amortiguador; su efecto está en el panel de resonancia.`],
+  t:`Baja mu de 18 a 12 kg y mira cómo sube la frecuencia de la rueda.`},
+ res:{s:`Compara la frecuencia con la que un asfalto ondulado golpea la moto con la frecuencia natural de su suspensión. Sirve para encontrar la velocidad a la que la moto rebota más.`,
+  p:[['Velocidad','velocidad de paso (km/h).'],['Distancia entre ondulaciones λ','separación entre ondas del asfalto (m).'],['Amortiguamiento ζ','cuánta energía disipa el amortiguador (0,1 poco, 0,8 mucho).'],['Controles vinculados','rigidez del muelle y masa suspendida del panel de suspensión: fijan la frecuencia natural.']],
+  a:[`f_exc = v/λ; hay resonancia cuando f_exc ≈ fs.`,`T(r) es cuánto se amplifica el movimiento: por encima de 1 amplifica, por debajo filtra.`,`Velocidad crítica = fs·λ.`,`Más amortiguamiento baja el pico de resonancia, pero transmite más en alta frecuencia.`],
+  t:`Con λ = 5 m sube la velocidad hasta acercarte a la velocidad crítica.`},
+ fat:{s:`Estima cuánto daño acumula una pieza sometida a ciclos de carga repetidos y cuántos bloques de uso aguanta. Sirve para entender por qué una pieza falla muy por debajo de su límite estático.`,
+  p:[[`Coeficiente Sf'`,'resistencia a fatiga del material (MPa): escala la curva S-N.'],['Exponente b','pendiente de la curva S-N (negativo, típico entre −0,15 y −0,05).'],['Tensión S₁ y ciclos n₁','amplitud de tensión y número de ciclos del nivel de carga 1.'],['Tensión S₂ y ciclos n₂','lo mismo para el nivel 2.']],
+  a:[`Basquin: N = ½·(S/Sf')^(1/b) da los ciclos hasta rotura a cada tensión.`,`Miner: D = Σ nᵢ/Nᵢ; cuando D llega a 1 se prevé el fallo.`,`El aluminio no tiene un límite de fatiga claro: su vida es siempre finita.`,`Modelo simple: amplitud constante en cada nivel, sin concentradores de tensión ni tensión media.`],
+  t:`Sube S₁ de 250 a 300 MPa y mira cuánto cae N₁.`},
+ aero:{s:`Calcula la fuerza del aire y la potencia que cuesta vencerla. Sirve para ver por qué los últimos km/h son tan caros.`,
+  p:[['Velocidad','velocidad de la moto respecto al aire (km/h).'],['Coeficiente CD','lo fina que es la forma (sin unidades).'],['Área frontal A','superficie que ve el aire (m²); con el piloto tumbado baja.']],
+  a:[`F = ½·ρ·v²·CD·A con ρ = 1,225 kg/m³ (nivel del mar).`,`P = F·v: la potencia crece con v³.`,`Solo importa el producto CD·A.`,`Modelo sin sustentación ni carga aerodinámica, sin viento y sin resistencia de rodadura.`],
+  t:`Pon 120 y luego 240 km/h: la potencia se multiplica por 8.`},
+ top:{s:`Encuentra la velocidad punta, donde la potencia necesaria iguala a la del motor, y cuánto ayuda el rebufo.`,
+  p:[['Potencia del motor','CV en el cigüeñal; en la rueda se aplica η = 0,9.'],['Reducción de CD·A por rebufo','porcentaje de resistencia que se ahorra yendo en la estela de otra moto.'],['Controles vinculados','CD y área frontal del panel de aerodinámica, y masa del panel de frenos.']],
+  a:[`P_req = ½·ρ·v³·CD·A + Crr·m·g·v, con Crr = 0,015.`,`La velocidad punta es el cruce de esa curva con la potencia disponible.`,`Por la v³, mucha potencia extra da pocos km/h.`,`La ventaja del rebufo es ilustrativa: depende de la distancia a la otra moto.`],
+  t:`Carga «MotoGP ~290 CV» y activa un rebufo del 20 %.`},
+ nyq:{s:`Muestra cómo se ve una señal al muestrearla a distintas frecuencias y cuándo aparece aliasing. Sirve para dimensionar la telemetría.`,
+  p:[['Frecuencia de la señal','frecuencia del fenómeno medido (Hz), por ejemplo el wobble.'],['Frecuencia de muestreo fs','muestras por segundo del sensor.'],['Canales','número de canales registrados.']],
+  a:[`Nyquist: fs ≥ 2·f; en la práctica se usan 5–10 veces la frecuencia de interés.`,`Aliasing: f_aparente = |f − fs·round(f/fs)|.`,`Datos por sesión = canales × fs × 4 B × tiempo (45 min).`],
+  t:`Pon la señal a 10 Hz y baja fs hasta 15 Hz.`},
+ amd:{s:`Calcula cuánto se acelera una simulación al repartirla entre más núcleos. Sirve para dimensionar un clúster.`,
+  p:[['Fracción paralelizable P','parte del cálculo que se puede repartir (%).'],['Núcleos N','núcleos usados, en potencias de 2 (de 1 a 1024).']],
+  a:[`S(N) = 1/((1−P) + P/N); el límite con N→∞ es 1/(1−P).`,`Cada núcleo extra aporta menos: baja la eficiencia.`,`A menudo compensa más reducir la parte secuencial que comprar núcleos.`],
+  t:`Con P = 90 % compara 16 y 128 núcleos.`}
+};
+
+META.gg={i:'🎯',t:'Círculo de fricción (g-g)',m:'Módulo 2',d:'Frenar, acelerar y girar a la vez: cuánto agarre usas y cuánto queda.'};
+GROUPS[0].items.splice(2,0,'gg');
+INTRO.gg={s:`Mide cuánto agarre del neumático consumes cuando combinas girar con frenar o acelerar (diagrama g-g). Sirve para ver por qué no se puede frenar al máximo y girar al máximo a la vez, y por qué el trail braking trabaja cerca del borde.`,
+ p:[['Aceleración lateral aᵧ','fuerza lateral que pide la curva, en g (la que determina la inclinación).'],['Aceleración longitudinal aₓ','negativa = frenando, positiva = acelerando, en g.'],['Agarre longitudinal μx','agarre máximo del neumático al frenar o acelerar (en g).'],['Agarre lateral μy','agarre máximo del neumático al girar (en g); si μx = μy el límite es un círculo, si no una elipse.']],
+ a:[`Límite: (aₓ/μx·g)² + (aᵧ/μy·g)² ≤ 1; u es la raíz de esa suma y u = 1 es el borde.`,`Con una aceleración lateral dada, lo que queda para frenar o acelerar es μx·g·√(1 − (aᵧ/μy·g)²).`,`El diagrama g-g de una vuelta real dibuja justo esto con la telemetría: en el trail braking el punto recorre el borde de la elipse.`,`Los valores de μ son orientativos, y la frenada real también está limitada por el stoppie y la aerodinámica.`],
+ t:`Carga «MotoGP: trail braking» y baja μy a 1,2: el punto se sale de la elipse.`};
+// ---- subpáginas ----
+const PAGES={};
+CARDS.forEach(([k,c])=>{
+  const card=$(c).closest('.card'), sec=document.createElement('section'), m=META[k], I=INTRO[k], gr=GROUPS.find(g=>g.items.includes(k));
+  const nctl=card.querySelectorAll('input[type=range]').length;
+  sec.className='page'; sec.id='page_'+k; card.parentNode.insertBefore(sec,card);
+  sec.innerHTML=`<button type="button" class="back" data-go="">← Volver al índice</button><div class="crumb">${gr.t} · ${m.m}</div><h2 class="ptitle">${m.i} ${m.t}</h2>`+
+   `<div class="intro"><h3>Para qué sirve</h3><p>${I.s}</p><h3>Qué puedes modificar</h3><ul>${I.p.map(x=>`<li><b>${x[0]}:</b> ${x[1]}</li>`).join('')}</ul>`+
+   `<h3>Para aprender</h3><ul>${I.a.map(x=>`<li>${x}</li>`).join('')}</ul><p class="try">👉 ${I.t}</p></div>`;
+  sec.appendChild(card); PAGES[k]=sec; META[k].n=nctl;
+});
+
+// ---- controles vinculados (copias sincronizadas) ----
+const LINKS={grip:['v','r'],stop:['h','L'],top:['cd','af','bm'],res:['ks','ms'],rep:['bm','bd','bc','bf','bt0']};
+const CLONES=[];
+Object.keys(LINKS).forEach(k=>{
+  const card=PAGES[k].querySelector('.card'), col=card.querySelector('.row .col'), box=document.createElement('div');
+  box.className='linked'; box.innerHTML='<p class="note">🔗 Controles de otros paneles que afectan a este:</p>';
+  LINKS[k].forEach(id=>{
+    const f=$(id).closest('.field').cloneNode(true), inp=f.querySelector('input'), b=f.querySelector('b');
+    inp.id='x_'+id+'_'+k; b.id='x_'+id+'_'+k+'Lbl'; inp.value=$(id).value; PREV[inp.id]=+inp.value;
+    inp.addEventListener('input',()=>{const o=$(id), nv=+inp.value; o.value=inp.value; o.dispatchEvent(new Event('input'));
+      if(nv===PREV[id]) return; const u=nv>PREV[id]; PREV[id]=nv; showWhy(k,id,u);});
+    box.appendChild(f); CLONES.push([id,k]);
+  });
+  col.insertBefore(box,col.firstChild);
+});
+function syncLinked(){CLONES.forEach(([id,k])=>{const c=$('x_'+id+'_'+k); c.value=$(id).value; const b=$('x_'+id+'_'+k+'Lbl'); if(b) b.textContent=$(id+'Lbl').textContent;});}
+(function(){const o=showWhy; showWhy=function(){o.apply(null,arguments); syncLinked();};})();
+
+// ---- índice y navegación ----
+$('home').innerHTML=GROUPS.map(g=>`<section class="grp"><h2>${g.t}</h2><p class="gd">${g.d}</p><div class="grid">`+
+  g.items.map(k=>{const m=META[k];return `<button type="button" class="tile" data-go="${k}"><span class="ti">${m.i}</span><b>${m.t}</b><i>${m.m}</i><span class="td">${m.d}</span><em>${m.n} ${m.n==1?'control':'controles'}${LINKS[k]?' + '+LINKS[k].length+' vinculados':''}</em></button>`}).join('')+`</div></section>`).join('');
+function show(k){
+  const ok=k&&PAGES[k];
+  $('home').classList.toggle('hidden',!!ok);
+  Object.keys(PAGES).forEach(x=>PAGES[x].classList.toggle('active',x===k&&!!ok));
+  if(ok) showWhy(null);
+  window.scrollTo(0,0);
+}
+function go(k){show(k); try{location.hash=k||'';}catch(e){}}
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-go]'); if(b) go(b.dataset.go);});
+window.addEventListener('hashchange',()=>show(location.hash.slice(1)));
+show(location.hash.slice(1));
 </script>
 </body>
 </html>
