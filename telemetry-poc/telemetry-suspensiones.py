@@ -26,10 +26,14 @@ Uso:
   python3 telemetria_suspension.py --backend sim        # prueba sin hardware
   python3 telemetria_suspension.py --live               # + web en vivo en :8081
   python3 telemetria_suspension.py --live 9000 --dir datos
+  python3 telemetria_suspension.py --live --https       # usable desde tu dominio
 
 Web (--live): abre http://<ip-de-la-pi>:8081/ desde el movil o el portatil.
   Pestana "Tiempo real" para ver la sesion en curso y "Archivo CSV" para
   postprocesar los CSV guardados en --dir (o cualquiera que arrastres).
+  Al terminar la captura la web sigue activa hasta un segundo Ctrl+C.
+  Con --https: abre una vez https://<ip-de-la-pi>:8081/ en cada navegador y
+  acepta el certificado; despues la web de tu dominio puede conectar.
 
 Backends:
   pigpio    (recomendado) temporizacion por hardware, resolucion de 1 us.
@@ -194,8 +198,9 @@ def registrar(args):
     live = None
     if args.live:
         from live_server import LiveServer
-        live = LiveServer(args.live, data_dir=args.dir,
-                          rate_hz=1 / periodo).start()
+        live = LiveServer(args.live, data_dir=args.dir, rate_hz=1 / periodo,
+                          https=args.https or bool(args.cert),
+                          cert=args.cert, key=args.key).start()
         print(f"Web en vivo: {live.url()}\n")
 
     f = None
@@ -229,7 +234,7 @@ def registrar(args):
                     f"temp_c: {args.temp}\nvelocidad_sonido_m_s: {v:.1f}\n"
                     f"referencia_mm: {ref:.2f}\n")
         if live:
-            live.set_meta(sensor="suspension", session=base,
+            live.set_meta(sensor="suspension", session=base, csv=base + ".csv",
                           cols=["t_s", "echo_us", "dist_mm", "rel_mm"],
                           backend=sensor.nombre, periodo_ms=args.periodo_ms,
                           max_cm=args.max_cm, temp_c=args.temp,
@@ -304,12 +309,15 @@ def registrar(args):
             finally:
                 f.close()
         sensor.cerrar()
-        if live:
-            live.stop()
 
     if f is not None:
         print(f"\n\nGuardado: {os.path.abspath(ruta)}\n")
         resumen(ruta)
+    if live:
+        # La web sigue activa para abrir el CSV completo desde el navegador.
+        live.fin_sesion()
+        live.esperar(f"\nLa web sigue en {live.url()} para revisar la sesion. "
+                     "Ctrl+C para salir.")
 
 
 # -------------------------------------------------------------- resumen ---
@@ -392,6 +400,10 @@ def main():
                    help="resumir un CSV (o el ultimo) y salir")
     p.add_argument("--live", nargs="?", const=8081, type=int, metavar="PUERTO",
                    help="servir la web y emitir en tiempo real (def. 8081)")
+    p.add_argument("--https", action="store_true",
+                   help="web por HTTPS con certificado autofirmado (./certs)")
+    p.add_argument("--cert", help="certificado propio (PEM) para --live")
+    p.add_argument("--key", help="clave privada del certificado propio")
     args = p.parse_args()
 
     if args.resumen:

@@ -10,6 +10,11 @@ Servidor web + tiempo real para la telemetria. Solo libreria estandar.
 Se usa desde el script de captura (--live) o suelto, para revisar sesiones
 guardadas en la Raspberry sin registrar:
   python3 live_server.py --dir datos --port 8081
+  python3 live_server.py --dir datos --https      # para usarla desde tu dominio
+
+HTTPS: con --https se genera (una vez, con openssl) un certificado autofirmado
+en ./certs. En cada navegador hay que abrir https://<ip-de-la-pi>:8081/ una vez
+y aceptar el aviso; despues la web de tu dominio ya puede conectar.
 """
 
 import argparse
@@ -17,13 +22,18 @@ import json
 import os
 import re
 import socket
+import ssl
+import subprocess
+import sys
 import threading
 import time
 from collections import deque
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlparse
 
-WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
+AQUI = os.path.dirname(os.path.abspath(__file__))
+WEB_DIR = os.path.join(AQUI, "web")
+CERT_DIR = os.path.join(AQUI, "certs")
 NOMBRE_OK = re.compile(r"^[\w.\-]+\.(csv|meta\.txt)$")
 
 
@@ -39,10 +49,42 @@ def ip_local():
         s.close()
 
 
+def certificado_autofirmado(cert=None, key=None):
+    """Devuelve (cert, key); si no se indican, crea uno en ./certs con openssl."""
+    if cert and key:
+        return cert, key
+    cert = os.path.join(CERT_DIR, "telemetria.crt")
+    key = os.path.join(CERT_DIR, "telemetria.key")
+    if os.path.exists(cert) and os.path.exists(key):
+        return cert, key
+    os.makedirs(CERT_DIR, exist_ok=True)
+    host = socket.gethostname().split(".")[0]
+    san = f"subjectAltName=IP:{ip_local()},IP:127.0.0.1,DNS:{host}.local,DNS:localhost"
+    print(f"Generando certificado autofirmado en {CERT_DIR} ...")
+    subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+                    "-keyout", key, "-out", cert, "-days", "3650",
+                    "-subj", "/CN=telemetria", "-addext", san],
+                   check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    os.chmod(key, 0o600)
+    return cert, key
+
+
+class _Servidor(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def handle_error(self, request, client_address):
+        # Conexiones cortadas o TLS rechazado (certificado aun no aceptado en
+        # ese navegador): normal, sin traza.
+        if isinstance(sys.exc_info()[1], OSError):
+            return
+        super().handle_error(request, client_address)
+
+
 class LiveServer:
     def __init__(self, port=8081, data_dir=".", backlog_s=30.0, rate_hz=40.0,
-                 web_dir=WEB_DIR):
+                 web_dir=WEB_DIR, https=False, cert=None, key=None):
         self.port = port
+        self.tls = certificado_autofirmado(cert, key) if https else None
         self.data_dir = os.path.abspath(data_dir)
         self.web_dir = web_dir
         self.lock = threading.Lock()
@@ -63,6 +105,12 @@ class LiveServer:
             self.meta_ver += 1
             self.buf.clear()
 
+    def fin_sesion(self):
+        """Marca la sesion como terminada (el CSV ya esta completo)."""
+        with self.lock:
+            self.meta = dict(self.meta, ended=True)
+            self.meta_ver += 1
+
     def publish(self, fila):
         """Una muestra: lista de numeros o None, en el orden de meta['cols']."""
         with self.lock:
@@ -81,10 +129,26 @@ class LiveServer:
             def log_message(self, *a):
                 pass
 
+            def setup(self):
+                if isinstance(self.request, ssl.SSLSocket):
+                    self.request.settimeout(10)
+                    self.request.do_handshake()
+                    self.request.settimeout(None)
+                super().setup()
+
             def end_headers(self):
                 self.send_header("Access-Control-Allow-Origin", "*")
+                # Chrome: permite que una web publica (tu dominio) hable con
+                # un equipo de la red local.
+                self.send_header("Access-Control-Allow-Private-Network", "true")
                 self.send_header("Cache-Control", "no-store")
                 super().end_headers()
+
+            def do_OPTIONS(self):
+                self.send_response(204)
+                self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+                self.send_header("Access-Control-Allow-Headers", "*")
+                self.end_headers()
 
             def do_GET(self):
                 ruta = urlparse(self.path).path
@@ -96,8 +160,14 @@ class LiveServer:
                     return srv._fichero(self, unquote(ruta[len("/files/"):]))
                 return super().do_GET()
 
-        self.httpd = ThreadingHTTPServer(("0.0.0.0", self.port), Handler)
-        self.httpd.daemon_threads = True
+        self.httpd = _Servidor(("0.0.0.0", self.port), Handler)
+        if self.tls:
+            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            ctx.load_cert_chain(*self.tls)
+            # El handshake se hace en el hilo de cada peticion, no en accept().
+            self.httpd.socket = ctx.wrap_socket(
+                self.httpd.socket, server_side=True,
+                do_handshake_on_connect=False)
         threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
         return self
 
@@ -108,7 +178,18 @@ class LiveServer:
             self.httpd.server_close()
 
     def url(self):
-        return f"http://{ip_local()}:{self.port}/"
+        return f"{'https' if self.tls else 'http'}://{ip_local()}:{self.port}/"
+
+    def esperar(self, aviso):
+        """Bloquea sirviendo la web hasta Ctrl+C / SIGTERM."""
+        print(aviso)
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            pass
+        finally:
+            self.stop()
 
     def _pendiente(self, seq_cli, ver_cli):
         with self.lock:
@@ -187,14 +268,14 @@ def main():
     p = argparse.ArgumentParser(description="Web de telemetria (sin registrar)")
     p.add_argument("--port", type=int, default=8081)
     p.add_argument("--dir", default=".", help="carpeta con los CSV (def. .)")
+    p.add_argument("--https", action="store_true",
+                   help="servir por HTTPS (certificado autofirmado en ./certs)")
+    p.add_argument("--cert", help="certificado propio (PEM) en vez del autofirmado")
+    p.add_argument("--key", help="clave privada del certificado propio")
     args = p.parse_args()
-    srv = LiveServer(args.port, data_dir=args.dir).start()
-    print(f"Web en {srv.url()}  (CSV de {srv.data_dir}). Ctrl+C para parar.")
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        srv.stop()
+    srv = LiveServer(args.port, data_dir=args.dir, https=args.https or bool(args.cert),
+                     cert=args.cert, key=args.key).start()
+    srv.esperar(f"Web en {srv.url()}  (CSV de {srv.data_dir}). Ctrl+C para parar.")
 
 
 if __name__ == "__main__":
