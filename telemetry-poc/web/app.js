@@ -51,6 +51,9 @@
       view.opt = {};
       sensor.options.forEach(o => { view.opt[o.id] = store('tele-opt-' + sensor.id + '-' + o.id) || o.value; });
     }
+    // si la sesion dice como esta montado el sensor (--montaje), manda eso
+    if (ds.meta && ds.meta.montaje && 'mount' in view.opt)
+      view.opt.mount = ds.meta.montaje === 'aleja' ? 'farther' : 'closer';
     Object.assign(view, { ds, sensor, group: new Plot.ChartGroup(), charts: {}, hists: {} });
     view.group.zoomable = zoomable;
     view.group.onRange(updateRange);
@@ -363,13 +366,40 @@
       } else setStatus('En vivo', 'ok');
       listPiFiles();
     });
+    live.es.addEventListener('estado', e => renderSemaforo(JSON.parse(e.data)));
     live.es.onmessage = e => appendRows(JSON.parse(e.data).rows);
+  }
+
+  /** Replica en la web lo que muestran los LEDs de la Pi (alertas.py). */
+  function renderSemaforo(e) {
+    $('#semaforo').hidden = false;
+    const set = (id, color, txt, blink) => {
+      const l = $(id);
+      l.className = 'lamp ' + color + (blink ? ' blink' : '');
+      l.querySelector('em').textContent = txt;
+    };
+    if (e.modo === 'calibrando') {
+      set('#lamp-comp', 'azul', 'Calibrando · moto quieta');
+      set('#lamp-osc', 'azul', 'Calibrando · moto quieta');
+      return;
+    }
+    if (!e.sensor_ok) {
+      set('#lamp-comp', 'azul', 'Sensor sin eco', true);
+      set('#lamp-osc', 'azul', 'Sensor sin eco', true);
+      return;
+    }
+    const nc = ['Normal', 'Alta', 'Muy alta · cerca del tope'][e.nivel_comp];
+    set('#lamp-comp', e.color_comp, nc + (e.comp != null ? ' · ' + e.comp.toFixed(0) + ' mm' : ''), e.nivel_comp === 2);
+    set('#lamp-osc', e.color_osc, e.nivel_osc
+      ? (e.nivel_osc === 2 ? 'Fuerte' : 'Moderada') + ' · ±' + e.osc_amp.toFixed(1) + ' mm a ' + e.osc_hz.toFixed(0) + ' Hz'
+      : 'Estable', e.nivel_osc === 2);
   }
 
   function disconnect() {
     if (live.es) { live.es.close(); live.es = null; }
     $('#connect').textContent = 'Conectar';
     $('#pause').disabled = true;
+    $('#semaforo').hidden = true;
     $('#open-full').classList.add('ghost');
     $('#open-full').disabled = !live.meta;
     setStatus('Desconectado');

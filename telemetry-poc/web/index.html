@@ -65,6 +65,10 @@
     <button id="open-full" class="ghost" disabled>Abrir sesión completa</button>
   </div>
   <p id="live-status" class="status">Desconectado</p>
+  <div id="semaforo" class="semaforo" hidden>
+    <div id="lamp-comp" class="lamp"><i></i><span><b>Compresión</b> <small>RGB1</small><em></em></span></div>
+    <div id="lamp-osc" class="lamp"><i></i><span><b>Oscilación</b> <small>RGB2</small><em></em></span></div>
+  </div>
   <p class="hint">
     En la Pi: <code>python3 telemetry-suspensiones.py --live --https --dir datos</code>.
     Desde la propia Pi basta <code>http://&lt;ip&gt;:8081/</code> sin <code>--https</code>;
