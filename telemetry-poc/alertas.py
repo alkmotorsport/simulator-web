@@ -380,6 +380,7 @@ def anadir_argumentos(p):
     g.add_argument("--rgb-activo-alto", action="store_true",
                    help="LEDs de catodo comun (por defecto anodo comun)")
     g.add_argument("--ws-pin", type=int, default=12, help="GPIO de la WS2812 (def. 12)")
-    g.add_argument("--ws-num", type=int, default=4,
-                   help="numero de LEDs WS2812; 0 = sin tira (def. 4)")
+    g.add_argument("--ws-num", type=int, default=12,
+                   help="LEDs WS2812 en total; 0 = sin tira "
+                        "(def. 12 = 4 modulos de 3 encadenados)")
     g.add_argument("--ws-brillo", type=int, default=60, help="brillo 0-255 (def. 60)")
