@@ -9,7 +9,7 @@
   const LIVE_MAX = 12000;   // muestras guardadas en vivo (~5 min a 40 Hz)
 
   const view = { ds: null, sensor: null, opt: {}, group: null, charts: {}, hists: {}, derived: null };
-  const live = { es: null, ds: null, session: null, cols: [], lastT: -Infinity, paused: false, dirty: false, lastDraw: 0 };
+  const live = { es: null, ds: null, session: null, meta: null, cols: [], lastT: -Infinity, paused: false, dirty: false, lastDraw: 0 };
 
   // --------------------------------------------------------------- tema ---
 
@@ -249,15 +249,39 @@
 
   function serverBase() {
     let s = $('#server').value.trim().replace(/\/+$/, '');
-    if (s && !/^https?:\/\//.test(s)) s = 'http://' + s;
+    if (s && !/^https?:\/\//.test(s)) s = location.protocol + '//' + s;
     return s;
   }
-  $('#server').value = store('tele-server') || (location.protocol === 'http:' ? location.origin : '');
+  const servedByPi = location.protocol.startsWith('http') && location.port !== '' &&
+    !/github\.io$/.test(location.hostname);
+  $('#server').value = store('tele-server') || (servedByPi ? location.origin : '');
   $('#server').addEventListener('change', () => { store('tele-server', $('#server').value.trim()); listPiFiles(); });
+  $('#check').addEventListener('click', () => { store('tele-server', $('#server').value.trim()); listPiFiles(); });
+
+  /** Problema conocido de la conexion con la Pi, o '' si no se detecta. */
+  function mixedContent(base) {
+    return location.protocol === 'https:' && base.startsWith('http:')
+      ? 'Esta página es https y el navegador bloquea http: arranca la Pi con --https y usa https://' : '';
+  }
+
+  function setConn(txt, cls, certBase) {
+    const p = $('#conn-status');
+    p.hidden = !txt;
+    p.className = 'status ' + (cls || '');
+    p.textContent = txt;
+    if (certBase) {
+      const a = document.createElement('a');
+      a.href = certBase + '/'; a.target = '_blank'; a.rel = 'noopener';
+      a.textContent = 'abre ' + certBase + ' y acepta el certificado';
+      p.append(' Si la Pi usa certificado autofirmado, ', a, ' y vuelve a pulsar «Comprobar».');
+    }
+  }
 
   async function listPiFiles() {
     const base = serverBase(), box = $('#pi-files');
-    if (!base) { box.hidden = true; return; }
+    if (!base) { box.hidden = true; setConn(''); return; }
+    const mixed = mixedContent(base);
+    if (mixed) { box.hidden = true; setConn(mixed, 'err'); return; }
     try {
       const r = await fetch(base + '/api/files');
       if (!r.ok) throw new Error(r.status);
@@ -277,19 +301,30 @@
       }
       if (!files.length) ul.innerHTML = '<li class="muted">No hay CSV en la carpeta de datos.</li>';
       box.hidden = false;
+      setConn('Raspberry accesible · ' + files.length + ' sesiones guardadas', 'ok');
     } catch (e) {
-      box.hidden = true;   // no estamos servidos por la Pi: solo carga local
+      box.hidden = true;
+      setConn('No conecto con ' + base + '.', 'err', base.startsWith('https:') ? base : null);
     }
   }
   $('#pi-refresh').addEventListener('click', listPiFiles);
 
+  async function fetchText(url) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(r.status);
+    return r.text();
+  }
+
   async function loadPiFile(base, f) {
-    try {
-      const enc = encodeURIComponent(f.name);
-      const text = await (await fetch(base + '/files/' + enc)).text();
-      const meta = f.meta ? await (await fetch(base + '/files/' + enc + '.meta.txt')).text() : null;
-      openCSV(f.name, text, meta);
-    } catch (e) { fileMsg('No se pudo descargar ' + f.name, true); }
+    const enc = encodeURIComponent(f.name);
+    let text;
+    try { text = await fetchText(base + '/files/' + enc); } catch (e) {
+      showTab('file');
+      return fileMsg('No se pudo descargar ' + f.name, true);
+    }
+    const meta = f.meta ? await fetchText(base + '/files/' + enc + '.meta.txt').catch(() => null) : null;
+    openCSV(f.name, text, meta);
+    showTab('file');
   }
 
   // --------------------------------------------------------- tiempo real ---
@@ -301,22 +336,32 @@
 
   function connect() {
     const base = serverBase();
-    if (!base) return setStatus('Indica la dirección de la Raspberry', 'err');
-    if (location.protocol === 'https:' && base.startsWith('http:'))
-      return setStatus('El navegador bloquea http desde una página https: abre la web desde la Pi', 'err');
+    if (!base) return setStatus('Indica arriba la dirección de la Raspberry', 'err');
+    const mixed = mixedContent(base);
+    if (mixed) return setStatus(mixed, 'err');
     store('tele-server', $('#server').value.trim());
     disconnect();
     live.session = null;
+    live.meta = null;
     live.es = new EventSource(base + '/stream');
     setStatus('Conectando…');
     $('#connect').textContent = 'Desconectar';
     live.es.onopen = () => setStatus(live.session ? 'En vivo' : 'Conectado · esperando sesión', 'ok');
-    live.es.onerror = () => setStatus('Sin conexión · reintentando…', 'err');
+    live.es.onerror = () => {
+      setStatus(live.meta && live.meta.ended ? 'Sesión terminada · servidor detenido' : 'Sin conexión · reintentando…', 'err');
+      if (!live.session) listPiFiles();   // muestra arriba el motivo / enlace al certificado
+    };
     live.es.addEventListener('meta', e => {
       const m = JSON.parse(e.data);
       if (!m.session) return setStatus('Conectado · calibrando / esperando sesión', 'ok');
       if (m.session !== live.session) startLiveSession(m);
-      setStatus('En vivo', 'ok');
+      live.meta = m;
+      $('#open-full').disabled = false;
+      if (m.ended) {
+        setStatus('Sesión terminada · CSV guardado en la Pi', 'ok');
+        $('#open-full').classList.remove('ghost');
+      } else setStatus('En vivo', 'ok');
+      listPiFiles();
     });
     live.es.onmessage = e => appendRows(JSON.parse(e.data).rows);
   }
@@ -325,6 +370,8 @@
     if (live.es) { live.es.close(); live.es = null; }
     $('#connect').textContent = 'Conectar';
     $('#pause').disabled = true;
+    $('#open-full').classList.add('ghost');
+    $('#open-full').disabled = !live.meta;
     setStatus('Desconectado');
     if (live.paused) togglePause();
   }
@@ -380,6 +427,11 @@
       updateRange();
     }
   }
+
+  $('#open-full').addEventListener('click', () => {
+    const m = live.meta;
+    if (m) loadPiFile(serverBase(), { name: m.csv || m.session + '.csv', meta: true });
+  });
 
   $('#connect').addEventListener('click', () => (live.es ? disconnect() : connect()));
   $('#pause').addEventListener('click', togglePause);
