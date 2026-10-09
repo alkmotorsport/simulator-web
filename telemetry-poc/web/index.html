@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Telemetría</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top">
+  <div>
+    <h1>Telemetría</h1>
+    <p>Postprocesado de CSV y visualización en tiempo real desde la Raspberry Pi</p>
+  </div>
+  <button id="theme" class="ghost small">Tema: auto</button>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" data-tab="file" aria-selected="true">Archivo CSV</button>
+  <button role="tab" data-tab="live" aria-selected="false">Tiempo real</button>
+</nav>
+
+<section id="pane-file" class="card">
+  <label id="drop" class="drop">
+    <input type="file" id="file" accept=".csv,.txt" multiple hidden>
+    <b>Arrastra aquí un CSV</b>
+    <span>o pulsa para elegirlo. Puedes añadir también su <code>.meta.txt</code>.</span>
+  </label>
+  <p id="file-msg" class="msg" hidden></p>
+  <div class="actions">
+    <button id="demo" class="ghost small">Cargar datos de ejemplo</button>
+  </div>
+  <div id="pi-files" hidden>
+    <div class="sub-head">
+      <h3>Sesiones guardadas en la Raspberry</h3>
+      <button id="pi-refresh" class="ghost small">Actualizar</button>
+    </div>
+    <ul id="pi-list" class="files"></ul>
+  </div>
+</section>
+
+<section id="pane-live" class="card" hidden>
+  <div class="bar">
+    <label class="field grow">Raspberry
+      <input id="server" type="text" inputmode="url" placeholder="http://raspberrypi.local:8080" autocomplete="off">
+    </label>
+    <button id="connect">Conectar</button>
+    <label class="field">Ventana
+      <select id="win">
+        <option value="5">5 s</option>
+        <option value="10" selected>10 s</option>
+        <option value="30">30 s</option>
+        <option value="60">60 s</option>
+      </select>
+    </label>
+    <button id="pause" class="ghost" disabled>Pausar</button>
+  </div>
+  <p id="live-status" class="status">Desconectado</p>
+  <p class="hint">
+    En la Pi: <code>python3 telemetry-suspensiones.py --live --dir datos</code> y abre
+    <code>http://&lt;ip-de-la-pi&gt;:8080/</code>. Para probar sin hardware añade
+    <code>--backend sim</code>. En pausa puedes ampliar tramos arrastrando.
+  </p>
+</section>
+
+<section id="view" hidden>
+  <div class="view-head">
+    <div>
+      <h2 id="view-title"></h2>
+      <p id="view-sub"></p>
+    </div>
+    <div id="options" class="bar"></div>
+  </div>
+  <details id="meta" hidden>
+    <summary>Parámetros de la sesión</summary>
+    <dl id="meta-list"></dl>
+  </details>
+  <div class="range-bar">
+    <span id="range-label"></span>
+    <button id="reset-zoom" class="ghost small" hidden>Ver todo</button>
+  </div>
+  <div id="tiles" class="tiles"></div>
+  <div id="charts-time" class="charts"></div>
+  <div id="charts-hist" class="charts hist"></div>
+  <p class="hint">
+    Arrastra en horizontal sobre una gráfica para ampliar ese tramo: las cifras y los
+    histogramas se recalculan solo con lo visible. Doble clic o «Ver todo» para volver.
+  </p>
+</section>
+
+<script src="plot.js"></script>
+<script src="sensors.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
