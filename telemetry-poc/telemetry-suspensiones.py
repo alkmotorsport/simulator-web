@@ -24,10 +24,10 @@ Uso:
   python3 telemetria_suspension.py --resumen            # analiza el ultimo CSV
   python3 telemetria_suspension.py --resumen fichero.csv
   python3 telemetria_suspension.py --backend sim        # prueba sin hardware
-  python3 telemetria_suspension.py --live               # + web en vivo en :8080
+  python3 telemetria_suspension.py --live               # + web en vivo en :8081
   python3 telemetria_suspension.py --live 9000 --dir datos
 
-Web (--live): abre http://<ip-de-la-pi>:8080/ desde el movil o el portatil.
+Web (--live): abre http://<ip-de-la-pi>:8081/ desde el movil o el portatil.
   Pestana "Tiempo real" para ver la sesion en curso y "Archivo CSV" para
   postprocesar los CSV guardados en --dir (o cualquiera que arrastres).
 
@@ -390,8 +390,8 @@ def main():
     p.add_argument("--dir", default=".", help="carpeta de salida (def. .)")
     p.add_argument("--resumen", nargs="?", const="ultimo", metavar="CSV",
                    help="resumir un CSV (o el ultimo) y salir")
-    p.add_argument("--live", nargs="?", const=8080, type=int, metavar="PUERTO",
-                   help="servir la web y emitir en tiempo real (def. 8080)")
+    p.add_argument("--live", nargs="?", const=8081, type=int, metavar="PUERTO",
+                   help="servir la web y emitir en tiempo real (def. 8081)")
     args = p.parse_args()
 
     if args.resumen:
