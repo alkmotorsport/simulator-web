@@ -22,7 +22,8 @@ Pruebas:
   python3 shiftlight.py --demo                 # sin tira (portatil): en consola
 
 La WS2812 va en GPIO12 (PWM): necesita sudo, rpi_ws281x y el audio analogico
-desactivado (dtparam=audio=off en /boot/firmware/config.txt). Los 4 modulos
+desactivado (dtparam=audio=off en /boot/config.txt; en Bookworm
+/boot/firmware/config.txt). Los 4 modulos
 encadenados: OUT de cada uno -> IN del siguiente; solo el primero al HAT.
 """
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Telemetria de suspension con sensor de ultrasonidos (HC-SR04)
-Raspberry Pi 3B+ + Adeept Motor HAT V2.0.
+Raspberry Pi 3 Model B + Adeept Motor HAT V2.0.
 
 Muestrea lo mas rapido que permite el sensor, sin imprimir por muestra y
 con escritura por bloques. Cada ejecucion crea su propio CSV con marca de
