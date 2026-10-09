@@ -1,0 +1,27 @@
+# Telemetria de suspension - dependencias Python
+#
+# Web, tiempo real (SSE), HTTPS y alertas solo usan la libreria estandar.
+# Estos paquetes son para el hardware de la Raspberry Pi; en un portatil no se
+# instalan (marcador de plataforma) y todo funciona con --backend sim.
+#
+# Instalacion en la Pi (Raspberry Pi OS Bookworm pide un entorno virtual):
+#   sudo apt install pigpio openssl
+#   sudo systemctl enable --now pigpiod
+#   python3 -m venv --system-site-packages ~/telemetria-venv
+#   ~/telemetria-venv/bin/pip install -r requirements.txt
+#   sudo ~/telemetria-venv/bin/python telemetry-suspensiones.py --leds --live
+#
+# Fuera de pip:
+#   pigpiod   demonio de pigpio (apt, arriba); el paquete pip es solo el cliente
+#   openssl   genera el certificado de --https (ya viene en Raspberry Pi OS)
+#   GPIO12 (WS2812) usa el PWM del audio: dtparam=audio=off en
+#   /boot/firmware/config.txt
+
+# Sensor HC-SR04 con temporizacion por hardware (backend pigpio, recomendado)
+pigpio>=1.78 ; sys_platform == "linux" and platform_machine in "armv6l armv7l aarch64"
+
+# Backend gpio del sensor y LEDs RGB1/RGB2
+RPi.GPIO>=0.7.1 ; sys_platform == "linux" and platform_machine in "armv6l armv7l aarch64"
+
+# Tira WS2812 (necesita ejecutar con sudo)
+rpi_ws281x>=5.0.0 ; sys_platform == "linux" and platform_machine in "armv6l armv7l aarch64"
