@@ -9,7 +9,8 @@
 #   sudo systemctl enable --now pigpiod
 #   python3 -m venv --system-site-packages ~/telemetria-venv
 #   ~/telemetria-venv/bin/pip install -r requirements.txt
-#   sudo ~/telemetria-venv/bin/python telemetry-suspensiones.py --leds --live
+#   ~/telemetria-venv/bin/python telemetry-suspensiones.py --leds --live
+#   sudo ~/telemetria-venv/bin/python shiftlight.py --demo   (WS2812 pide sudo)
 #
 # Fuera de pip:
 #   pigpiod   demonio de pigpio (apt, arriba); el paquete pip es solo el cliente
@@ -23,5 +24,5 @@ pigpio>=1.78 ; sys_platform == "linux" and platform_machine in "armv6l armv7l aa
 # Backend gpio del sensor y LEDs RGB1/RGB2
 RPi.GPIO>=0.7.1 ; sys_platform == "linux" and platform_machine in "armv6l armv7l aarch64"
 
-# Tira WS2812 (necesita ejecutar con sudo)
+# Shift light de RPM en la tira WS2812 (shiftlight.py; necesita sudo)
 rpi_ws281x>=5.0.0 ; sys_platform == "linux" and platform_machine in "armv6l armv7l aarch64"
