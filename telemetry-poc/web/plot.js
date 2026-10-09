@@ -212,6 +212,7 @@
         if (v === v) { if (v < lo) lo = v; if (v > hi) hi = v; }
       }
       if (o.zero) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+      for (const l of o.lines || []) { lo = Math.min(lo, l.y); hi = Math.max(hi, l.y); }
       if (!(lo <= hi)) { lo = -1; hi = 1; }
       if (hi - lo < (o.minSpan || 1e-6)) { const m = (lo + hi) / 2, s = (o.minSpan || 2) / 2; lo = m - s; hi = m + s; }
       const pad = (hi - lo) * 0.06;
@@ -240,6 +241,20 @@
 
       ctx.save();
       ctx.beginPath(); ctx.rect(R.x, R.y, R.w, R.h); ctx.clip();
+
+      // lineas de referencia (umbrales), discontinuas y con etiqueta
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+      for (const l of this.opts.lines || []) {
+        const ly = Math.round(R.y + R.h - (l.y - ymin) / (ymax - ymin) * R.h) + 0.5;
+        ctx.strokeStyle = cssVar(l.color);
+        ctx.setLineDash([5, 4]); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(R.x, ly); ctx.lineTo(R.x + R.w, ly); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = C.muted;
+        ctx.fillText(l.label, R.x + R.w - 4, ly - 2);
+      }
+
       const t = this.t, y = this.y;
       const sx = R.w / (x1 - x0), sy = R.h / (ymax - ymin);
       const Y = v => R.y + R.h - (v - ymin) * sy;

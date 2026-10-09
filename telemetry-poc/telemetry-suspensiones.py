@@ -27,6 +27,10 @@ Uso:
   python3 telemetria_suspension.py --live               # + web en vivo en :8081
   python3 telemetria_suspension.py --live 9000 --dir datos
   python3 telemetria_suspension.py --live --https       # usable desde tu dominio
+  sudo python3 telemetria_suspension.py --test-leds     # probar cableado LEDs
+  sudo python3 telemetria_suspension.py --leds --live   # alertas semaforo
+  sudo python3 telemetria_suspension.py --leds --comp-ambar 25 --comp-rojo 40
+  (umbrales y logica de alertas: ver alertas.py; sudo solo lo pide la WS2812)
 
 Web (--live): abre http://<ip-de-la-pi>:8081/ desde el movil o el portatil.
   Pestana "Tiempo real" para ver la sesion en curso y "Archivo CSV" para
@@ -56,6 +60,8 @@ import statistics
 import sys
 import time
 from datetime import datetime
+
+import alertas
 
 pc = time.perf_counter
 
@@ -146,10 +152,24 @@ class SensorSim:
         self.v = velocidad
         self.t0 = pc()
 
+    @staticmethod
+    def compresion(t):
+        """Vuelta tipo de 12 s: frenada, bache y una racha de oscilacion."""
+        c = 10 * math.sin(2 * math.pi * 0.3 * t)            # transferencias
+        f = t % 12
+        if 2 <= f < 4:                                      # frenada fuerte
+            c += 52 * math.sin(math.pi * (f - 2) / 2)
+        if 6 <= f < 7:                                      # bache seco
+            c += 70 * math.sin(math.pi / 2 * min(1, (f - 6) / 0.05)) ** 2 \
+                * math.exp(-5 * (f - 6))
+        if 8 <= f < 9.5:                                    # oscilacion 9 Hz
+            c += 7 * math.sin(math.pi * (f - 8) / 1.5) * math.sin(2 * math.pi * 9 * f)
+        return c
+
     def medir_us(self, timeout_s):
         t = pc() - self.t0
-        d_mm = (250 + 40 * math.sin(2 * math.pi * 1.5 * t)
-                + 15 * math.sin(2 * math.pi * 7 * t) + random.gauss(0, 1.0))
+        # al comprimir el objetivo se acerca (--montaje acerca)
+        d_mm = 250 - self.compresion(t) + random.gauss(0, 1.0)
         if random.random() < 0.01:
             time.sleep(timeout_s)
             return None
@@ -203,6 +223,11 @@ def registrar(args):
                           cert=args.cert, key=args.key).start()
         print(f"Web en vivo: {live.url()}\n")
 
+    leds = None
+    if args.leds:
+        leds = alertas.Alertas(args, 1 / periodo, live)
+        leds.start()
+
     f = None
     try:
         # Referencia en reposo
@@ -233,12 +258,25 @@ def registrar(args):
                     f"periodo_ms: {args.periodo_ms}\nmax_cm: {args.max_cm}\n"
                     f"temp_c: {args.temp}\nvelocidad_sonido_m_s: {v:.1f}\n"
                     f"referencia_mm: {ref:.2f}\n")
+            if leds:
+                m.write(f"montaje: {args.montaje}\n"
+                        f"comp_ambar_mm: {args.comp_ambar}\n"
+                        f"comp_rojo_mm: {args.comp_rojo}\n"
+                        f"osc_banda_hz: {leds.det.fmin:g}-{leds.det.fmax:g}\n"
+                        f"osc_ciclos: {args.osc_ciclos}\n"
+                        f"osc_ambar_mm: {args.osc_ambar}\n"
+                        f"osc_rojo_mm: {args.osc_rojo}\n")
+        if leds:
+            leds.listo()
         if live:
             live.set_meta(sensor="suspension", session=base, csv=base + ".csv",
                           cols=["t_s", "echo_us", "dist_mm", "rel_mm"],
                           backend=sensor.nombre, periodo_ms=args.periodo_ms,
                           max_cm=args.max_cm, temp_c=args.temp,
-                          referencia_mm=round(ref, 2))
+                          referencia_mm=round(ref, 2),
+                          **({"montaje": args.montaje,
+                              "comp_ambar_mm": args.comp_ambar,
+                              "comp_rojo_mm": args.comp_rojo} if leds else {}))
 
         f = open(ruta, "w", newline="", buffering=1 << 16, encoding="utf-8")
         w = csv.writer(f)
@@ -270,6 +308,8 @@ def registrar(args):
                 buf.append([f"{t - t_ini:.4f}", "", "", ""])
                 if live:
                     live.publish([round(t - t_ini, 4), None, None, None])
+                if leds:
+                    leds.push(t - t_ini, None)
             else:
                 d = a_mm(us)
                 ultima = d
@@ -278,6 +318,8 @@ def registrar(args):
                 if live:
                     live.publish([round(t - t_ini, 4), round(us),
                                   round(d, 1), round(d - ref, 1)])
+                if leds:
+                    leds.push(t - t_ini, d - ref)
 
             proximo = max(proximo + periodo, pc())  # sin rafagas si hay retraso
 
@@ -294,7 +336,8 @@ def registrar(args):
                 hz = n_seg / (ahora - ult_estado)
                 est = f"{ultima:6.1f} mm" if ultima is not None else "  sin eco"
                 print(f"\r  t={ahora - t_ini:7.1f}s  {hz:5.1f} Hz  "
-                      f"{est}  perdidas {100 * perdidas / n:4.1f}%   ",
+                      f"{est}  perdidas {100 * perdidas / n:4.1f}%  "
+                      f"{leds.texto() if leds else ''}   ",
                       end="", flush=True)
                 n_seg = 0
                 ult_estado = ahora
@@ -308,6 +351,8 @@ def registrar(args):
                 os.fsync(f.fileno())
             finally:
                 f.close()
+        if leds:
+            leds.stop()   # antes que el sensor: RPi.GPIO.cleanup() suelta los pines
         sensor.cerrar()
 
     if f is not None:
@@ -404,9 +449,15 @@ def main():
                    help="web por HTTPS con certificado autofirmado (./certs)")
     p.add_argument("--cert", help="certificado propio (PEM) para --live")
     p.add_argument("--key", help="clave privada del certificado propio")
+    alertas.anadir_argumentos(p)
     args = p.parse_args()
 
-    if args.resumen:
+    if args.leds and args.cero_seg <= 0:
+        p.error("--leds necesita la referencia en reposo (--cero-seg > 0): "
+                "los umbrales son mm de compresion sobre esa referencia")
+    if args.test_leds:
+        alertas.test_leds(args)
+    elif args.resumen:
         resumen(args.resumen)
     else:
         registrar(args)

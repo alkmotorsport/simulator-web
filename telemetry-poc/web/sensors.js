@@ -99,6 +99,15 @@
 
   // ---------------------------------------------------------- suspension ---
 
+  /** Umbrales de alerta de los LEDs (meta.txt o meta en vivo), si los hay. */
+  function umbrales(meta) {
+    const out = [];
+    const a = parseFloat(meta && meta.comp_ambar_mm), r = parseFloat(meta && meta.comp_rojo_mm);
+    if (a === a) out.push({ y: a, color: '--status-warning', label: 'ámbar ' + a + ' mm' });
+    if (r === r) out.push({ y: r, color: '--status-err', label: 'rojo ' + r + ' mm' });
+    return out;
+  }
+
   const suspension = {
     id: 'suspension',
     name: 'Suspensión · ultrasonidos HC-SR04',
@@ -128,8 +137,8 @@
       return { travel, vel, dist: ds.cols.dist_mm };
     },
 
-    charts: () => [
-      { type: 'time', key: 'travel', title: 'Recorrido', unit: 'mm', note: '+ compresión · − extensión · marcas = sin eco', color: '--series-1', zero: true, gaps: true, height: 230 },
+    charts: ds => [
+      { type: 'time', key: 'travel', title: 'Recorrido', unit: 'mm', note: '+ compresión · − extensión · marcas = sin eco', color: '--series-1', zero: true, gaps: true, height: 230, lines: umbrales(ds.meta) },
       { type: 'time', key: 'vel', title: 'Velocidad', unit: 'mm/s', note: '+ compresión · − extensión', color: '--series-7', zero: true, decimals: 0 },
       { type: 'time', key: 'dist', title: 'Distancia medida', unit: 'mm', note: 'dato bruto del sensor', color: '--series-3', gaps: true, height: 150 },
       { type: 'hist', key: 'velHist', title: 'Histograma de velocidad', unit: 'mm/s', note: '% de tiempo', colorFor: c => (c >= 0 ? '--series-2' : '--series-1') },

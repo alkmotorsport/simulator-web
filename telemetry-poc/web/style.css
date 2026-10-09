@@ -79,6 +79,25 @@ input, select {
 .status.ok { color: var(--status-ok); }
 .status a { color: inherit; }
 .conn { padding: 12px 16px; }
+
+.semaforo { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.lamp {
+  flex: 1 1 240px; display: flex; align-items: center; gap: 12px;
+  border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--bg);
+}
+.lamp i { --lamp: var(--chart-axis); flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--lamp); box-shadow: 0 0 10px var(--lamp); }
+.lamp span { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; }
+.lamp small { color: var(--sub); font-size: 0.72rem; }
+.lamp em { flex-basis: 100%; font-style: normal; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.lamp.verde i { --lamp: var(--status-ok); }
+.lamp.ambar i { --lamp: var(--status-warning); }
+.lamp.rojo i { --lamp: var(--status-err); }
+.lamp.azul i { --lamp: var(--series-1); }
+.lamp.ambar, .lamp.rojo { border-color: var(--lamp-border, var(--status-warning)); }
+.lamp.rojo { --lamp-border: var(--status-err); }
+.lamp.blink i { animation: blink .5s steps(1) infinite; }
+@keyframes blink { 50% { opacity: .15; } }
+@media (prefers-reduced-motion: reduce) { .lamp.blink i { animation: none; } }
 .conn .status { margin-top: 8px; font-weight: 500; }
 .hint { color: var(--sub); font-size: 0.82rem; margin: 10px 0 0; }
 

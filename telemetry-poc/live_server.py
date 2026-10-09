@@ -93,6 +93,8 @@ class LiveServer:
         self.seq = 0
         self.meta = {}
         self.meta_ver = 0
+        self.estado = {}
+        self.estado_ver = 0
         self.cerrando = False
         self.httpd = None
 
@@ -110,6 +112,13 @@ class LiveServer:
         with self.lock:
             self.meta = dict(self.meta, ended=True)
             self.meta_ver += 1
+
+    def set_estado(self, estado):
+        """Estado de las alertas (semaforo); se envia solo si cambia."""
+        with self.lock:
+            if estado != self.estado:
+                self.estado = estado
+                self.estado_ver += 1
 
     def publish(self, fila):
         """Una muestra: lista de numeros o None, en el orden de meta['cols']."""
@@ -206,7 +215,7 @@ class LiveServer:
         h.send_response(200)
         h.send_header("Content-Type", "text/event-stream")
         h.end_headers()
-        seq, ver = 0, -1
+        seq, ver, est_ver = 0, -1, 0
         ult_envio = time.monotonic()
         try:
             while not self.cerrando:
@@ -215,6 +224,12 @@ class LiveServer:
                 if meta is not None:
                     trozos.append(b"event: meta\ndata: " +
                                   json.dumps(meta).encode() + b"\n\n")
+                with self.lock:
+                    estado = self.estado if self.estado_ver != est_ver else None
+                    est_ver = self.estado_ver
+                if estado:
+                    trozos.append(b"event: estado\ndata: " +
+                                  json.dumps(estado).encode() + b"\n\n")
                 if filas:
                     trozos.append(b"data: " + json.dumps(
                         {"rows": filas}, separators=(",", ":")).encode() + b"\n\n")
