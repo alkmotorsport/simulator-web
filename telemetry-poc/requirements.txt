@@ -4,25 +4,28 @@
 # Estos paquetes son para el hardware de la Raspberry Pi; en un portatil no se
 # instalan (marcador de plataforma) y todo funciona con --backend sim.
 #
-# Instalacion en la Pi (Raspberry Pi OS Bookworm pide un entorno virtual):
-#   sudo apt install pigpio openssl
+# Instalacion en la Pi (Raspberry Pi OS Bullseye/Buster):
+#   sudo apt install pigpio openssl i2c-tools
 #   sudo systemctl enable --now pigpiod
+#   sudo pip3 install -r requirements.txt      # con sudo: la WS2812 corre como root
+#   python3 telemetry-suspensiones.py --leds --live
+#   sudo python3 shiftlight.py --demo          (WS2812 pide sudo)
+# En Bookworm pip exige un entorno virtual:
 #   python3 -m venv --system-site-packages ~/telemetria-venv
-#   ~/telemetria-venv/bin/pip install -r requirements.txt
-#   ~/telemetria-venv/bin/python telemetry-suspensiones.py --leds --live
-#   sudo ~/telemetria-venv/bin/python shiftlight.py --demo   (WS2812 pide sudo)
+#   ~/telemetria-venv/bin/pip install -r requirements.txt  (y usar ese python)
 #
 # Fuera de pip:
 #   pigpiod   demonio de pigpio (apt, arriba); el paquete pip es solo el cliente
 #   openssl   genera el certificado de --https (ya viene en Raspberry Pi OS)
 #   GPIO12 (WS2812) usa el PWM del audio: dtparam=audio=off en
-#   /boot/firmware/config.txt
+#   /boot/config.txt (Bookworm: /boot/firmware/config.txt)
+#   I2C para sensores nuevos: sudo raspi-config nonint do_i2c 0
 
 # Sensor HC-SR04 con temporizacion por hardware (backend pigpio, recomendado)
-pigpio>=1.78 ; sys_platform == "linux" and platform_machine in "armv6l armv7l aarch64"
+pigpio>=1.44 ;sys_platform == "linux" and platform_machine in "armv6l armv7l aarch64"
 
 # Backend gpio del sensor y LEDs RGB1/RGB2
-RPi.GPIO>=0.7.1 ; sys_platform == "linux" and platform_machine in "armv6l armv7l aarch64"
+RPi.GPIO>=0.7.0 ;sys_platform == "linux" and platform_machine in "armv6l armv7l aarch64"
 
 # Shift light de RPM en la tira WS2812 (shiftlight.py; necesita sudo)
 rpi_ws281x>=5.0.0 ; sys_platform == "linux" and platform_machine in "armv6l armv7l aarch64"

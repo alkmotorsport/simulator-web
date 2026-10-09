@@ -1,2 +1,8 @@
 # certificado autofirmado generado con --https (contiene la clave privada)
 certs/
+
+# sesiones grabadas en la Pi (no se suben al repo publico)
+*.csv
+*.csv.meta.txt
+datos/
+__pycache__/
