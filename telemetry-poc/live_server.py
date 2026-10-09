@@ -9,7 +9,7 @@ Servidor web + tiempo real para la telemetria. Solo libreria estandar.
 
 Se usa desde el script de captura (--live) o suelto, para revisar sesiones
 guardadas en la Raspberry sin registrar:
-  python3 live_server.py --dir datos --port 8080
+  python3 live_server.py --dir datos --port 8081
 """
 
 import argparse
@@ -40,7 +40,7 @@ def ip_local():
 
 
 class LiveServer:
-    def __init__(self, port=8080, data_dir=".", backlog_s=30.0, rate_hz=40.0,
+    def __init__(self, port=8081, data_dir=".", backlog_s=30.0, rate_hz=40.0,
                  web_dir=WEB_DIR):
         self.port = port
         self.data_dir = os.path.abspath(data_dir)
@@ -185,7 +185,7 @@ class LiveServer:
 
 def main():
     p = argparse.ArgumentParser(description="Web de telemetria (sin registrar)")
-    p.add_argument("--port", type=int, default=8080)
+    p.add_argument("--port", type=int, default=8081)
     p.add_argument("--dir", default=".", help="carpeta con los CSV (def. .)")
     args = p.parse_args()
     srv = LiveServer(args.port, data_dir=args.dir).start()
