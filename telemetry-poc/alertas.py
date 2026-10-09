@@ -298,19 +298,12 @@ class Alertas(threading.Thread):
         a = self.a
         if not n or not comp == comp:
             return ["off"] * n
+        # Cuantos LEDs = cuanta compresion; color = mismo nivel que RGB1, para
+        # que con pocos LEDs la barra y el semaforo nunca se contradigan.
         llenos = max(1, min(n, math.ceil(comp / a.comp_rojo * n)))
-        out = []
-        for i in range(n):
-            frac = (i + 1) / n * a.comp_rojo     # compresion que representa el LED
-            if i >= llenos:
-                out.append("off")
-            elif frac > a.comp_rojo - 1e-9 and comp >= a.comp_rojo:
-                out.append("rojo")
-            elif frac > a.comp_ambar:
-                out.append("ambar")
-            else:
-                out.append("verde")
-        return out
+        color = ("rojo" if comp >= a.comp_rojo else
+                 "ambar" if comp >= a.comp_ambar else "verde")
+        return [color] * llenos + ["off"] * (n - llenos)
 
     def _pintar(self, c1, c2, tira):
         try:
@@ -387,6 +380,6 @@ def anadir_argumentos(p):
     g.add_argument("--rgb-activo-alto", action="store_true",
                    help="LEDs de catodo comun (por defecto anodo comun)")
     g.add_argument("--ws-pin", type=int, default=12, help="GPIO de la WS2812 (def. 12)")
-    g.add_argument("--ws-num", type=int, default=8,
-                   help="numero de LEDs WS2812; 0 = sin tira (def. 8)")
+    g.add_argument("--ws-num", type=int, default=4,
+                   help="numero de LEDs WS2812; 0 = sin tira (def. 4)")
     g.add_argument("--ws-brillo", type=int, default=60, help="brillo 0-255 (def. 60)")
