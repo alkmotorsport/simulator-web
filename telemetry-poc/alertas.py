@@ -4,9 +4,9 @@ Alertas de suspension en LEDs, en modo semaforo.
 
   RGB1   compresion   verde normal | ambar > --comp-ambar | rojo parpadeo > --comp-rojo
   RGB2   oscilacion   verde estable | ambar oscilacion | rojo parpadeo oscilacion fuerte
-  WS2812 barra de compresion (verde -> ambar -> rojo, como unas luces de cambio);
-         toda la tira en ambar/roja parpadeando si hay oscilacion.
-  Ambos RGB + tira en azul: calibrando (fijo) o sensor sin eco (parpadeo).
+  Ambos en azul: calibrando (fijo) o sensor sin eco (parpadeo).
+
+(La tira WS2812 del cuadro es el shift light de RPM: ver shiftlight.py.)
 
 Deteccion de oscilacion: paso alto (media exponencial) sobre la compresion;
 se cuentan cruces por cero con histeresis y se mide la amplitud de cada medio
@@ -22,8 +22,8 @@ un acelerometro a >= 200 Hz; esta logica sirve igual cambiando la fuente.
 Todo corre en un hilo aparte: el bucle de muestreo solo hace push().
 
 Pines por defecto (BCM) del Adeept Motor HAT V2.0: RGB1 22,23,24  RGB2 10,9,25
-(anodo comun: activo a nivel bajo)  WS2812 en GPIO12. Compruebalos con:
-  sudo python3 telemetry-suspensiones.py --test-leds
+(anodo comun: activo a nivel bajo). Compruebalos con:
+  python3 telemetry-suspensiones.py --test-leds
 """
 
 import math
@@ -32,7 +32,6 @@ import threading
 import time
 from collections import deque
 
-COLORES = ("off", "verde", "ambar", "rojo", "azul")
 NIVEL_COLOR = ("verde", "ambar", "rojo")
 
 
@@ -71,34 +70,8 @@ class RGB:
         self.poner("off")
 
 
-class Tira:
-    """Tira WS2812 (rpi_ws281x; necesita sudo)."""
-    RGB = {"off": (0, 0, 0), "verde": (0, 255, 0), "ambar": (255, 120, 0),
-           "rojo": (255, 0, 0), "azul": (0, 40, 255)}
-
-    def __init__(self, n, pin, brillo):
-        from rpi_ws281x import Color, PixelStrip
-        canal = 1 if pin in (13, 19, 41, 45, 53) else 0
-        self.s = PixelStrip(n, pin, 800000, 10, False, brillo, canal)
-        self.s.begin()
-        self.color = {k: Color(*v) for k, v in self.RGB.items()}
-        self.n, self.actual = n, None
-        self.poner(["off"] * n)
-
-    def poner(self, colores):
-        if colores == self.actual:
-            return
-        for i, c in enumerate(colores):
-            self.s.setPixelColor(i, self.color[c])
-        self.s.show()
-        self.actual = list(colores)
-
-    def cerrar(self):
-        self.poner(["off"] * self.n)
-
-
 def crear_salidas(args, avisar=print):
-    """RGB1, RGB2 y tira; la que no este disponible queda en None."""
+    """RGB1 y RGB2; el que no este disponible queda en None."""
     out = []
     for nombre, txt in (("RGB1", args.rgb1), ("RGB2", args.rgb2)):
         try:
@@ -106,14 +79,6 @@ def crear_salidas(args, avisar=print):
         except Exception as e:  # sin RPi.GPIO (portatil) o pines mal
             avisar(f"Aviso: {nombre} no disponible ({e}).")
             out.append(None)
-    tira = None
-    if args.ws_num > 0:
-        try:
-            tira = Tira(args.ws_num, args.ws_pin, args.ws_brillo)
-        except Exception as e:
-            avisar(f"Aviso: WS2812 no disponible ({e}). "
-                   "pip install rpi_ws281x y ejecuta con sudo.")
-    out.append(tira)
     return out
 
 
@@ -208,7 +173,7 @@ class Alertas(threading.Thread):
         super().__init__(daemon=True)
         self.a = args
         self.det = Detector(args, rate_hz)
-        self.rgb1, self.rgb2, self.tira = salidas or crear_salidas(args)
+        self.rgb1, self.rgb2 = salidas or crear_salidas(args)
         self.live = live
         self.cola = deque()
         self.parar = threading.Event()
@@ -226,7 +191,7 @@ class Alertas(threading.Thread):
     def stop(self):
         self.parar.set()
         self.join(timeout=1)
-        for s in (self.rgb1, self.rgb2, self.tira):
+        for s in (self.rgb1, self.rgb2):
             if s:
                 s.cerrar()
 
@@ -251,7 +216,7 @@ class Alertas(threading.Thread):
     def _autotest(self):
         """Barrido rojo -> ambar -> verde al arrancar, como un cuadro de mandos."""
         for c in ("rojo", "ambar", "verde"):
-            self._pintar(c, c, [c] * (self.tira.n if self.tira else 0))
+            self._pintar(c, c)
             time.sleep(0.25)
 
     def _nivel_mostrado(self, clave, nivel, ahora):
@@ -262,9 +227,8 @@ class Alertas(threading.Thread):
 
     def _actualizar(self, ahora):
         parpadeo = int(ahora * 4) % 2 == 0
-        n_tira = self.tira.n if self.tira else 0
         if self.modo == "calibrando":
-            self._pintar("azul", "azul", ["azul"] * n_tira)
+            self._pintar("azul", "azul")
             self.estado = {"modo": "calibrando"}
             self._publicar()
             return
@@ -282,40 +246,21 @@ class Alertas(threading.Thread):
 
         if not sensor_ok:
             c = "azul" if parpadeo else "off"
-            self._pintar(c, c, [c] * n_tira)
+            self._pintar(c, c)
         else:
-            led_c = "off" if vc == 2 and not parpadeo else col_c
-            led_o = "off" if vo == 2 and not parpadeo else col_o
-            if vo:   # la oscilacion manda en la tira
-                tira = [led_o] * n_tira
-            else:
-                tira = self._barra(self.det.comp, n_tira)
-            self._pintar(led_c, led_o, tira)
+            self._pintar("off" if vc == 2 and not parpadeo else col_c,
+                         "off" if vo == 2 and not parpadeo else col_o)
         self._publicar()
 
-    def _barra(self, comp, n):
-        """Barra de compresion: LEDs encendidos ~ comp / comp_rojo."""
-        a = self.a
-        if not n or not comp == comp:
-            return ["off"] * n
-        # Cuantos LEDs = cuanta compresion; color = mismo nivel que RGB1, para
-        # que con pocos LEDs la barra y el semaforo nunca se contradigan.
-        llenos = max(1, min(n, math.ceil(comp / a.comp_rojo * n)))
-        color = ("rojo" if comp >= a.comp_rojo else
-                 "ambar" if comp >= a.comp_ambar else "verde")
-        return [color] * llenos + ["off"] * (n - llenos)
-
-    def _pintar(self, c1, c2, tira):
+    def _pintar(self, c1, c2):
         try:
             if self.rgb1:
                 self.rgb1.poner(c1)
             if self.rgb2:
                 self.rgb2.poner(c2)
-            if self.tira:
-                self.tira.poner(tira)
         except Exception as e:   # un LED nunca debe tirar la captura
             print(f"\nAviso LEDs: {e}")
-            self.rgb1 = self.rgb2 = self.tira = None
+            self.rgb1 = self.rgb2 = None
 
     def _publicar(self):
         if self.live:
@@ -324,28 +269,20 @@ class Alertas(threading.Thread):
 
 def test_leds(args):
     """Recorre los colores para comprobar cableado y polaridad."""
-    rgb1, rgb2, tira = crear_salidas(args)
-    n = tira.n if tira else 0
+    rgb1, rgb2 = crear_salidas(args)
     pasos = [("rojo", "rojo"), ("verde", "verde"), ("azul", "azul"),
              ("ambar", "ambar"), ("rojo", "off"), ("off", "rojo")]
     try:
         for c1, c2 in pasos:
-            print(f"RGB1 {c1:6} RGB2 {c2:6} tira {c1}")
+            print(f"RGB1 {c1:6} RGB2 {c2:6}")
             for s, c in ((rgb1, c1), (rgb2, c2)):
                 if s:
                     s.poner(c)
-            if tira:
-                tira.poner([c1] * n)
             time.sleep(1.5)
-        if tira:
-            print("tira: barra 1..N")
-            for k in range(1, n + 1):
-                tira.poner(["verde"] * k + ["off"] * (n - k))
-                time.sleep(0.2)
     except KeyboardInterrupt:
         pass
     finally:
-        for s in (rgb1, rgb2, tira):
+        for s in (rgb1, rgb2):
             if s:
                 s.cerrar()
     print("Si los colores salen invertidos (encendido = apagado), usa --rgb-activo-alto.")
@@ -354,7 +291,7 @@ def test_leds(args):
 def anadir_argumentos(p):
     g = p.add_argument_group("LEDs de alerta (--leds)")
     g.add_argument("--leds", action="store_true",
-                   help="activar las alertas en LEDs (semaforo)")
+                   help="activar las alertas en LEDs RGB1/RGB2 (semaforo)")
     g.add_argument("--test-leds", action="store_true",
                    help="recorrer colores para probar el cableado y salir")
     g.add_argument("--montaje", choices=["acerca", "aleja"], default="acerca",
@@ -379,8 +316,3 @@ def anadir_argumentos(p):
     g.add_argument("--rgb2", default="10,9,25", help="pines BCM R,G,B de RGB2")
     g.add_argument("--rgb-activo-alto", action="store_true",
                    help="LEDs de catodo comun (por defecto anodo comun)")
-    g.add_argument("--ws-pin", type=int, default=12, help="GPIO de la WS2812 (def. 12)")
-    g.add_argument("--ws-num", type=int, default=12,
-                   help="LEDs WS2812 en total; 0 = sin tira "
-                        "(def. 12 = 4 modulos de 3 encadenados)")
-    g.add_argument("--ws-brillo", type=int, default=60, help="brillo 0-255 (def. 60)")

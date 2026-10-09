@@ -27,10 +27,11 @@ Uso:
   python3 telemetria_suspension.py --live               # + web en vivo en :8081
   python3 telemetria_suspension.py --live 9000 --dir datos
   python3 telemetria_suspension.py --live --https       # usable desde tu dominio
-  sudo python3 telemetria_suspension.py --test-leds     # probar cableado LEDs
-  sudo python3 telemetria_suspension.py --leds --live   # alertas semaforo
-  sudo python3 telemetria_suspension.py --leds --comp-ambar 25 --comp-rojo 40
-  (umbrales y logica de alertas: ver alertas.py; sudo solo lo pide la WS2812)
+  python3 telemetria_suspension.py --test-leds          # probar RGB1/RGB2
+  python3 telemetria_suspension.py --leds --live        # alertas semaforo
+  python3 telemetria_suspension.py --leds --comp-ambar 25 --comp-rojo 40
+  (umbrales y logica de alertas: ver alertas.py; la tira WS2812 es el shift
+   light de RPM, ver shiftlight.py)
 
 Web (--live): abre http://<ip-de-la-pi>:8081/ desde el movil o el portatil.
   Pestana "Tiempo real" para ver la sesion en curso y "Archivo CSV" para
