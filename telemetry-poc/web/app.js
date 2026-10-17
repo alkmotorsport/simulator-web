@@ -215,7 +215,6 @@
     return {
       tipo: 'ajustes-telemetria', version: 1, guardado: new Date().toISOString(),
       orden: userOrder, ocultos: [...hidden], opciones, ventana: $('#win').value, tema: theme,
-      desplegados: Object.fromEntries([...document.querySelectorAll('details.fold')].map(d => [d.id, d.open])),
     };
   }
 
@@ -228,10 +227,6 @@
     for (const [k, v] of Object.entries(a.opciones || {})) store('tele-opt-' + k, String(v));
     if (a.ventana && [...$('#win').options].some(o => o.value === String(a.ventana))) $('#win').value = String(a.ventana);
     if (THEMES.includes(a.tema)) { theme = a.tema; store('tele-theme', theme); applyTheme(theme); }
-    for (const [id, open] of Object.entries(a.desplegados || {})) {
-      const d = document.getElementById(id);
-      if (d && d.classList.contains('fold')) d.open = !!open;
-    }
     if (view.sets.length) {
       buildView(view.sets.map(s => s.ds), { isLive: view.live, zoomable: view.group.zoomable, reloadOpts: true });
       live.dirty = true;
@@ -972,13 +967,6 @@
   $('#win').addEventListener('change', () => { live.dirty = true; });
 
   // ---------------------------------------------------------------- init ---
-
-  // cajas plegables: se recuerda si estaban abiertas
-  document.querySelectorAll('details.fold').forEach(d => {
-    const v = store('tele-open-' + d.id);
-    if (v !== null) d.open = v === '1';
-    d.addEventListener('toggle', () => store('tele-open-' + d.id, d.open ? '1' : '0'));
-  });
 
   applyTheme(theme);
   listPiFiles();
