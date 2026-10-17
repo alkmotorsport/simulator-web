@@ -16,15 +16,16 @@
   <button id="theme" class="ghost small">Tema: auto</button>
 </header>
 
-<section class="card conn">
+<details id="conn-box" class="card conn fold" open>
+  <summary><b>Raspberry</b> <span id="conn-sum" class="muted"></span></summary>
   <div class="bar">
-    <label class="field grow">Raspberry
+    <label class="field grow">Dirección
       <input id="server" type="text" inputmode="url" placeholder="https://raspberrypi.local:8081" autocomplete="off">
     </label>
     <button id="check" class="ghost">Comprobar</button>
   </div>
   <p id="conn-status" class="status" hidden></p>
-</section>
+</details>
 
 <nav class="tabs" role="tablist">
   <button role="tab" data-tab="live" aria-selected="true">Tiempo real</button>
@@ -48,9 +49,10 @@
   </div>
   <p id="live-status" class="status">Desconectado</p>
 
-  <div id="panel" hidden>
+  <details id="panel" class="fold" hidden open>
+    <summary><b>Sensores y salidas</b> <span id="panel-sum" class="muted"></span></summary>
     <div class="sub-head">
-      <h3>Sensores y salidas</h3>
+      <span></span>
       <div class="bar">
         <button id="detect" class="ghost small">Autodetectar</button>
         <button id="all-auto" class="ghost small" title="Quita lo forzado a mano y deja que decida la autodetección">Todo automático</button>
@@ -61,7 +63,7 @@
       El tick arranca o para el módulo en la Pi (y lo recuerda en <code>telemetria.json</code>).
       <b>auto</b> = arranca solo si se detecta conectado. Lo que no está activo ni se ejecuta ni se graba.
     </p>
-  </div>
+  </details>
 
   <div id="outputs" class="outputs" hidden></div>
 </section>
@@ -91,6 +93,23 @@
       <h2 id="view-title"></h2>
       <p id="view-sub"></p>
     </div>
+    <details id="settings" class="menu">
+      <summary>⚙ Ajustes</summary>
+      <div class="menu-body">
+        <p class="muted">Orden y bloques visibles, opciones de cada sensor, ventana y tema.
+          Arrastra un bloque por <b>⠿</b> para moverlo; se recuerda en este navegador.</p>
+        <div class="bar">
+          <button id="set-save-pi" class="small">Guardar en la Pi</button>
+          <button id="set-load-pi" class="ghost small">Cargar de la Pi</button>
+        </div>
+        <div class="bar">
+          <button id="set-export" class="ghost small">Exportar archivo</button>
+          <label class="ghost small btn">Importar archivo<input id="set-import" type="file" accept=".json" hidden></label>
+          <button id="set-reset" class="ghost small">Orden por defecto</button>
+        </div>
+        <p id="set-msg" class="msg" hidden></p>
+      </div>
+    </details>
   </div>
   <div id="chips" class="chips" aria-label="Sensores visibles"></div>
   <details id="meta" hidden>

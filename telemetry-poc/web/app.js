@@ -21,8 +21,9 @@
     return e;
   }
 
-  let hidden;
-  try { hidden = new Set(JSON.parse(store('tele-hidden') || '[]')); } catch (e) { hidden = new Set(); }
+  function storedList(k) { try { return JSON.parse(store(k) || '[]'); } catch (e) { return []; } }
+  let hidden = new Set(storedList('tele-hidden'));
+  let userOrder = storedList('tele-orden');   // ids de los bloques en el orden elegido
   const view = { sets: [], group: null, live: false };
   const live = {
     es: null, estado: null, sets: {}, ctx: {}, vivos: {}, rows: {}, key: '',
@@ -62,7 +63,10 @@
 
   // --------------------------------------------------------------- vista ---
 
+  /** Orden de los bloques: el que haya elegido el usuario y, si no, por tipo. */
   function orden(a, b) {
+    const ua = userOrder.indexOf(a.ds.id), ub = userOrder.indexOf(b.ds.id);
+    if (ua >= 0 || ub >= 0) return (ua < 0 ? Infinity : ua) - (ub < 0 ? Infinity : ub) || 0;
     const ka = ORDEN.indexOf(a.def.id), kb = ORDEN.indexOf(b.def.id);
     return ka - kb || a.ds.id.localeCompare(b.ds.id);
   }
@@ -77,9 +81,9 @@
   }
 
   /** Vista con un bloque por dataset. Conserva opciones de los que ya estaban. */
-  function buildView(datasets, { isLive = false, zoomable = true } = {}) {
+  function buildView(datasets, { isLive = false, zoomable = true, reloadOpts = false } = {}) {
     const prev = {};
-    view.sets.forEach(s => { prev[s.ds.id] = s; });
+    if (!reloadOpts) view.sets.forEach(s => { prev[s.ds.id] = s; });
     if (!isLive || !view.live) clearRange();
     view.live = isLive;
     view.sets = datasets.map(ds => {
@@ -129,8 +133,13 @@
       s.charts = {}; s.hists = {}; s.el = null;
       if (hidden.has(s.ds.id)) continue;
       const sec = el('section', 'block', box);
+      sec.dataset.id = s.ds.id;
       const head = el('div', 'block-head', sec);
-      const tit = el('div', '', head);
+      const tit = el('div', 'block-title', head);
+      const grip = el('button', 'grip', tit, '⠿');
+      grip.title = 'Arrastra para mover el bloque';
+      grip.setAttribute('aria-label', 'Mover ' + s.ds.name);
+      dragBlock(grip, sec);
       el('h3', '', tit, s.ds.name);
       if (s.def.name !== s.ds.name) el('p', 'muted', tit, s.def.name);
       const opts = el('div', 'bar', head);
@@ -147,6 +156,140 @@
       renderOptions(s);
     }
   }
+
+  /**
+   * Arrastrar un bloque por su asa: se mueve en vivo entre los demas (raton y
+   * tactil) y al soltar se guarda el orden.
+   */
+  function dragBlock(grip, sec) {
+    grip.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      // en window y no con captura: al mover el bloque en el DOM se pierde la captura
+      sec.classList.add('dragging');
+      document.body.classList.add('dragging-block');
+      const box = sec.parentNode;
+      const move = ev => {
+        const under = document.elementFromPoint(ev.clientX, ev.clientY);
+        const tgt = under && under.closest('.block');
+        if (tgt && tgt !== sec && tgt.parentNode === box) {
+          const r = tgt.getBoundingClientRect();
+          box.insertBefore(sec, ev.clientY < r.top + r.height / 2 ? tgt : tgt.nextSibling);
+        }
+        // desplaza la pagina al acercarse a los bordes
+        if (ev.clientY < 60) window.scrollBy(0, -20);
+        else if (ev.clientY > innerHeight - 60) window.scrollBy(0, 20);
+      };
+      const end = () => {
+        removeEventListener('pointermove', move);
+        removeEventListener('pointerup', end);
+        removeEventListener('pointercancel', end);
+        sec.classList.remove('dragging');
+        document.body.classList.remove('dragging-block');
+        saveOrder([...box.children].map(b => b.dataset.id));
+      };
+      addEventListener('pointermove', move);
+      addEventListener('pointerup', end);
+      addEventListener('pointercancel', end);
+    });
+  }
+
+  function saveOrder(ids) {
+    // los que no estan en pantalla (ocultos u otra sesion) conservan su sitio relativo
+    userOrder = ids.concat(userOrder.filter(id => !ids.includes(id)));
+    store('tele-orden', JSON.stringify(userOrder));
+    view.sets.sort(orden);
+    renderChips();
+  }
+
+  // -------------------------------------------------------------- ajustes ---
+
+  function getSettings() {
+    const opciones = {};
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k.startsWith('tele-opt-')) opciones[k.slice(9)] = localStorage.getItem(k);
+      }
+    } catch (e) { /* sin almacenamiento: solo lo de esta pagina */ }
+    return {
+      tipo: 'ajustes-telemetria', version: 1, guardado: new Date().toISOString(),
+      orden: userOrder, ocultos: [...hidden], opciones, ventana: $('#win').value, tema: theme,
+      desplegados: Object.fromEntries([...document.querySelectorAll('details.fold')].map(d => [d.id, d.open])),
+    };
+  }
+
+  function applySettings(a) {
+    if (!a || typeof a !== 'object' || (a.tipo && a.tipo !== 'ajustes-telemetria')) throw new Error('no es un fichero de ajustes');
+    userOrder = Array.isArray(a.orden) ? a.orden.map(String) : [];
+    hidden = new Set(Array.isArray(a.ocultos) ? a.ocultos.map(String) : []);
+    store('tele-orden', JSON.stringify(userOrder));
+    store('tele-hidden', JSON.stringify([...hidden]));
+    for (const [k, v] of Object.entries(a.opciones || {})) store('tele-opt-' + k, String(v));
+    if (a.ventana && [...$('#win').options].some(o => o.value === String(a.ventana))) $('#win').value = String(a.ventana);
+    if (THEMES.includes(a.tema)) { theme = a.tema; store('tele-theme', theme); applyTheme(theme); }
+    for (const [id, open] of Object.entries(a.desplegados || {})) {
+      const d = document.getElementById(id);
+      if (d && d.classList.contains('fold')) d.open = !!open;
+    }
+    if (view.sets.length) {
+      buildView(view.sets.map(s => s.ds), { isLive: view.live, zoomable: view.group.zoomable, reloadOpts: true });
+      live.dirty = true;
+    }
+  }
+
+  function setMsg(txt, err) {
+    const m = $('#set-msg');
+    m.textContent = txt; m.hidden = !txt; m.classList.toggle('err', !!err);
+  }
+
+  $('#set-save-pi').addEventListener('click', async () => {
+    const base = serverBase();
+    if (!base) return setMsg('Indica arriba la dirección de la Raspberry', true);
+    try {
+      const r = await fetch(base + '/api/ajustes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(getSettings()) });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'HTTP ' + r.status);
+      setMsg('Guardados en la Pi: cualquier navegador puede cargarlos.');
+    } catch (e) { setMsg('No se pudieron guardar en la Pi: ' + e.message, true); }
+  });
+
+  $('#set-load-pi').addEventListener('click', async () => {
+    const base = serverBase();
+    if (!base) return setMsg('Indica arriba la dirección de la Raspberry', true);
+    try {
+      const r = await fetch(base + '/api/ajustes');
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const a = await r.json();
+      if (!Object.keys(a).length) return setMsg('La Pi aún no tiene ajustes guardados.', true);
+      applySettings(a);
+      setMsg('Ajustes cargados de la Pi' + (a.guardado ? ' (guardados ' + new Date(a.guardado).toLocaleString() + ')' : '') + '.');
+    } catch (e) { setMsg('No se pudieron cargar: ' + e.message, true); }
+  });
+
+  $('#set-export').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(getSettings(), null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'ajustes-telemetria.json';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    setMsg('');
+  });
+
+  $('#set-import').addEventListener('change', async e => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    try { applySettings(JSON.parse(await f.text())); setMsg('Ajustes cargados de ' + f.name + '.'); } catch (err) { setMsg('No se pudo cargar ' + f.name + ': ' + err.message, true); }
+  });
+
+  $('#set-reset').addEventListener('click', () => {
+    userOrder = [];
+    store('tele-orden', '[]');
+    if (view.sets.length) buildView(view.sets.map(s => s.ds), { isLive: view.live, zoomable: view.group.zoomable });
+    live.dirty = true;
+    setMsg('Orden por defecto (por tipo de sensor).');
+  });
 
   function renderOptions(s) {
     for (const o of s.def.options) {
@@ -414,6 +557,9 @@
   }
 
   function setConn(txt, cls, certBase) {
+    $('#conn-sum').textContent = cls === 'ok' ? '· ' + serverBase() + ' · accesible'
+      : cls === 'err' ? '· ' + (serverBase() || 'sin dirección') + ' · sin conexión' : '';
+    if (cls === 'err') $('#conn-box').open = true;   // que se vea el motivo
     const p = $('#conn-status');
     p.hidden = !txt;
     p.className = 'status ' + (cls || '');
@@ -661,6 +807,10 @@
 
   function renderPanel(e) {
     $('#panel').hidden = false;
+    const marcha = e.modulos.filter(m => m.corriendo).length;
+    const errores = e.modulos.filter(m => m.estado === 'error').length;
+    $('#panel-sum').textContent = '· ' + marcha + ' de ' + e.modulos.length + ' en marcha' +
+      (errores ? ' · ' + errores + (errores === 1 ? ' con error' : ' con errores') : '');
     const ul = $('#mods');
     const order = ['sensor', 'salida'];
     const ids = e.modulos.map(m => m.clase + ':' + m.id).join(',');
@@ -822,6 +972,13 @@
   $('#win').addEventListener('change', () => { live.dirty = true; });
 
   // ---------------------------------------------------------------- init ---
+
+  // cajas plegables: se recuerda si estaban abiertas
+  document.querySelectorAll('details.fold').forEach(d => {
+    const v = store('tele-open-' + d.id);
+    if (v !== null) d.open = v === '1';
+    d.addEventListener('toggle', () => store('tele-open-' + d.id, d.open ? '1' : '0'));
+  });
 
   applyTheme(theme);
   listPiFiles();
