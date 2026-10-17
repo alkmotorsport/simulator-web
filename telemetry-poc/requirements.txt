@@ -1,15 +1,18 @@
-# Telemetria de suspension - dependencias Python
+# Telemetria de moto - dependencias Python
 #
-# Web, tiempo real (SSE), HTTPS y alertas solo usan la libreria estandar.
+# Web, tiempo real (SSE), HTTPS y grabacion solo usan la libreria estandar.
 # Estos paquetes son para el hardware de la Raspberry Pi; en un portatil no se
-# instalan (marcador de plataforma) y todo funciona con --backend sim.
+# instalan (marcador de plataforma) y todo funciona con --sim.
+# Si falta alguno, solo fallan los modulos que lo usan (se ve en la web).
 #
-# Instalacion en la Pi (Raspberry Pi OS Bullseye/Buster):
-#   sudo apt install pigpio openssl i2c-tools
+# Instalacion en la Pi (Raspberry Pi OS Buster/Bullseye):
+#   sudo apt install pigpio python3-pigpio python3-smbus python3-spidev openssl i2c-tools
 #   sudo systemctl enable --now pigpiod
-#   sudo pip3 install -r requirements.txt      # con sudo: la WS2812 corre como root
-#   python3 telemetry-suspensiones.py --leds --live
-#   sudo python3 shiftlight.py --demo          (WS2812 pide sudo)
+#   sudo raspi-config nonint do_i2c 0      # MPU6050, MLX90614, pantalla
+#   sudo raspi-config nonint do_spi 0      # MAX6675 (hay que reiniciar)
+#   sudo pip3 install -r requirements.txt  # con sudo: la WS2812 corre como root
+#   sudo python3 telemetria.py --detectar  # que hay conectado
+#   sudo python3 telemetria.py --https     # web en https://<ip>:8081/
 # En Bookworm pip exige un entorno virtual:
 #   python3 -m venv --system-site-packages ~/telemetria-venv
 #   ~/telemetria-venv/bin/pip install -r requirements.txt  (y usar ese python)
@@ -17,15 +20,17 @@
 # Fuera de pip:
 #   pigpiod   demonio de pigpio (apt, arriba); el paquete pip es solo el cliente
 #   openssl   genera el certificado de --https (ya viene en Raspberry Pi OS)
-#   GPIO12 (WS2812) usa el PWM del audio: dtparam=audio=off en
+#   GPIO18 (WS2812) usa el PWM del audio: dtparam=audio=off en
 #   /boot/config.txt (Bookworm: /boot/firmware/config.txt)
-#   I2C para sensores nuevos: sudo raspi-config nonint do_i2c 0
 
-# Sensor HC-SR04 con temporizacion por hardware (backend pigpio, recomendado)
+# GPIO de todos los modulos (ultrasonidos, ruedas, boton, LED RGB)
 pigpio>=1.44 ;sys_platform == "linux" and platform_machine in "armv6l armv7l aarch64"
 
-# Backend gpio del sensor y LEDs RGB1/RGB2
-RPi.GPIO>=0.7.0 ;sys_platform == "linux" and platform_machine in "armv6l armv7l aarch64"
+# I2C: MPU6050 y MLX90614 (python3-smbus de apt tambien vale)
+smbus2>=0.4 ;sys_platform == "linux" and platform_machine in "armv6l armv7l aarch64"
 
-# Shift light de RPM en la tira WS2812 (shiftlight.py; necesita sudo)
+# SPI: sondas K con MAX6675
+spidev>=3.5 ;sys_platform == "linux" and platform_machine in "armv6l armv7l aarch64"
+
+# Barra de LEDs WS2812 (necesita sudo)
 rpi_ws281x>=5.0.0 ; sys_platform == "linux" and platform_machine in "armv6l armv7l aarch64"

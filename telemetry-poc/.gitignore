@@ -6,3 +6,6 @@ certs/
 *.csv.meta.txt
 datos/
 __pycache__/
+
+# configuracion local de cada Pi (sensores forzados desde la web)
+telemetria.json

@@ -2,13 +2,19 @@
 """
 Servidor web + tiempo real para la telemetria. Solo libreria estandar.
 
-  /             la web de ./web (graficas de CSV y en vivo)
-  /stream       muestras en tiempo real como Server-Sent Events
-  /api/files    lista de CSV guardados en la carpeta de datos
-  /files/<f>    descarga de un CSV (o su .meta.txt) para postprocesado
+  /                 la web de ./web (sesiones grabadas y tiempo real)
+  /stream           Server-Sent Events: 'estado' (modulos y sesion), 'vivo'
+                    (semaforo, tira...) y mensajes con las muestras nuevas
+                    de cada modulo: {"d": {"suspension": [[t, ...], ...]}}
+  /api/estado       estado actual de los modulos (JSON)
+  /api/sesiones     sesiones guardadas en la carpeta de datos
+  /files/<ruta>     CSV / sesion.json de una sesion, para postprocesar
+  POST /api/...     control desde la web (solo con el maestro, telemetria.py):
+                    modulo/<id> {"activo": true|false|"auto"},
+                    modulo/<id>/accion {"accion": "calibrar"},
+                    detectar, auto, grabar {"grabar": true|false}
 
-Se usa desde el script de captura (--live) o suelto, para revisar sesiones
-guardadas en la Raspberry sin registrar:
+Suelto, para revisar sesiones guardadas en la Raspberry sin registrar:
   python3 live_server.py --dir datos --port 8081
   python3 live_server.py --dir datos --https      # para usarla desde tu dominio
 
@@ -34,7 +40,9 @@ from urllib.parse import unquote, urlparse
 AQUI = os.path.dirname(os.path.abspath(__file__))
 WEB_DIR = os.path.join(AQUI, "web")
 CERT_DIR = os.path.join(AQUI, "certs")
-NOMBRE_OK = re.compile(r"^[\w.\-]+\.(csv|meta\.txt)$")
+# fichero suelto (CSV antiguos) o dentro de la carpeta de una sesion
+NOMBRE_OK = re.compile(r"^(?:[\w\-]+/)?[\w\-][\w.\-]*\.(?:csv|json|meta\.txt)$")
+BACKLOG = 4000       # muestras por modulo que recibe un cliente al conectar
 
 
 def ip_local():
@@ -81,50 +89,48 @@ class _Servidor(ThreadingHTTPServer):
 
 
 class LiveServer:
-    def __init__(self, port=8081, data_dir=".", backlog_s=30.0, rate_hz=40.0,
-                 web_dir=WEB_DIR, https=False, cert=None, key=None):
+    def __init__(self, port=8081, data_dir=".", web_dir=WEB_DIR, https=False,
+                 cert=None, key=None, control=None):
         self.port = port
         self.tls = certificado_autofirmado(cert, key) if https else None
-        self.data_dir = os.path.abspath(data_dir)
+        self.data_dir = os.path.realpath(data_dir)
         self.web_dir = web_dir
+        self.control = control      # el maestro: atiende los POST de la web
         self.lock = threading.Lock()
-        # Historial reciente: un cliente que (re)conecta rellena la grafica.
-        self.buf = deque(maxlen=max(100, int(backlog_s * rate_hz)))
-        self.seq = 0
-        self.meta = {}
-        self.meta_ver = 0
+        self.bufs = {}              # id de modulo -> deque de filas
+        self.seqs = {}              # id de modulo -> filas publicadas
         self.estado = {}
         self.estado_ver = 0
+        self.vivos = {}             # id -> (version, estado instantaneo)
+        self.vivo_ver = 0
         self.cerrando = False
         self.httpd = None
 
-    # ------------------------------------------------ API para el registro ---
+    # ------------------------------------------------- API para el maestro ---
 
-    def set_meta(self, **meta):
-        """Anuncia una sesion nueva (sensor, columnas, parametros)."""
+    def publish(self, mod, fila):
+        """Una muestra de un modulo: [t, valores...] en el orden de sus cols."""
         with self.lock:
-            self.meta = meta
-            self.meta_ver += 1
-            self.buf.clear()
-
-    def fin_sesion(self):
-        """Marca la sesion como terminada (el CSV ya esta completo)."""
-        with self.lock:
-            self.meta = dict(self.meta, ended=True)
-            self.meta_ver += 1
+            buf = self.bufs.get(mod)
+            if buf is None:
+                buf = self.bufs[mod] = deque(maxlen=BACKLOG)
+                self.seqs[mod] = 0
+            buf.append(fila)
+            self.seqs[mod] += 1
 
     def set_estado(self, estado):
-        """Estado de las alertas (semaforo); se envia solo si cambia."""
+        """Estado de los modulos y de la grabacion; se envia solo si cambia."""
         with self.lock:
             if estado != self.estado:
                 self.estado = estado
                 self.estado_ver += 1
 
-    def publish(self, fila):
-        """Una muestra: lista de numeros o None, en el orden de meta['cols']."""
+    def set_vivo(self, mod, estado):
+        """Estado instantaneo de una salida (semaforo, tira); solo si cambia."""
         with self.lock:
-            self.buf.append(fila)
-            self.seq += 1
+            if self.vivos.get(mod, (0, None))[1] != estado:
+                self.vivo_ver += 1
+                self.vivos[mod] = (self.vivo_ver, estado)
 
     # -------------------------------------------------------------- server ---
 
@@ -155,7 +161,7 @@ class LiveServer:
 
             def do_OPTIONS(self):
                 self.send_response(204)
-                self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+                self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
                 self.send_header("Access-Control-Allow-Headers", "*")
                 self.end_headers()
 
@@ -163,11 +169,26 @@ class LiveServer:
                 ruta = urlparse(self.path).path
                 if ruta == "/stream":
                     return srv._stream(self)
-                if ruta == "/api/files":
+                if ruta == "/api/estado":
+                    with srv.lock:
+                        estado = srv.estado
+                    return srv._json(self, estado)
+                if ruta in ("/api/sesiones", "/api/files"):
                     return srv._lista(self)
                 if ruta.startswith("/files/"):
                     return srv._fichero(self, unquote(ruta[len("/files/"):]))
                 return super().do_GET()
+
+            def do_POST(self):
+                ruta = urlparse(self.path).path
+                if srv.control is None or not ruta.startswith("/api/"):
+                    return srv._json(self, {"error": "solo con telemetria.py"}, 404)
+                try:
+                    n = int(self.headers.get("Content-Length") or 0)
+                    cuerpo = json.loads(self.rfile.read(n) or b"{}") if n else {}
+                    return srv._json(self, srv.control.peticion(ruta, cuerpo))
+                except (KeyError, ValueError) as e:
+                    return srv._json(self, {"error": str(e)}, 400)
 
         self.httpd = _Servidor(("0.0.0.0", self.port), Handler)
         if self.tls:
@@ -200,39 +221,41 @@ class LiveServer:
         finally:
             self.stop()
 
-    def _pendiente(self, seq_cli, ver_cli):
+    def _pendiente(self, cli):
+        """Lo que le falta a un cliente: estado, vivos y filas nuevas."""
         with self.lock:
-            meta = None
-            nuevas = self.seq - seq_cli
-            if ver_cli != self.meta_ver:
-                meta = self.meta
-                nuevas = len(self.buf)
-            nuevas = min(nuevas, len(self.buf))
-            filas = list(self.buf)[-nuevas:] if nuevas > 0 else []
-            return meta, self.meta_ver, filas, self.seq
+            estado = None
+            if cli["estado"] != self.estado_ver:
+                estado, cli["estado"] = self.estado, self.estado_ver
+            vivos = {m: e for m, (v, e) in self.vivos.items() if v > cli["vivo"]}
+            cli["vivo"] = self.vivo_ver
+            datos = {}
+            for m, buf in self.bufs.items():
+                nuevas = min(self.seqs[m] - cli["seqs"].get(m, 0), len(buf))
+                if nuevas > 0:
+                    datos[m] = list(buf)[-nuevas:]
+                cli["seqs"][m] = self.seqs[m]
+            return estado, vivos, datos
 
     def _stream(self, h):
         h.send_response(200)
         h.send_header("Content-Type", "text/event-stream")
         h.end_headers()
-        seq, ver, est_ver = 0, -1, 0
+        cli = {"estado": -1, "vivo": 0, "seqs": {}}
         ult_envio = time.monotonic()
         try:
             while not self.cerrando:
-                meta, ver, filas, seq = self._pendiente(seq, ver)
+                estado, vivos, datos = self._pendiente(cli)
                 trozos = []
-                if meta is not None:
-                    trozos.append(b"event: meta\ndata: " +
-                                  json.dumps(meta).encode() + b"\n\n")
-                with self.lock:
-                    estado = self.estado if self.estado_ver != est_ver else None
-                    est_ver = self.estado_ver
-                if estado:
+                if estado is not None:
                     trozos.append(b"event: estado\ndata: " +
                                   json.dumps(estado).encode() + b"\n\n")
-                if filas:
+                if vivos:
+                    trozos.append(b"event: vivo\ndata: " +
+                                  json.dumps(vivos).encode() + b"\n\n")
+                if datos:
                     trozos.append(b"data: " + json.dumps(
-                        {"rows": filas}, separators=(",", ":")).encode() + b"\n\n")
+                        {"d": datos}, separators=(",", ":")).encode() + b"\n\n")
                 ahora = time.monotonic()
                 if not trozos and ahora - ult_envio > 5:
                     trozos.append(b": ping\n\n")  # mantiene viva la conexion
@@ -253,27 +276,38 @@ class LiveServer:
         h.wfile.write(cuerpo)
 
     def _lista(self, h):
+        """Sesiones (carpetas con sesion.json o CSV) y CSV sueltos antiguos."""
         out = []
         if os.path.isdir(self.data_dir):
             for nombre in os.listdir(self.data_dir):
-                if not nombre.endswith(".csv"):
-                    continue
-                st = os.stat(os.path.join(self.data_dir, nombre))
-                out.append({"name": nombre, "size": st.st_size,
-                            "mtime": st.st_mtime,
-                            "meta": os.path.exists(os.path.join(
-                                self.data_dir, nombre + ".meta.txt"))})
+                ruta = os.path.join(self.data_dir, nombre)
+                if os.path.isdir(ruta):
+                    csvs = sorted(f for f in os.listdir(ruta) if f.endswith(".csv"))
+                    if not csvs:
+                        continue
+                    out.append({
+                        "name": nombre, "kind": "sesion", "files": csvs,
+                        "json": os.path.exists(os.path.join(ruta, "sesion.json")),
+                        "size": sum(os.path.getsize(os.path.join(ruta, f)) for f in csvs),
+                        "mtime": max(os.path.getmtime(os.path.join(ruta, f)) for f in csvs)})
+                elif nombre.endswith(".csv"):
+                    st = os.stat(ruta)
+                    out.append({"name": nombre, "kind": "csv", "size": st.st_size,
+                                "mtime": st.st_mtime,
+                                "meta": os.path.exists(ruta + ".meta.txt")})
         out.sort(key=lambda f: f["mtime"], reverse=True)
         self._json(h, out)
 
     def _fichero(self, h, nombre):
-        ruta = os.path.join(self.data_dir, nombre)
-        if not NOMBRE_OK.match(nombre) or not os.path.isfile(ruta):
+        ruta = os.path.realpath(os.path.join(self.data_dir, nombre))
+        if (not NOMBRE_OK.match(nombre) or ".." in nombre or
+                not ruta.startswith(self.data_dir + os.sep) or not os.path.isfile(ruta)):
             return self._json(h, {"error": "no encontrado"}, 404)
         with open(ruta, "rb") as f:
             cuerpo = f.read()
         h.send_response(200)
-        h.send_header("Content-Type", "text/plain; charset=utf-8")
+        h.send_header("Content-Type", "application/json" if nombre.endswith(".json")
+                      else "text/plain; charset=utf-8")
         h.send_header("Content-Length", str(len(cuerpo)))
         h.end_headers()
         h.wfile.write(cuerpo)
@@ -282,7 +316,7 @@ class LiveServer:
 def main():
     p = argparse.ArgumentParser(description="Web de telemetria (sin registrar)")
     p.add_argument("--port", type=int, default=8081)
-    p.add_argument("--dir", default=".", help="carpeta con los CSV (def. .)")
+    p.add_argument("--dir", default="datos", help="carpeta de las sesiones (def. datos)")
     p.add_argument("--https", action="store_true",
                    help="servir por HTTPS (certificado autofirmado en ./certs)")
     p.add_argument("--cert", help="certificado propio (PEM) en vez del autofirmado")
@@ -290,7 +324,7 @@ def main():
     args = p.parse_args()
     srv = LiveServer(args.port, data_dir=args.dir, https=args.https or bool(args.cert),
                      cert=args.cert, key=args.key).start()
-    srv.esperar(f"Web en {srv.url()}  (CSV de {srv.data_dir}). Ctrl+C para parar.")
+    srv.esperar(f"Web en {srv.url()}  (sesiones de {srv.data_dir}). Ctrl+C para parar.")
 
 
 if __name__ == "__main__":

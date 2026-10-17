@@ -1,17 +1,19 @@
 /*
- * Registro de sensores.
+ * Registro de sensores: como se ve cada tipo de modulo de la Pi.
  *
- * Un dataset es { name, sensor, t, cols: {columna: valores}, meta }, con
- * huecos como NaN. Cada sensor define:
- *   id, name          identificador (el mismo que manda el script en vivo)
- *   detect(header)    true si reconoce las columnas de un CSV
+ * Un dataset es { id, name, sensor, t, cols: {columna: valores}, meta, ctx },
+ * con huecos como NaN; ctx = metas de todos los modulos de la sesion (p. ej.
+ * los umbrales de las alertas). Cada tipo define:
+ *   id, name          el TIPO del modulo en Python (modulos/*.py)
+ *   detect(header)    true si reconoce las columnas de un CSV suelto
  *   options           controles de la barra (select) -> valores en opt
  *   derive(ds, opt)   canales calculados: { clave: array alineado con ds.t }
  *   charts(ds)        graficas: {type:'time'|'hist', key, title, unit, ...}
  *   histograms(d, i0, i1, opt)  { clave: {edges, values} } del tramo visible
  *   stats(ds, d, i0, i1, opt)   [{label, value, unit?, sub?}] del tramo visible
  *
- * Para un sensor nuevo: anade un objeto a SENSORS (antes de 'generic').
+ * Para un sensor nuevo: anade un objeto a SENSORS (antes de 'generic') con el
+ * mismo id que el TIPO de su modulo en Python.
  */
 (function (global) {
   'use strict';
@@ -99,9 +101,12 @@
 
   // ---------------------------------------------------------- suspension ---
 
-  /** Umbrales de alerta de los LEDs (meta.txt o meta en vivo), si los hay. */
-  function umbrales(meta) {
+  /** Umbrales de las alertas RGB que vigilan este sensor (o del meta.txt antiguo). */
+  function umbrales(ds) {
     const out = [];
+    let meta = ds.meta;
+    for (const m of Object.values(ds.ctx || {}))
+      if (m.tipo === 'alertas_rgb' && m.meta && m.meta.fuente === ds.id) meta = m.meta;
     const a = parseFloat(meta && meta.comp_ambar_mm), r = parseFloat(meta && meta.comp_rojo_mm);
     if (a === a) out.push({ y: a, color: '--status-warning', label: 'ámbar ' + a + ' mm' });
     if (r === r) out.push({ y: r, color: '--status-err', label: 'rojo ' + r + ' mm' });
@@ -110,7 +115,7 @@
 
   const suspension = {
     id: 'suspension',
-    name: 'Suspensión · ultrasonidos HC-SR04',
+    name: 'Suspensión trasera · ultrasonidos',
     detect: h => ['t_s', 'dist_mm', 'rel_mm'].every(c => h.includes(c)),
 
     options: [
@@ -138,7 +143,7 @@
     },
 
     charts: ds => [
-      { type: 'time', key: 'travel', title: 'Recorrido', unit: 'mm', note: '+ compresión · − extensión · marcas = sin eco', color: '--series-1', zero: true, gaps: true, height: 230, lines: umbrales(ds.meta) },
+      { type: 'time', key: 'travel', title: 'Recorrido', unit: 'mm', note: '+ compresión · − extensión · marcas = sin eco', color: '--series-1', zero: true, gaps: true, height: 230, lines: umbrales(ds) },
       { type: 'time', key: 'vel', title: 'Velocidad', unit: 'mm/s', note: '+ compresión · − extensión', color: '--series-7', zero: true, decimals: 0 },
       { type: 'time', key: 'dist', title: 'Distancia medida', unit: 'mm', note: 'dato bruto del sensor', color: '--series-3', gaps: true, height: 150 },
       { type: 'hist', key: 'velHist', title: 'Histograma de velocidad', unit: 'mm/s', note: '% de tiempo', colorFor: c => (c >= 0 ? '--series-2' : '--series-1') },
@@ -177,6 +182,134 @@
     },
   };
 
+  // ----------------------------------------------------------------- IMU ---
+
+  const imu = {
+    id: 'imu',
+    name: 'IMU · MPU6050',
+    detect: h => ['ax_g', 'gz_dps'].every(c => h.includes(c)),
+    options: [],
+    derive: ds => ds.cols,
+    charts: () => [
+      { type: 'time', key: 'incl_deg', title: 'Inclinación', unit: '°', note: '+ derecha · − izquierda', color: '--series-1', zero: true, height: 190 },
+      { type: 'time', key: 'ax_g', title: 'Aceleración longitudinal', unit: 'g', note: '+ acelera · − frena', color: '--series-2', zero: true, decimals: 2, height: 160 },
+      { type: 'time', key: 'ay_g', title: 'Aceleración lateral', unit: 'g', color: '--series-3', zero: true, decimals: 2, height: 140 },
+      { type: 'time', key: 'cabeceo_deg', title: 'Cabeceo', unit: '°', note: '+ morro arriba', color: '--series-7', zero: true, height: 140 },
+      { type: 'hist', key: 'inclHist', title: 'Tiempo por inclinación', unit: '°', note: '% de tiempo', colorFor: c => (c >= 0 ? '--series-1' : '--series-2') },
+    ],
+    histograms(d, i0, i1) {
+      const v = finite(d.incl_deg, i0, i1);
+      const lim = Math.max(5, percentile(v.map(Math.abs), 0.995));
+      return { inclHist: histogram(v, -lim, lim, 24) };
+    },
+    stats(ds, d, i0, i1) {
+      const tm = timing(ds.t, i0, i1);
+      const [ilo, ihi] = minmax(finite(d.incl_deg, i0, i1));
+      const [alo, ahi] = minmax(finite(d.ax_g, i0, i1));
+      const [ylo, yhi] = minmax(finite(d.ay_g, i0, i1));
+      const az = finite(d.az_g, i0, i1), azm = mean(az);
+      let s = 0; for (const v of az) s += (v - azm) * (v - azm);
+      return [
+        { label: 'Tasa real', value: f(tm.hz, 0), unit: 'Hz', sub: tm.n + ' muestras' },
+        { label: 'Incl. máx derecha', value: f(ihi > 0 ? ihi : NaN, 1), unit: '°' },
+        { label: 'Incl. máx izquierda', value: f(ilo < 0 ? -ilo : NaN, 1), unit: '°' },
+        { label: 'Frenada máx', value: f(alo < 0 ? -alo : NaN, 2), unit: 'g' },
+        { label: 'Aceleración máx', value: f(ahi > 0 ? ahi : NaN, 2), unit: 'g' },
+        { label: 'Lateral máx', value: f(Math.max(-ylo, yhi), 2), unit: 'g' },
+        { label: 'Vibración vertical', value: f(az.length ? Math.sqrt(s / az.length) : NaN, 3), unit: 'g RMS' },
+      ];
+    },
+  };
+
+  // --------------------------------------------------------------- rueda ---
+
+  const rueda = {
+    id: 'rueda',
+    name: 'Velocidad de rueda · Hall',
+    detect: h => ['kmh', 'pulsos'].every(c => h.includes(c)),
+    options: [],
+    derive: ds => ({ kmh: ds.cols.kmh, rpm: ds.cols.rpm, dist: ds.cols.dist_m }),
+    charts: () => [
+      { type: 'time', key: 'kmh', title: 'Velocidad', unit: 'km/h', color: '--series-3', zero: true, height: 170 },
+    ],
+    histograms: () => ({}),
+    stats(ds, d, i0, i1) {
+      const v = finite(d.kmh, i0, i1), mov = v.filter(x => x > 2);
+      const dist = finite(d.dist, i0, i1);
+      return [
+        { label: 'Vel. máx', value: f(minmax(v)[1], 1), unit: 'km/h' },
+        { label: 'Vel. media en marcha', value: f(mean(mov), 1), unit: 'km/h' },
+        { label: 'Distancia', value: f(dist.length ? dist[dist.length - 1] - dist[0] : NaN, 0), unit: 'm', sub: 'en el tramo visible' },
+        { label: 'Parado', value: f(v.length ? 100 * (v.length - mov.length) / v.length : NaN, 0), unit: '%' },
+      ];
+    },
+  };
+
+  // ------------------------------------------------------- temperaturas ---
+
+  function tempStats(t, v, i0, i1, extra) {
+    const vals = finite(v, i0, i1), [lo, hi] = minmax(vals);
+    let last = NaN;
+    for (let i = i1 - 1; i >= i0; i--) if (v[i] === v[i]) { last = v[i]; break; }
+    const lost = (i1 - i0) - vals.length;
+    return [
+      { label: 'Última', value: f(last, 1), unit: '°C' },
+      { label: 'Máxima', value: f(hi, 1), unit: '°C' },
+      { label: 'Mínima', value: f(lo, 1), unit: '°C' },
+      { label: 'Media', value: f(mean(vals), 1), unit: '°C' },
+      { label: 'Sin lectura', value: f(i1 > i0 ? 100 * lost / (i1 - i0) : NaN, 0), unit: '%', sub: extra, warn: lost > 0.05 * (i1 - i0) },
+    ];
+  }
+
+  const termopar = {
+    id: 'termopar',
+    name: 'Sonda K · MAX6675',
+    detect: h => h.length === 2 && h.includes('temp_c'),
+    options: [],
+    derive: ds => ds.cols,
+    charts: () => [
+      { type: 'time', key: 'temp_c', title: 'Temperatura', unit: '°C', color: '--series-2', gaps: true, height: 160, gapMax: 1 },
+    ],
+    histograms: () => ({}),
+    stats: (ds, d, i0, i1) => tempStats(ds.t, d.temp_c, i0, i1, 'sonda abierta'),
+  };
+
+  const infrarrojos = {
+    id: 'infrarrojos',
+    name: 'Temperatura IR · MLX90614',
+    detect: h => h.includes('obj_c'),
+    options: [],
+    derive: ds => ds.cols,
+    charts: ds => [
+      { type: 'time', key: 'obj_c', title: 'Temperatura ' + ((ds.meta && ds.meta.apunta_a) || 'objetivo'), unit: '°C', color: '--series-2', gaps: true, height: 160, gapMax: 0.5 },
+      { type: 'time', key: 'amb_c', title: 'Temperatura del sensor', unit: '°C', color: '--series-7', height: 110, gapMax: 0.5 },
+    ],
+    histograms: () => ({}),
+    stats: (ds, d, i0, i1) => tempStats(ds.t, d.obj_c, i0, i1, 'error de lectura'),
+  };
+
+  // ---------------------------------------------------------------- boton ---
+
+  const boton = {
+    id: 'boton',
+    name: 'Pulsador de vuelta',
+    detect: h => h.includes('pulsaciones'),
+    options: [],
+    derive: ds => ds.cols,
+    charts: () => [],
+    histograms: () => ({}),
+    stats(ds, d, i0, i1) {
+      const laps = finite(d.t_vuelta_s, i0, i1), [best] = minmax(laps);
+      const v = finite(d.vuelta, i0, i1);
+      return [
+        { label: 'Vueltas', value: v.length ? String(v[v.length - 1]) : '0' },
+        { label: 'Mejor vuelta', value: f(best, 2), unit: 's' },
+        { label: 'Última vuelta', value: f(laps[laps.length - 1], 2), unit: 's' },
+        { label: 'Media', value: f(mean(laps), 2), unit: 's', sub: laps.length + ' completas' },
+      ];
+    },
+  };
+
   // ------------------------------------------------------------ generico ---
   // Cualquier CSV con una columna de tiempo: una grafica por columna numerica.
 
@@ -205,7 +338,7 @@
     },
   };
 
-  const SENSORS = [suspension, generic];
+  const SENSORS = [suspension, imu, rueda, termopar, infrarrojos, boton, generic];
 
   function byId(id) { return SENSORS.find(s => s.id === id); }
   function detect(header) { return SENSORS.find(s => s.detect(header)); }
