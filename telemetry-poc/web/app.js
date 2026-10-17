@@ -136,7 +136,8 @@
       const opts = el('div', 'bar', head);
       const tiles = el('div', 'tiles', sec);
       const tBox = el('div', 'charts', sec), hBox = el('div', 'charts hist', sec);
-      for (const c of s.def.charts(s.ds)) {
+      for (const c0 of s.def.charts(s.ds)) {
+        const c = Object.assign({}, c0, { height: Math.round((c0.height || 200) * 0.75) });   // compacto: mas sensores a la vista
         if (c.type === 'time') s.charts[c.key] = view.group.add(new Plot.TimeChart(tBox, c));
         else s.hists[c.key] = new Plot.Histogram(hBox, c);
       }
