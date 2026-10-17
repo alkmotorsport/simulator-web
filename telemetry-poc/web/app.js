@@ -1,20 +1,37 @@
 /*
- * Telemetria: carga de CSV (postprocesado) y tiempo real (SSE desde la Pi).
- * Ambos modos alimentan la misma vista: estadisticas + graficas del sensor.
+ * Telemetria: tiempo real (SSE desde la Pi, con control de los modulos) y
+ * sesiones grabadas (una carpeta con un CSV por sensor). Ambos modos
+ * alimentan la misma vista: un bloque por sensor (cifras + graficas), todas
+ * las graficas temporales con el mismo eje, cursor y zoom.
  */
 (function () {
   'use strict';
 
   const $ = s => document.querySelector(s);
-  const LIVE_MAX = 12000;   // muestras guardadas en vivo (~5 min a 40 Hz)
+  const LIVE_KEEP_S = 300;  // segundos de cada sensor que se guardan en vivo
+  // orden de los bloques en la vista (por tipo de sensor)
+  const ORDEN = ['suspension', 'rueda', 'imu', 'termopar', 'infrarrojos', 'boton', 'generic'];
 
-  const view = { ds: null, sensor: null, opt: {}, group: null, charts: {}, hists: {}, derived: null };
-  const live = { es: null, ds: null, session: null, meta: null, cols: [], lastT: -Infinity, paused: false, dirty: false, lastDraw: 0 };
+  function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+  function el(tag, cls, parent, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+
+  let hidden;
+  try { hidden = new Set(JSON.parse(store('tele-hidden') || '[]')); } catch (e) { hidden = new Set(); }
+  const view = { sets: [], group: null, live: false };
+  const live = {
+    es: null, estado: null, sets: {}, ctx: {}, vivos: {}, rows: {}, key: '',
+    paused: false, dirty: false, lastDraw: 0, lastSession: null, control: true,
+  };
 
   // --------------------------------------------------------------- tema ---
 
   const THEMES = ['auto', 'light', 'dark'];
-  function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
   function applyTheme(th) {
     if (th === 'auto') document.documentElement.removeAttribute('data-theme');
     else document.documentElement.setAttribute('data-theme', th);
@@ -30,7 +47,7 @@
 
   function redrawAll() {
     if (view.group) view.group.draw();
-    Object.values(view.hists).forEach(h => h.draw());
+    view.sets.forEach(s => Object.values(s.hists).forEach(h => h.draw()));
   }
 
   // ----------------------------------------------------------- pestanas ---
@@ -39,125 +56,189 @@
     document.querySelectorAll('[role=tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === name));
     $('#pane-file').hidden = name !== 'file';
     $('#pane-live').hidden = name !== 'live';
+    if (name === 'live' && live.es && !view.live) showLive();
   }
   document.querySelectorAll('[role=tab]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
   // --------------------------------------------------------------- vista ---
 
-  function buildView(ds, sensor, { zoomable = true } = {}) {
-    if (view.group) view.group.destroy();
-    Object.values(view.hists).forEach(h => h.destroy());
-    if (view.sensor !== sensor) {
-      view.opt = {};
-      sensor.options.forEach(o => { view.opt[o.id] = store('tele-opt-' + sensor.id + '-' + o.id) || o.value; });
+  function orden(a, b) {
+    const ka = ORDEN.indexOf(a.def.id), kb = ORDEN.indexOf(b.def.id);
+    return ka - kb || a.ds.id.localeCompare(b.ds.id);
+  }
+
+  function loadOpts(def, ds) {
+    const opt = {};
+    def.options.forEach(o => { opt[o.id] = store('tele-opt-' + def.id + '-' + o.id) || o.value; });
+    // si la sesion dice como esta montado el sensor, manda eso
+    if (ds.meta && ds.meta.montaje && 'mount' in opt)
+      opt.mount = ds.meta.montaje === 'aleja' ? 'farther' : 'closer';
+    return opt;
+  }
+
+  /** Vista con un bloque por dataset. Conserva opciones de los que ya estaban. */
+  function buildView(datasets, { isLive = false, zoomable = true } = {}) {
+    const prev = {};
+    view.sets.forEach(s => { prev[s.ds.id] = s; });
+    if (!isLive || !view.live) clearRange();
+    view.live = isLive;
+    view.sets = datasets.map(ds => {
+      const def = Sensors.byId(ds.sensor) || Sensors.detect(Object.keys(ds.cols));
+      const old = prev[ds.id];
+      return { ds, def, opt: old && old.def === def ? old.opt : loadOpts(def, ds), charts: {}, hists: {}, derived: null, el: null };
+    }).sort(orden);
+    renderChips();
+    renderBlocks(zoomable);
+    $('#view').hidden = !view.sets.length;
+    recomputeAll();
+  }
+
+  function clearRange() { if (view.group) view.group.range = null; }
+
+  function renderChips() {
+    const box = $('#chips');
+    box.innerHTML = '';
+    box.hidden = view.sets.length < 2;
+    for (const s of view.sets) {
+      const lab = el('label', 'chip', box);
+      const cb = el('input', '', lab);
+      cb.type = 'checkbox';
+      cb.checked = !hidden.has(s.ds.id);
+      lab.append(' ' + s.ds.name);
+      cb.addEventListener('change', () => {
+        if (cb.checked) hidden.delete(s.ds.id); else hidden.add(s.ds.id);
+        store('tele-hidden', JSON.stringify([...hidden]));
+        renderBlocks(view.group.zoomable);
+        recomputeAll();
+      });
     }
-    // si la sesion dice como esta montado el sensor (--montaje), manda eso
-    if (ds.meta && ds.meta.montaje && 'mount' in view.opt)
-      view.opt.mount = ds.meta.montaje === 'aleja' ? 'farther' : 'closer';
-    Object.assign(view, { ds, sensor, group: new Plot.ChartGroup(), charts: {}, hists: {} });
+  }
+
+  function renderBlocks(zoomable) {
+    const range = view.group ? view.group.range : null;
+    if (view.group) view.group.destroy();
+    view.sets.forEach(s => Object.values(s.hists).forEach(h => h.destroy()));
+    view.group = new Plot.ChartGroup();
     view.group.zoomable = zoomable;
+    view.group.range = range;
     view.group.onRange(updateRange);
 
-    renderOptions();
-    const tBox = $('#charts-time'), hBox = $('#charts-hist');
-    for (const c of sensor.charts(ds)) {
-      if (c.type === 'time') view.charts[c.key] = view.group.add(new Plot.TimeChart(tBox, c));
-      else view.hists[c.key] = new Plot.Histogram(hBox, c);
-    }
-    hBox.hidden = !Object.keys(view.hists).length;
-    $('#view').hidden = false;
-    recompute();
-  }
-
-  function renderOptions() {
-    const box = $('#options');
+    const box = $('#blocks');
     box.innerHTML = '';
-    for (const o of view.sensor.options) {
-      const lab = document.createElement('label');
-      lab.className = 'field';
-      lab.textContent = o.label + ' ';
-      const sel = document.createElement('select');
-      for (const [v, txt] of o.choices) sel.add(new Option(txt, v, false, v === view.opt[o.id]));
-      sel.addEventListener('change', () => {
-        view.opt[o.id] = sel.value;
-        store('tele-opt-' + view.sensor.id + '-' + o.id, sel.value);
-        recompute();
-      });
-      lab.appendChild(sel);
-      box.appendChild(lab);
+    for (const s of view.sets) {
+      s.charts = {}; s.hists = {}; s.el = null;
+      if (hidden.has(s.ds.id)) continue;
+      const sec = el('section', 'block', box);
+      const head = el('div', 'block-head', sec);
+      const tit = el('div', '', head);
+      el('h3', '', tit, s.ds.name);
+      if (s.def.name !== s.ds.name) el('p', 'muted', tit, s.def.name);
+      const opts = el('div', 'bar', head);
+      const tiles = el('div', 'tiles', sec);
+      const tBox = el('div', 'charts', sec), hBox = el('div', 'charts hist', sec);
+      for (const c of s.def.charts(s.ds)) {
+        if (c.type === 'time') s.charts[c.key] = view.group.add(new Plot.TimeChart(tBox, c));
+        else s.hists[c.key] = new Plot.Histogram(hBox, c);
+      }
+      tBox.hidden = !Object.keys(s.charts).length;
+      hBox.hidden = !Object.keys(s.hists).length;
+      s.el = { sec, tiles, opts };
+      renderOptions(s);
     }
   }
 
-  function recompute() {
-    const { ds, sensor } = view;
-    view.derived = sensor.derive(ds, view.opt);
-    for (const [k, c] of Object.entries(view.charts)) c.setData(ds.t, view.derived[k]);
+  function renderOptions(s) {
+    for (const o of s.def.options) {
+      const lab = el('label', 'field', s.el.opts, o.label + ' ');
+      const sel = el('select', '', lab);
+      for (const [v, txt] of o.choices) sel.add(new Option(txt, v, false, v === s.opt[o.id]));
+      sel.addEventListener('change', () => {
+        s.opt[o.id] = sel.value;
+        store('tele-opt-' + s.def.id + '-' + o.id, sel.value);
+        recompute(s);
+        updateRange();
+        view.group.draw();
+      });
+    }
+  }
+
+  function recompute(s) {
+    s.derived = s.def.derive(s.ds, s.opt);
+    for (const [k, c] of Object.entries(s.charts)) c.setData(s.ds.t, s.derived[k]);
+  }
+
+  function recomputeAll() {
+    view.sets.forEach(s => { if (s.el) recompute(s); });
     updateRange();
     view.group.draw();
   }
 
-  function rangeIdx() {
-    const t = view.ds.t, r = view.group.range;
+  function rangeIdx(t) {
+    const r = view.group.range;
     if (!r) return [0, t.length];
     return [Plot.lowerBound(t, r[0]), Plot.lowerBound(t, r[1] + 1e-9)];
   }
 
   function updateRange() {
-    const { ds, sensor, derived } = view;
-    const [i0, i1] = rangeIdx();
     const r = view.group.range;
-    $('#range-label').textContent = ds.live
+    $('#range-label').textContent = view.live
       ? 'Últimos ' + $('#win').value + ' s' + (live.paused ? ' (en pausa)' : '')
       : r ? 'Tramo ' + r[0].toFixed(2) + ' – ' + r[1].toFixed(2) + ' s' : 'Todo el registro';
-    $('#reset-zoom').hidden = !r || (ds.live && !live.paused);
+    $('#reset-zoom').hidden = !r || (view.live && !live.paused);
 
-    const tiles = sensor.stats(ds, derived, i0, i1, view.opt);
-    if (ds.live) {
-      const first = Object.keys(view.charts)[0], y = derived[first];
-      let now = NaN;
-      for (let i = y.length - 1; i >= 0 && i >= y.length - 20; i--) if (y[i] === y[i]) { now = y[i]; break; }
-      const c = view.charts[first].opts;
-      tiles.unshift({ label: 'Ahora · ' + c.title, value: now === now ? now.toFixed(1) : '—', unit: c.unit, sub: 't ' + (ds.t.length ? ds.t[ds.t.length - 1].toFixed(1) : 0) + ' s', now: true });
-    }
-    renderTiles(tiles);
-
-    const hd = sensor.histograms(derived, i0, i1, view.opt);
-    for (const [k, h] of Object.entries(view.hists)) {
-      const d = hd[k] || { edges: [], values: [] };
-      h.setData(d.edges, d.values);
-      h.draw();
+    for (const s of view.sets) {
+      if (!s.el) continue;
+      const [i0, i1] = rangeIdx(s.ds.t);
+      const tiles = s.def.stats(s.ds, s.derived, i0, i1, s.opt);
+      const first = Object.keys(s.charts)[0];
+      if (view.live && first) {
+        const y = s.derived[first];
+        let now = NaN;
+        for (let i = y.length - 1; i >= 0 && i >= y.length - 20; i--) if (y[i] === y[i]) { now = y[i]; break; }
+        const c = s.charts[first].opts;
+        tiles.unshift({ label: 'Ahora · ' + c.title, value: now === now ? now.toFixed(c.decimals) : '—', unit: c.unit, now: true });
+      }
+      renderTiles(s.el.tiles, tiles);
+      const hd = s.def.histograms(s.derived, i0, i1, s.opt);
+      for (const [k, h] of Object.entries(s.hists)) {
+        const d = hd[k] || { edges: [], values: [] };
+        h.setData(d.edges, d.values);
+        h.draw();
+      }
     }
   }
 
-  function renderTiles(tiles) {
-    const box = $('#tiles');
+  function renderTiles(box, tiles) {
     box.innerHTML = '';
     for (const t of tiles) {
-      const d = document.createElement('div');
-      d.className = 'tile' + (t.warn ? ' warn' : '') + (t.now ? ' now' : '');
-      const l = document.createElement('span'); l.textContent = t.label;
-      const b = document.createElement('b'); b.textContent = t.value;
-      if (t.unit) { const u = document.createElement('small'); u.textContent = ' ' + t.unit; b.appendChild(u); }
-      d.append(l, b);
-      if (t.sub) { const s = document.createElement('em'); s.textContent = t.sub; d.appendChild(s); }
-      box.appendChild(d);
+      const d = el('div', 'tile' + (t.warn ? ' warn' : '') + (t.now ? ' now' : ''), box);
+      el('span', '', d, t.label);
+      const b = el('b', '', d, t.value);
+      if (t.unit) el('small', '', b, ' ' + t.unit);
+      if (t.sub) el('em', '', d, t.sub);
     }
   }
 
   $('#reset-zoom').addEventListener('click', () => view.group && view.group.setRange(null));
 
-  function showHeader(title, sub, meta) {
+  function showHeader(title, sub, metas) {
     $('#view-title').textContent = title;
     $('#view-sub').textContent = sub;
-    const dl = $('#meta-list');
-    dl.innerHTML = '';
-    const entries = Object.entries(meta || {}).filter(([k]) => k !== 'cols');
-    for (const [k, v] of entries) {
-      const dt = document.createElement('dt'); dt.textContent = k.replace(/_/g, ' ');
-      const dd = document.createElement('dd'); dd.textContent = v;
-      dl.append(dt, dd);
+    const box = $('#meta-list');
+    box.innerHTML = '';
+    let n = 0;
+    for (const [name, meta] of metas) {
+      const entries = Object.entries(meta || {}).filter(([k]) => k !== 'cols');
+      if (!entries.length) continue;
+      n++;
+      el('h4', '', box, name);
+      const dl = el('dl', '', box);
+      for (const [k, v] of entries) {
+        el('dt', '', dl, k.replace(/_/g, ' '));
+        el('dd', '', dl, Array.isArray(v) ? v.join(' · ') : v === null ? '—' : String(v));
+      }
     }
-    $('#meta').hidden = !entries.length;
+    $('#meta').hidden = !n;
   }
 
   // ----------------------------------------------------------------- CSV ---
@@ -200,15 +281,40 @@
     return meta;
   }
 
-  function openCSV(name, text, metaText) {
-    let parsed;
-    try { parsed = parseCSV(text); } catch (e) { return fileMsg('No se pudo leer ' + name + ': ' + e.message, true); }
-    disconnect();
-    const sensor = Sensors.detect(parsed.header);
-    const ds = { name, sensor: sensor.id, t: parsed.t, cols: parsed.cols, meta: parseMeta(metaText) };
-    showHeader(name, sensor.name + ' · ' + ds.t.length + ' muestras', ds.meta);
-    buildView(ds, sensor);
-    fileMsg('');
+  /**
+   * files: [{name, text}] con los CSV, y opcionalmente sesion.json y .meta.txt.
+   * Devuelve {sets, avisos}. El tipo de cada CSV sale de sesion.json o, si no
+   * esta, de sus columnas.
+   */
+  function datasetsFromFiles(files) {
+    const sjFile = files.find(f => /\.json$/i.test(f.name));
+    let sj = null;
+    if (sjFile) { try { sj = JSON.parse(sjFile.text); } catch (e) { sj = null; } }
+    const ctx = (sj && sj.modulos) || {};
+    const csvs = files.filter(f => /\.csv$/i.test(f.name));
+    const metaTxt = files.find(f => /\.meta\.txt$/i.test(f.name));
+    const sets = [], avisos = [];
+    for (const f of csvs) {
+      let p;
+      try { p = parseCSV(f.text); } catch (e) { avisos.push(f.name + ': ' + e.message); continue; }
+      const id = f.name.replace(/\.csv$/i, '');
+      const info = ctx[id];
+      const def = (info && Sensors.byId(info.tipo)) || Sensors.detect(p.header);
+      const meta = info ? info.meta : metaTxt && csvs.length === 1 ? parseMeta(metaTxt.text) : {};
+      sets.push({ id, name: info ? info.nombre : f.name, sensor: def.id, t: p.t, cols: p.cols, meta, ctx });
+    }
+    return { sets, avisos, sj };
+  }
+
+  function openFiles(title, files) {
+    const { sets, avisos, sj } = datasetsFromFiles(files);
+    if (!sets.length) return fileMsg('No hay ningún CSV con datos' + (avisos.length ? ' (' + avisos.join('; ') + ')' : ''), true);
+    if (live.paused) togglePause();
+    const sub = sets.length + (sets.length === 1 ? ' sensor' : ' sensores') +
+      (sj && sj.inicio ? ' · ' + sj.inicio.replace('T', ' ') : '') + (sj && sj.simulada ? ' · simulada' : '');
+    buildView(sets);
+    showHeader(title, sub, sets.map(s => [s.name, s.meta]));
+    fileMsg(avisos.length ? 'Sin datos: ' + avisos.join('; ') : '');
   }
 
   function fileMsg(txt, err) {
@@ -216,36 +322,75 @@
     m.textContent = txt; m.hidden = !txt; m.classList.toggle('err', !!err);
   }
 
-  async function openFiles(list) {
-    const files = [...list];
-    const csv = files.find(f => /\.csv$/i.test(f.name)) || files.find(f => !/\.meta\.txt$/i.test(f.name));
-    if (!csv) return fileMsg('Selecciona un fichero .csv', true);
-    const meta = files.find(f => f !== csv && /\.meta\.txt$/i.test(f.name));
-    openCSV(csv.name, await csv.text(), meta ? await meta.text() : null);
+  async function openLocalFiles(list) {
+    const files = await Promise.all([...list].map(async f => ({ name: f.name, text: await f.text() })));
+    const csvs = files.filter(f => /\.csv$/i.test(f.name));
+    if (!csvs.length) return fileMsg('Selecciona al menos un fichero .csv', true);
+    openFiles(csvs.length === 1 ? csvs[0].name : csvs.length + ' ficheros', files);
   }
 
   const drop = $('#drop');
-  $('#file').addEventListener('change', e => { if (e.target.files.length) openFiles(e.target.files); e.target.value = ''; });
+  $('#file').addEventListener('change', e => { if (e.target.files.length) openLocalFiles(e.target.files); e.target.value = ''; });
   drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
   drop.addEventListener('dragleave', () => drop.classList.remove('over'));
-  drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); openFiles(e.dataTransfer.files); });
+  drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); openLocalFiles(e.dataTransfer.files); });
 
-  // Datos de ejemplo: misma forma que el backend 'sim' del script + baches.
+  // Sesion de ejemplo: la misma vuelta que el modo --sim de la Pi (modulos/sim.py).
   $('#demo').addEventListener('click', () => {
-    const rows = ['t_s,echo_us,dist_mm,rel_mm'];
-    const v = 343.4, ref = 250;
+    const VEL = [[0, 60], [10, 160], [13, 60], [20, 60], [28, 140], [30, 70], [38, 70], [48, 150], [51, 60], [60, 60]];
+    const INC = [[0, 0], [12.5, 0], [14, 40], [19, 40], [20.5, 0], [29.5, 0], [31, -35], [37, -35], [38.5, 0], [50.5, 0], [52, 30], [58.5, 30], [60, 0]];
+    const ip = (pts, x) => {
+      for (let k = 0; k < pts.length - 1; k++) {
+        const [x0, y0] = pts[k], [x1, y1] = pts[k + 1];
+        if (x >= x0 && x <= x1) return y0 + (y1 - y0) * (1 - Math.cos(Math.PI * (x - x0) / (x1 - x0))) / 2;
+      }
+      return pts[pts.length - 1][1];
+    };
     let seed = 7;
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let t = 0; t < 60; t += 0.025 + (rnd() - 0.5) * 0.002) {
-      let d = ref + 40 * Math.sin(2 * Math.PI * 0.4 * t) + 8 * Math.sin(2 * Math.PI * 7 * t) + (rnd() - 0.5) * 2;
-      const bump = t % 9;      // un bache cada 9 s: compresion rapida y extension
-      if (bump < 0.6) d -= 70 * Math.sin(Math.PI * bump / 0.6) * Math.exp(-bump * 3);
-      if (rnd() < 0.01) { rows.push(t.toFixed(4) + ',,,'); continue; }
-      const us = d * 2000 / v;
-      rows.push([t.toFixed(4), us.toFixed(0), d.toFixed(1), (d - ref).toFixed(1)].join(','));
-    }
-    openCSV('ejemplo_suspension.csv', rows.join('\n'),
-      'backend: ejemplo\nperiodo_ms: 25\ntemp_c: 20\nreferencia_mm: 250.00');
+    const noise = s => (rnd() - 0.5) * 2 * s;
+    const pista = t => {
+      const x = t % 60, kmh = ip(VEL, x);
+      return { kmh, acel: (ip(VEL, (x + 0.05) % 60) - ip(VEL, (x + 59.95) % 60)) / 0.1 / 3.6 / 9.81, incl: ip(INC, x) };
+    };
+    const DUR = 120, mk = (id, sensor, name, cols, hz, fn, meta) => {
+      const t = [], c = {};
+      cols.forEach(k => { c[k] = []; });
+      for (let s = 0; s < DUR; s += 1 / hz) {
+        const v = fn(s, pista(s));
+        t.push(s); cols.forEach((k, j) => c[k].push(v[j]));
+      }
+      return { id, name, sensor, t, cols: c, meta: meta || {} };
+    };
+    let fase = 0, tPrev = 0, disco = 40;
+    const sets = [
+      mk('suspension', 'suspension', 'Suspensión trasera (ultrasonidos)', ['echo_us', 'dist_mm', 'rel_mm'], 40, (s, p) => {
+        const f9 = s % 9, bache = f9 < 1 ? 45 * Math.exp(-5 * f9) * Math.min(1, f9 / 0.05) : 0;
+        const comp = 25 * p.acel + 8 * Math.min(1, Math.abs(Math.tan(p.incl * Math.PI / 180))) + bache + noise(1);
+        if (rnd() < 0.01) return [NaN, NaN, NaN];
+        const d = 250 - comp;
+        return [d * 2000 / 343.4, d, -comp];
+      }, { referencia_mm: 250, montaje: 'acerca' }),
+      mk('rueda_tras', 'rueda', 'Rueda trasera (Hall)', ['pulsos', 'periodo_ms', 'rpm', 'kmh', 'dist_m'], 20, (s, p) => {
+        const kmh = p.kmh * (1 + 0.08 * Math.max(0, p.acel));
+        fase += kmh / 3.6 * (s - tPrev) / 1.95; tPrev = s;
+        return [Math.floor(fase), 1950 / (kmh / 3.6), kmh / 3.6 / 1.95 * 60, kmh, Math.floor(fase) * 1.95];
+      }),
+      mk('imu', 'imu', 'IMU MPU6050', ['ax_g', 'ay_g', 'az_g', 'gx_dps', 'gy_dps', 'gz_dps', 'incl_deg', 'cabeceo_deg'], 50, (s, p) => {
+        const fi = p.incl * Math.PI / 180, w = -9.81 * Math.tan(fi) / Math.max(p.kmh / 3.6, 1);
+        return [p.acel + noise(0.03), noise(0.03), 1 / Math.cos(fi) + noise(0.05), noise(0.8),
+          w * Math.sin(fi) * 57.3 + noise(0.5), w * Math.cos(fi) * 57.3 + noise(0.5), p.incl + noise(0.5), 2.5 * p.acel + noise(0.2)];
+      }),
+      mk('ir', 'infrarrojos', 'Temperatura IR (MLX90614)', ['obj_c', 'amb_c'], 10, (s, p) => {
+        disco += (25 * Math.max(0, -p.acel) * p.kmh / 100 - (disco - 30) * 0.03) * 0.1;
+        return [disco + noise(0.3), 28 + noise(0.05)];
+      }, { apunta_a: 'disco de freno' }),
+      mk('temp_bujia', 'termopar', 'Temperatura bujía (sonda K)', ['temp_c'], 4, (s, p) => [Math.round((150 + 40 * p.kmh / 160 - 60 * Math.exp(-s / 40) + noise(0.4)) * 4) / 4]),
+    ];
+    showTab('file');
+    buildView(sets);
+    showHeader('Sesión de ejemplo', sets.length + ' sensores · 2 vueltas simuladas', sets.map(s => [s.name, s.meta]));
+    fileMsg('');
   });
 
   // --------------------------------------------------------- servidor Pi ---
@@ -280,31 +425,28 @@
     }
   }
 
+  let piSessions = [];
   async function listPiFiles() {
     const base = serverBase(), box = $('#pi-files');
     if (!base) { box.hidden = true; setConn(''); return; }
     const mixed = mixedContent(base);
     if (mixed) { box.hidden = true; setConn(mixed, 'err'); return; }
     try {
-      const r = await fetch(base + '/api/files');
+      const r = await fetch(base + '/api/sesiones');
       if (!r.ok) throw new Error(r.status);
-      const files = await r.json();
+      piSessions = await r.json();
       const ul = $('#pi-list');
       ul.innerHTML = '';
-      for (const f of files) {
-        const li = document.createElement('li');
-        const b = document.createElement('button');
-        b.className = 'link';
-        b.textContent = f.name;
-        b.addEventListener('click', () => loadPiFile(base, f));
-        const s = document.createElement('span');
-        s.textContent = new Date(f.mtime * 1000).toLocaleString() + ' · ' + (f.size / 1024).toFixed(0) + ' kB';
-        li.append(b, s);
-        ul.appendChild(li);
+      for (const f of piSessions) {
+        const li = el('li', '', ul);
+        const b = el('button', 'link', li, f.name);
+        b.addEventListener('click', () => loadPiEntry(base, f));
+        el('span', '', li, (f.kind === 'sesion' ? f.files.length + (f.files.length === 1 ? ' sensor · ' : ' sensores · ') : 'CSV antiguo · ') +
+          new Date(f.mtime * 1000).toLocaleString() + ' · ' + (f.size / 1024).toFixed(0) + ' kB');
       }
-      if (!files.length) ul.innerHTML = '<li class="muted">No hay CSV en la carpeta de datos.</li>';
+      if (!piSessions.length) el('li', 'muted', ul, 'No hay sesiones en la carpeta de datos.');
       box.hidden = false;
-      setConn('Raspberry accesible · ' + files.length + ' sesiones guardadas', 'ok');
+      setConn('Raspberry accesible · ' + piSessions.length + ' sesiones guardadas', 'ok');
     } catch (e) {
       box.hidden = true;
       setConn('No conecto con ' + base + '.', 'err', base.startsWith('https:') ? base : null);
@@ -318,16 +460,45 @@
     return r.text();
   }
 
-  async function loadPiFile(base, f) {
-    const enc = encodeURIComponent(f.name);
-    let text;
-    try { text = await fetchText(base + '/files/' + enc); } catch (e) {
-      showTab('file');
-      return fileMsg('No se pudo descargar ' + f.name, true);
-    }
-    const meta = f.meta ? await fetchText(base + '/files/' + enc + '.meta.txt').catch(() => null) : null;
-    openCSV(f.name, text, meta);
+  async function loadPiEntry(base, f) {
+    const url = n => base + '/files/' + n.split('/').map(encodeURIComponent).join('/');
     showTab('file');
+    fileMsg('Descargando ' + f.name + '…');
+    try {
+      let files;
+      if (f.kind === 'sesion') {
+        const names = f.files.map(n => f.name + '/' + n);
+        if (f.json) names.push(f.name + '/sesion.json');
+        files = await Promise.all(names.map(async n => ({ name: n.split('/')[1], text: await fetchText(url(n)) })));
+      } else {
+        files = [{ name: f.name, text: await fetchText(url(f.name)) }];
+        if (f.meta) files.push({ name: f.name + '.meta.txt', text: await fetchText(url(f.name + '.meta.txt')).catch(() => '') });
+      }
+      openFiles(f.name, files);
+    } catch (e) {
+      fileMsg('No se pudo descargar ' + f.name, true);
+    }
+  }
+
+  async function api(path, body) {
+    const r = await fetch(serverBase() + path, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      if (r.status === 404) live.control = false;
+      throw new Error(j.error || 'HTTP ' + r.status);
+    }
+    return j;
+  }
+
+  async function control(path, body, what) {
+    try {
+      const j = await api(path, body);
+      if (j.mensaje) setStatus(what + ': ' + j.mensaje, 'ok');
+    } catch (e) {
+      setStatus(what + ': ' + e.message, 'err');
+    }
   }
 
   // --------------------------------------------------------- tiempo real ---
@@ -344,123 +515,305 @@
     if (mixed) return setStatus(mixed, 'err');
     store('tele-server', $('#server').value.trim());
     disconnect();
-    live.session = null;
-    live.meta = null;
+    live.sets = {}; live.vivos = {}; live.key = ''; live.control = true;
     live.es = new EventSource(base + '/stream');
     setStatus('Conectando…');
     $('#connect').textContent = 'Desconectar';
-    live.es.onopen = () => setStatus(live.session ? 'En vivo' : 'Conectado · esperando sesión', 'ok');
+    live.es.onopen = () => setStatus('En vivo', 'ok');
     live.es.onerror = () => {
-      setStatus(live.meta && live.meta.ended ? 'Sesión terminada · servidor detenido' : 'Sin conexión · reintentando…', 'err');
-      if (!live.session) listPiFiles();   // muestra arriba el motivo / enlace al certificado
+      setStatus('Sin conexión · reintentando…', 'err');
+      if (!live.estado) listPiFiles();   // muestra arriba el motivo / enlace al certificado
     };
-    live.es.addEventListener('meta', e => {
-      const m = JSON.parse(e.data);
-      if (!m.session) return setStatus('Conectado · calibrando / esperando sesión', 'ok');
-      if (m.session !== live.session) startLiveSession(m);
-      live.meta = m;
-      $('#open-full').disabled = false;
-      if (m.ended) {
-        setStatus('Sesión terminada · CSV guardado en la Pi', 'ok');
-        $('#open-full').classList.remove('ghost');
-      } else setStatus('En vivo', 'ok');
-      listPiFiles();
-    });
-    live.es.addEventListener('estado', e => renderSemaforo(JSON.parse(e.data)));
-    live.es.onmessage = e => appendRows(JSON.parse(e.data).rows);
-  }
-
-  /** Replica en la web lo que muestran los LEDs de la Pi (alertas.py). */
-  function renderSemaforo(e) {
-    $('#semaforo').hidden = false;
-    const set = (id, color, txt, blink) => {
-      const l = $(id);
-      l.className = 'lamp ' + color + (blink ? ' blink' : '');
-      l.querySelector('em').textContent = txt;
-    };
-    if (e.modo === 'calibrando') {
-      set('#lamp-comp', 'azul', 'Calibrando · moto quieta');
-      set('#lamp-osc', 'azul', 'Calibrando · moto quieta');
-      return;
-    }
-    if (!e.sensor_ok) {
-      set('#lamp-comp', 'azul', 'Sensor sin eco', true);
-      set('#lamp-osc', 'azul', 'Sensor sin eco', true);
-      return;
-    }
-    const nc = ['Normal', 'Alta', 'Muy alta · cerca del tope'][e.nivel_comp];
-    set('#lamp-comp', e.color_comp, nc + (e.comp != null ? ' · ' + e.comp.toFixed(0) + ' mm' : ''), e.nivel_comp === 2);
-    set('#lamp-osc', e.color_osc, e.nivel_osc
-      ? (e.nivel_osc === 2 ? 'Fuerte' : 'Moderada') + ' · ±' + e.osc_amp.toFixed(1) + ' mm a ' + e.osc_hz.toFixed(0) + ' Hz'
-      : 'Estable', e.nivel_osc === 2);
+    live.es.addEventListener('estado', e => onEstado(JSON.parse(e.data)));
+    live.es.addEventListener('vivo', e => { Object.assign(live.vivos, JSON.parse(e.data)); renderOutputs(); });
+    live.es.onmessage = e => appendRows(JSON.parse(e.data).d);
+    showTab('live');
   }
 
   function disconnect() {
     if (live.es) { live.es.close(); live.es = null; }
+    live.estado = null;
     $('#connect').textContent = 'Conectar';
     $('#pause').disabled = true;
-    $('#semaforo').hidden = true;
-    $('#open-full').classList.add('ghost');
-    $('#open-full').disabled = !live.meta;
+    $('#rec').disabled = true;
+    $('#panel').hidden = true;
+    $('#outputs').hidden = true;
+    $('#open-full').disabled = !live.lastSession;
     setStatus('Desconectado');
     if (live.paused) togglePause();
   }
 
-  function startLiveSession(m) {
-    const sensor = Sensors.byId(m.sensor) || Sensors.detect(m.cols);
-    live.session = m.session;
-    live.cols = m.cols.slice(1);
-    live.lastT = -Infinity;
-    const cols = {};
-    live.cols.forEach(c => { cols[c] = []; });
-    live.ds = { name: m.session, sensor: sensor.id, t: [], cols, meta: m, live: true };
-    showHeader('En vivo · ' + m.session, sensor.name, m);
-    buildView(live.ds, sensor, { zoomable: false });
-    $('#pause').disabled = false;
+  function modInfo(id) {
+    return live.estado && live.estado.modulos.find(m => m.id === id);
   }
 
-  function appendRows(rows) {
-    const ds = live.ds;
-    if (!ds) return;
-    for (const r of rows) {
-      if (!(r[0] > live.lastT)) continue;   // descarta lo repetido al reconectar
-      live.lastT = r[0];
-      ds.t.push(r[0]);
-      live.cols.forEach((c, j) => { const v = r[j + 1]; ds.cols[c].push(v == null ? NaN : v); });
+  /** Dataset en vivo de un modulo (se crea al ver sus columnas). */
+  function ensureSet(id) {
+    if (live.sets[id]) return live.sets[id];
+    const m = modInfo(id);
+    if (!m || !m.cols.length) return null;
+    const cols = {};
+    m.cols.slice(1).forEach(c => { cols[c] = []; });
+    live.sets[id] = { id, name: m.nombre, sensor: m.tipo, t: [], cols, meta: m.meta, ctx: live.ctx, live: true, lastT: -Infinity };
+    return live.sets[id];
+  }
+
+  function onEstado(e) {
+    live.estado = e;
+    live.ctx = {};
+    for (const m of e.modulos) live.ctx[m.id] = { tipo: m.tipo, nombre: m.nombre, meta: m.meta };
+    for (const m of e.modulos) {
+      const s = live.sets[m.id];
+      if (s) { s.meta = m.meta; s.ctx = live.ctx; s.name = m.nombre; }
     }
-    if (ds.t.length > LIVE_MAX) {
-      const k = ds.t.length - LIVE_MAX * 0.8;
-      ds.t.splice(0, k);
-      live.cols.forEach(c => ds.cols[c].splice(0, k));
+    if (e.sesion) live.lastSession = e.sesion.nombre;
+    $('#open-full').disabled = !live.lastSession;
+    $('#pause').disabled = false;
+    setStatus((e.sim ? 'En vivo · SIMULADO' : 'En vivo') +
+      (e.sesion ? ' · grabando ' + e.sesion.nombre + ' (' + Math.round(e.sesion.duracion_s) + ' s)' : ' · sin grabar'), 'ok');
+    renderRec(e);
+    renderPanel(e);
+    renderOutputs();
+    if (view.live || !view.sets.length) showLive();
+  }
+
+  /** Pone en la vista los sensores que estan en marcha (si han cambiado). */
+  function showLive() {
+    if (!live.estado) return;
+    const ids = live.estado.modulos.filter(m => m.corriendo && m.cols.length).map(m => m.id);
+    const sets = ids.map(ensureSet).filter(Boolean);
+    const key = ids.join(',');
+    if (key === live.key && view.live) {
+      // solo cambian metas (p. ej. umbrales): se repinta con el siguiente frame
+      live.dirty = true;
+      return;
+    }
+    live.key = key;
+    buildView(sets, { isLive: true, zoomable: live.paused });
+    showHeader('En vivo', sets.length ? sets.length + (sets.length === 1 ? ' sensor activo' : ' sensores activos')
+      : 'Ningún sensor en marcha: actívalos en la lista de arriba', sets.map(s => [s.name, s.meta]));
+    $('#view').hidden = false;
+    live.dirty = true;
+  }
+
+  function appendRows(d) {
+    for (const [id, rows] of Object.entries(d)) {
+      const s = ensureSet(id);
+      if (!s) continue;
+      const names = Object.keys(s.cols);
+      for (const r of rows) {
+        if (!(r[0] > s.lastT)) continue;   // descarta lo repetido al reconectar
+        s.lastT = r[0];
+        s.t.push(r[0]);
+        names.forEach((c, j) => { const v = r[j + 1]; s.cols[c].push(v == null ? NaN : v); });
+      }
+      const k = Plot.lowerBound(s.t, s.lastT - LIVE_KEEP_S);
+      if (k > 500) { s.t.splice(0, k); names.forEach(c => s.cols[c].splice(0, k)); }
     }
     live.dirty = true;
   }
 
   function liveFrame(now) {
     requestAnimationFrame(liveFrame);
-    if (!live.dirty || live.paused || view.ds !== live.ds || now - live.lastDraw < 66) return;
+    if (!live.dirty || live.paused || !view.live || now - live.lastDraw < 66) return;
     live.dirty = false; live.lastDraw = now;
-    const t = live.ds.t;
-    if (!t.length) return;
-    const end = t[t.length - 1], win = +$('#win').value;
-    view.group.range = [Math.max(t[0], end - win), Math.max(end, t[0] + win * 0.1)];
-    recompute();
+    let end = -Infinity, start = Infinity;
+    for (const s of view.sets) if (s.ds.t.length) { end = Math.max(end, s.ds.lastT); start = Math.min(start, s.ds.t[0]); }
+    if (!(end > -Infinity)) return;
+    const win = +$('#win').value;
+    view.group.range = [Math.max(start, end - win), Math.max(end, start + win * 0.1)];
+    recomputeAll();
   }
   requestAnimationFrame(liveFrame);
 
   function togglePause() {
     live.paused = !live.paused;
     $('#pause').textContent = live.paused ? 'Seguir' : 'Pausar';
-    if (view.group && view.ds === live.ds) {
+    if (view.group && view.live) {
       view.group.zoomable = live.paused;   // en pausa se puede ampliar
       if (!live.paused) live.dirty = true;
       updateRange();
     }
   }
 
-  $('#open-full').addEventListener('click', () => {
-    const m = live.meta;
-    if (m) loadPiFile(serverBase(), { name: m.csv || m.session + '.csv', meta: true });
+  // ------------------------------------------------ panel de modulos ---
+
+  const DETECCION = {
+    si: 'Detectado', no: 'No detectado', manual: 'Sin autodetección: actívalo a mano',
+    error: 'Error al detectar', pendiente: '',
+  };
+
+  function modStatus(m) {
+    if (m.estado === 'error') return ['err', 'Error: ' + m.error];
+    if (m.corriendo) {
+      const aviso = m.aviso ? ' · ⚠ ' + m.aviso : '';
+      if (m.estado === 'calibrando') return ['cal', 'Calibrando · moto quieta' + aviso];
+      if (m.clase === 'salida') return [m.aviso ? 'warn' : 'ok', 'En marcha' + aviso];
+      if (m.tipo === 'boton') return ['ok', 'Esperando pulsaciones' + aviso];
+      const perd = m.perdidas_pct >= 1 ? ' · ' + m.perdidas_pct.toFixed(0) + '% sin dato' : '';
+      return [m.aviso || m.perdidas_pct > 10 ? 'warn' : 'ok', m.hz.toFixed(m.hz < 10 ? 1 : 0) + ' Hz' + perd + aviso];
+    }
+    const [d, det] = m.deteccion;
+    const txt = (DETECCION[d] || d) + (det && d !== 'manual' ? ' · ' + det : '');
+    return [d === 'si' ? 'idle' : d === 'manual' ? 'manual' : 'off', 'Parado · ' + txt];
+  }
+
+  function renderPanel(e) {
+    $('#panel').hidden = false;
+    const ul = $('#mods');
+    const order = ['sensor', 'salida'];
+    const ids = e.modulos.map(m => m.clase + ':' + m.id).join(',');
+    if (ul.dataset.ids !== ids) {         // la lista cambia poco: se rehace solo entonces
+      ul.dataset.ids = ids;
+      ul.innerHTML = '';
+      live.rows = {};
+      for (const clase of order) {
+        const mods = e.modulos.filter(m => m.clase === clase);
+        if (!mods.length) continue;
+        el('li', 'mods-group', ul, clase === 'sensor' ? 'Sensores' : 'Salidas del cuadro');
+        for (const m of mods) live.rows[m.id] = modRow(ul, m);
+      }
+    }
+    for (const m of e.modulos) updateRow(live.rows[m.id], m);
+  }
+
+  function modRow(ul, m) {
+    const li = el('li', 'mod', ul);
+    const lab = el('label', 'mod-main', li);
+    const cb = el('input', '', lab);
+    cb.type = 'checkbox';
+    const dot = el('i', 'dot', lab);
+    const txt = el('span', 'mod-txt', lab);
+    const name = el('b', '', txt);
+    const pins = el('small', '', txt);
+    const status = el('em', '', txt);
+    const side = el('div', 'mod-side', li);
+    const mode = el('button', 'ghost small mode', side);
+    const acts = el('span', 'mod-acts', side);
+    const row = { li, cb, dot, name, pins, status, mode, acts, actsKey: null, m };
+    cb.addEventListener('change', () => {
+      cb.disabled = true;
+      control('/api/modulo/' + encodeURIComponent(row.m.id), { activo: cb.checked }, row.m.nombre);
+    });
+    mode.addEventListener('click', () => {
+      if (row.m.activo !== 'auto') control('/api/modulo/' + encodeURIComponent(row.m.id), { activo: 'auto' }, row.m.nombre);
+    });
+    return row;
+  }
+
+  function updateRow(row, m) {
+    row.m = m;
+    const [cls, txt] = modStatus(m);
+    row.li.className = 'mod ' + cls;
+    row.cb.checked = m.corriendo;
+    row.cb.disabled = !live.control;
+    row.dot.className = 'dot ' + cls;
+    row.name.textContent = m.nombre;
+    row.pins.textContent = m.pines;
+    row.status.textContent = txt;
+    row.mode.textContent = m.activo === 'auto' ? 'auto' : m.activo ? 'forzado: on' : 'forzado: off';
+    row.mode.title = m.activo === 'auto' ? 'Arranca solo si se detecta conectado' : 'Pulsa para volver a automático';
+    row.mode.disabled = m.activo === 'auto' || !live.control;
+    const key = m.corriendo + '|' + m.acciones.map(a => a.id).join(',');
+    if (key !== row.actsKey) {
+      row.actsKey = key;
+      row.acts.innerHTML = '';
+      if (m.corriendo) for (const a of m.acciones) {
+        const b = el('button', 'ghost small', row.acts, a.texto);
+        b.addEventListener('click', () => control('/api/modulo/' + encodeURIComponent(m.id) + '/accion', { accion: a.id }, m.nombre));
+      }
+    }
+  }
+
+  function renderRec(e) {
+    const b = $('#rec');
+    b.disabled = !live.control;
+    b.textContent = e.sesion ? '■ Parar grabación' : '● Grabar';
+    b.classList.toggle('ghost', !e.sesion);
+    b.classList.toggle('danger', !!e.sesion);
+  }
+
+  $('#rec').addEventListener('click', () => {
+    const grabando = !!(live.estado && live.estado.sesion);
+    control('/api/grabar', { grabar: !grabando }, grabando ? 'Parar' : 'Grabar').then(listPiFiles);
+  });
+  $('#detect').addEventListener('click', () => control('/api/detectar', {}, 'Autodetectar'));
+  $('#all-auto').addEventListener('click', () => control('/api/auto', {}, 'Todo automático'));
+
+  // ------------------------------------------- salidas (LEDs) en vivo ---
+
+  function lamp(box, title, small) {
+    const l = el('div', 'lamp', box);
+    el('i', '', l);
+    const s = el('span', '', l);
+    el('b', '', s, title);
+    el('small', '', s, small);
+    el('em', '', s);
+    return l;
+  }
+  function setLamp(l, color, txt, blink) {
+    l.className = 'lamp ' + color + (blink ? ' blink' : '');
+    l.querySelector('em').textContent = txt;
+  }
+
+  /** Replica en la web lo que muestran los LEDs del cuadro. */
+  function renderOutputs() {
+    const box = $('#outputs');
+    if (!live.estado) { box.hidden = true; return; }
+    const mods = live.estado.modulos.filter(m => m.corriendo && live.vivos[m.id]);
+    box.hidden = !mods.length;
+    const key = mods.map(m => m.id).join(',');
+    if (box.dataset.key !== key) {
+      box.dataset.key = key;
+      box.innerHTML = '';
+      for (const m of mods) {
+        const card = el('div', 'out', box);
+        card.dataset.id = m.id;
+        el('h4', '', card, m.nombre);
+        if (m.tipo === 'alertas_rgb') { const s = el('div', 'semaforo', card); lamp(s, 'Compresión', 'RGB1'); lamp(s, 'Oscilación', 'RGB2'); }
+        else if (m.tipo === 'tira') { el('div', 'strip', card); el('p', 'muted', card); }
+        else el('p', 'big', card);
+      }
+    }
+    for (const m of mods) {
+      const card = box.querySelector('[data-id="' + m.id + '"]'), v = live.vivos[m.id];
+      if (m.tipo === 'alertas_rgb') renderSemaforo(card.querySelectorAll('.lamp'), v);
+      else if (m.tipo === 'tira') {
+        const strip = card.querySelector('.strip');
+        if (strip.children.length !== v.leds.length) { strip.innerHTML = ''; v.leds.forEach(() => el('i', '', strip)); }
+        v.leds.forEach((c, i) => { strip.children[i].className = c; });
+        card.querySelector('p').textContent = v.valor == null ? 'sin datos de la fuente' : v.valor + ' ' + v.unidad;
+      } else if (m.tipo === 'boton') {
+        card.querySelector('p').textContent = 'Vuelta ' + v.vuelta + (v.t_vuelta_s ? ' · última ' + v.t_vuelta_s.toFixed(2) + ' s' : '') + ' · página ' + v.pagina;
+      } else card.querySelector('p').textContent = JSON.stringify(v);
+    }
+  }
+
+  function renderSemaforo([lc, lo], e) {
+    if (e.modo === 'calibrando') {
+      setLamp(lc, 'azul', 'Calibrando · moto quieta'); setLamp(lo, 'azul', 'Calibrando · moto quieta'); return;
+    }
+    if (e.modo === 'sin_fuente') {
+      setLamp(lc, '', 'Sin datos de suspensión'); setLamp(lo, '', 'Sin datos de suspensión'); return;
+    }
+    if (e.modo === 'prueba') {
+      setLamp(lc, e.color_comp, 'Prueba de colores'); setLamp(lo, e.color_osc, 'Prueba de colores'); return;
+    }
+    if (!e.sensor_ok) {
+      setLamp(lc, 'azul', 'Sensor sin eco', true); setLamp(lo, 'azul', 'Sensor sin eco', true); return;
+    }
+    const nc = ['Normal', 'Alta', 'Muy alta · cerca del tope'][e.nivel_comp];
+    setLamp(lc, e.color_comp, nc + (e.comp != null ? ' · ' + e.comp.toFixed(0) + ' mm' : ''), e.nivel_comp === 2);
+    setLamp(lo, e.color_osc, e.nivel_osc
+      ? (e.nivel_osc === 2 ? 'Fuerte' : 'Moderada') + ' · ±' + e.osc_amp.toFixed(1) + ' mm a ' + e.osc_hz.toFixed(0) + ' Hz'
+      : 'Estable', e.nivel_osc === 2);
+  }
+
+  $('#open-full').addEventListener('click', async () => {
+    await listPiFiles();
+    const f = piSessions.find(s => s.name === live.lastSession);
+    if (f) loadPiEntry(serverBase(), f);
+    else setStatus('La sesión ' + live.lastSession + ' aún no tiene datos', 'err');
   });
 
   $('#connect').addEventListener('click', () => (live.es ? disconnect() : connect()));
@@ -471,5 +824,6 @@
 
   applyTheme(theme);
   listPiFiles();
-  if (location.hash === '#live') showTab('live');
+  if (location.hash === '#file') showTab('file');
+  else if (servedByPi) connect();
 })();
