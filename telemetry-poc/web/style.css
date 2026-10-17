@@ -42,7 +42,7 @@ h3 { font-size: 0.95rem; }
 
 .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 6px 2px 16px; }
 .brand { display: flex; align-items: center; gap: 14px; }
-.brand img { flex: none; width: 56px; height: 56px; border-radius: 12px; display: block; }
+.brand img { flex: none; width: 72px; height: 72px; border-radius: 12px; display: block; }
 .top p, #view-sub { margin: 2px 0 0; color: var(--sub); font-size: 0.88rem; }
 
 button {
