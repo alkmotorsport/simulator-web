@@ -9,3 +9,4 @@ __pycache__/
 
 # configuracion local de cada Pi (sensores forzados desde la web)
 telemetria.json
+ajustes_web.json

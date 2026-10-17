@@ -9,6 +9,8 @@ Servidor web + tiempo real para la telemetria. Solo libreria estandar.
   /api/estado       estado actual de los modulos (JSON)
   /api/sesiones     sesiones guardadas en la carpeta de datos
   /files/<ruta>     CSV / sesion.json de una sesion, para postprocesar
+  /api/ajustes      GET / POST: ajustes de la web (orden de los bloques,
+                    opciones...) guardados en ajustes_web.json
   POST /api/...     control desde la web (solo con el maestro, telemetria.py):
                     modulo/<id> {"activo": true|false|"auto"},
                     modulo/<id>/accion {"accion": "calibrar"},
@@ -40,6 +42,7 @@ from urllib.parse import unquote, urlparse
 AQUI = os.path.dirname(os.path.abspath(__file__))
 WEB_DIR = os.path.join(AQUI, "web")
 CERT_DIR = os.path.join(AQUI, "certs")
+AJUSTES = os.path.join(AQUI, "ajustes_web.json")
 # fichero suelto (CSV antiguos) o dentro de la carpeta de una sesion
 NOMBRE_OK = re.compile(r"^(?:[\w\-]+/)?[\w\-][\w.\-]*\.(?:csv|json|meta\.txt)$")
 BACKLOG = 4000       # muestras por modulo que recibe un cliente al conectar
@@ -173,6 +176,8 @@ class LiveServer:
                     with srv.lock:
                         estado = srv.estado
                     return srv._json(self, estado)
+                if ruta == "/api/ajustes":
+                    return srv._leer_ajustes(self)
                 if ruta in ("/api/sesiones", "/api/files"):
                     return srv._lista(self)
                 if ruta.startswith("/files/"):
@@ -181,6 +186,8 @@ class LiveServer:
 
             def do_POST(self):
                 ruta = urlparse(self.path).path
+                if ruta == "/api/ajustes":
+                    return srv._guardar_ajustes(self)
                 if srv.control is None or not ruta.startswith("/api/"):
                     return srv._json(self, {"error": "solo con telemetria.py"}, 404)
                 try:
@@ -274,6 +281,29 @@ class LiveServer:
         h.send_header("Content-Length", str(len(cuerpo)))
         h.end_headers()
         h.wfile.write(cuerpo)
+
+    def _leer_ajustes(self, h):
+        try:
+            with open(AJUSTES, encoding="utf-8") as f:
+                return self._json(h, json.load(f))
+        except (OSError, ValueError):
+            return self._json(h, {})
+
+    def _guardar_ajustes(self, h):
+        n = int(h.headers.get("Content-Length") or 0)
+        if not 0 < n <= 65536:
+            return self._json(h, {"error": "ajustes vacios o demasiado grandes"}, 400)
+        try:
+            ajustes = json.loads(h.rfile.read(n))
+            if not isinstance(ajustes, dict):
+                raise ValueError("se esperaba un objeto JSON")
+        except ValueError as e:
+            return self._json(h, {"error": str(e)}, 400)
+        tmp = AJUSTES + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(ajustes, f, indent=2, ensure_ascii=False)
+        os.replace(tmp, AJUSTES)
+        return self._json(h, {"ok": True})
 
     def _lista(self, h):
         """Sesiones (carpetas con sesion.json o CSV) y CSV sueltos antiguos."""
