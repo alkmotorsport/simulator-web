@@ -916,7 +916,7 @@
         const card = el('div', 'out', box);
         card.dataset.id = m.id;
         el('h4', '', card, m.nombre);
-        if (m.tipo === 'alertas_rgb') { const s = el('div', 'semaforo', card); lamp(s, 'Compresión', 'RGB1'); lamp(s, 'Oscilación', 'RGB2'); }
+        if (m.tipo === 'alertas_rgb') { const s = el('div', 'semaforo', card); lamp(s, 'Compresión', 'luz A'); lamp(s, 'Oscilación', 'luz B'); }
         else if (m.tipo === 'tira') { el('div', 'strip', card); el('p', 'muted', card); }
         else el('p', 'big', card);
       }
