@@ -10,6 +10,9 @@ Demo de la pantalla sola, con datos simulados y una pagina cada 2 s:
   sudo python3 telemetria.py --demo-pantalla
   python3 telemetria.py --demo-pantalla --png carpeta   # PNG, sin pantalla
 
+Sin pantalla conectada se puede activar igual con el tick de la web: funciona
+como pantalla virtual, con los datos reales, y se ve solo en la web.
+
 Conexion: VCC 3,3 V (pin 1), GND (pin 6), SDA (pin 3), SCL (pin 5).
 Necesita luma.oled: sudo pip3 install luma.oled
 Cada imagen completa son 2 KB por I2C (~0,2 s a 100 kHz): se refresca a
@@ -456,6 +459,7 @@ DEFECTOS = {
     "direccion": 0x3C,
     "girar": 0,               # 0-3: pantalla girada 0/90/180/270 grados
     "contraste": 255,
+    "virtual": True,          # sin pantalla fisica, seguir y verla solo en la web
     "fps": 5.0,
     "rotar_s": 5.0,           # cambia de pagina sola si no se usa el pulsador (0 = no)
     "recorrido_mm": 100.0,    # recorrido util de la suspension (escala y % de uso)
@@ -518,8 +522,17 @@ def abrir_oled(cfg):
         from luma.oled.device import sh1107
     except ImportError:
         raise RuntimeError("falta luma.oled (sudo pip3 install luma.oled)")
-    dev = sh1107(i2c(port=1, address=int(cfg["direccion"])), width=W, height=H,
-                 rotate=int(cfg["girar"]))
+    addr = int(cfg["direccion"])
+    try:
+        dev = sh1107(i2c(port=1, address=addr), width=W, height=H, rotate=int(cfg["girar"]))
+    except Exception as e:
+        if "not found" not in str(e) and not isinstance(e, OSError):
+            raise
+        raise RuntimeError(
+            f"la pantalla no responde en I2C 0x{addr:02X} (sudo i2cdetect -y 1). Revisa: "
+            "SDA al pin 3 y SCL al pin 5 (prueba a cruzarlos), 3,3 V y GND en la propia "
+            "pantalla, y que el modulo sea I2C de 4 pines (los de 7 pines suelen venir "
+            "en SPI). Sin pantalla: --demo-pantalla --png carpeta")
     dev.contrast(int(cfg["contraste"]))
     return dev
 
@@ -611,7 +624,10 @@ def demo(png=None, periodo=2.0, cfg=None):
         print(f"PNG en {os.path.abspath(png)}")
         return
 
-    dev = abrir_oled(c)
+    try:
+        dev = abrir_oled(c)
+    except RuntimeError as e:
+        raise SystemExit(f"Error: {e}")
     print("Demo de la pantalla: una pagina cada %g s. Ctrl+C para salir." % periodo)
     try:
         dev.display(splash(L))
@@ -681,11 +697,18 @@ class Pantalla(Modulo):
         return ("no", f"nada en I2C 0x{addr:02X}")
 
     def bucle(self):
-        self.dev = abrir_oled(self.cfg)
-        self._correr()
+        try:
+            self.dev = abrir_oled(self.cfg)
+        except RuntimeError as e:
+            if not self.cfg.get("virtual", True):
+                raise
+            # sin la pantalla fisica: se dibuja igual y se ve en la web
+            self.dev = None
+            self._aviso_virtual = f"pantalla virtual (solo en la web): {e}"
+        self._ejecutar()
 
     def simular(self):
-        self._correr()
+        self._ejecutar()
 
     def liberar(self):
         if self.dev is not None:
@@ -740,7 +763,7 @@ class Pantalla(Modulo):
             out.append((m.id.upper().replace("_", " ")[:12], ok, txt))
         return out
 
-    def _correr(self):
+    def _ejecutar(self):
         import base64
         import io
         c = self.cfg
@@ -749,6 +772,7 @@ class Pantalla(Modulo):
                 self.escuchar(fuente, col, lambda t, v, k=clave: self._dato(k, t, v))
         L = Lienzo()
         self.estado = "activo"
+        self.aviso = getattr(self, "_aviso_virtual", None)
         self._mostrar(splash(L))
         self.parar.wait(1.5)
         ult_png = 0.0
