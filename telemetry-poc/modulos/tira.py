@@ -116,17 +116,17 @@ class TiraLeds(Modulo):
         if not c["inicio"] < c["cambio"] <= c["limite"]:
             raise ValueError("hace falta inicio < cambio <= limite")
         self.tira = Tira(int(c["num"]), int(c["gpio"]), int(c["brillo"]))
-        self._correr()
+        self._ejecutar()
 
     def simular(self):
-        self._correr()
+        self._ejecutar()
 
     def liberar(self):
         if self.tira is not None:
             self.tira.cerrar()
             self.tira = None
 
-    def _correr(self):
+    def _ejecutar(self):
         c = self.cfg
         ultimo = [None, -1e9]          # valor, t
         self.escuchar(c["fuente"], c["campo"],
