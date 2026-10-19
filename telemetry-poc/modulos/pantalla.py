@@ -122,6 +122,9 @@ class Lienzo:
         return w
 
     def rect(self, x0, y0, x1, y1, relleno=1, borde=None):
+        # ordenado y sin tamano negativo: Pillow >= 9 lo rechaza con ValueError
+        x0, x1 = sorted((int(x0), int(x1)))
+        y0, y1 = sorted((int(y0), int(y1)))
         self.d.rectangle((x0, y0, x1, y1), fill=relleno, outline=borde)
 
     def linea(self, pts, ancho=1, color=1):
@@ -224,7 +227,7 @@ def pag_suspension(L, D, ahora, c):
         L.linea([(x0 - (4 if mm % 50 == 0 else 2), y), (x0 - 1, y)])
     # recorrido actual
     yc = yv(comp)
-    if comp > 0:
+    if yc < y1 - 2:                     # menos de 1 px de recorrido: nada que rellenar
         L.rect(x0 + 2, yc, x1 - 2, y1 - 2)
     # maximo de la sesion: triangulo a la derecha
     mx = D.max.get("comp_mm")
@@ -499,7 +502,15 @@ def dibujar(L, D, pagina, ahora, cfg, n_paginas=None, indice=None, derecha=""):
     pid, titulo, _, fn = pagina
     L.nuevo()
     L.cabecera(titulo, derecha)
-    fn(L, D, ahora, cfg)
+    try:
+        fn(L, D, ahora, cfg)
+    except Exception as e:      # una pagina rota no debe tumbar la pantalla
+        L.nuevo()
+        L.cabecera(titulo, derecha)
+        L.texto(W // 2, 40, "ERROR EN", L.pxb, "c")
+        L.texto(W // 2, 52, "PAGINA", L.pxb, "c")
+        L.texto(W // 2, 70, type(e).__name__[:20].upper(), L.px, "c")
+        print(f"\n[pantalla] error dibujando {pid}: {e}")
     if n_paginas:
         L.puntos(indice, n_paginas)
     return L.im
