@@ -17,6 +17,8 @@ Uso:
   sudo python3 telemetria.py --https          # web usable desde tu dominio
   sudo python3 telemetria.py --no-grabar      # graba solo al pulsar Grabar en la web
   sudo python3 telemetria.py --detectar       # dice que hay conectado y sale
+  sudo python3 telemetria.py --demo-pantalla  # solo la pantalla OLED, datos simulados
+  python3 telemetria.py --demo-pantalla --png carpeta   # sus paginas en PNG
   python3 telemetria.py --sim                 # todo simulado (portatil, sin Pi)
 
 Activar o forzar modulos: con el tick de la web, o en telemetria.json
@@ -416,6 +418,13 @@ def main():
                    help="todos los modulos simulados (sin hardware)")
     p.add_argument("--detectar", action="store_true",
                    help="detectar los modulos conectados y salir")
+    p.add_argument("--demo-pantalla", action="store_true",
+                   help="probar solo la pantalla OLED: todas sus paginas con datos "
+                        "simulados, una cada --periodo s")
+    p.add_argument("--periodo", type=float, default=2.0,
+                   help="segundos por pagina en --demo-pantalla (def. 2)")
+    p.add_argument("--png", metavar="CARPETA",
+                   help="con --demo-pantalla: guardar las paginas en PNG en vez de mostrarlas")
     p.add_argument("--no-grabar", action="store_true",
                    help="no grabar al arrancar (se graba con el boton de la web)")
     p.add_argument("--dir", default=os.path.join(AQUI, "datos"),
@@ -428,6 +437,12 @@ def main():
     p.add_argument("--cert", help="certificado propio (PEM)")
     p.add_argument("--key", help="clave privada del certificado propio")
     args = p.parse_args()
+
+    if args.demo_pantalla:
+        from modulos import pantalla
+        cfg = leer_config(args.config)["modulos"].get("pantalla", {})
+        pantalla.demo(png=args.png, periodo=args.periodo, cfg=cfg)
+        return
 
     maestro = Maestro(args)
     if args.detectar:

@@ -173,6 +173,7 @@ button.danger { background: var(--status-err); border-color: var(--status-err); 
 .out .semaforo { margin-top: 0; }
 .out .big { margin: 0; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
 .out p { margin: 6px 0 0; }
+.out img.oled { display: block; width: 256px; max-width: 100%; aspect-ratio: 1; image-rendering: pixelated; background: #000; border-radius: 6px; border: 6px solid #000; box-shadow: 0 0 0 1px var(--border); }
 .strip { display: flex; gap: 5px; flex-wrap: wrap; }
 .strip i { --c: var(--border); width: 18px; height: 18px; border-radius: 50%; background: var(--c); }
 .strip i.verde { --c: var(--status-ok); box-shadow: 0 0 8px var(--c); }

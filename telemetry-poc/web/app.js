@@ -918,6 +918,7 @@
         el('h4', '', card, m.nombre);
         if (m.tipo === 'alertas_rgb') { const s = el('div', 'semaforo', card); lamp(s, 'Compresión', 'luz A'); lamp(s, 'Oscilación', 'luz B'); }
         else if (m.tipo === 'tira') { el('div', 'strip', card); el('p', 'muted', card); }
+        else if (m.tipo === 'pantalla') { const i = el('img', 'oled', card); i.alt = 'Pantalla del cuadro'; }
         else el('p', 'big', card);
       }
     }
@@ -929,6 +930,8 @@
         if (strip.children.length !== v.leds.length) { strip.innerHTML = ''; v.leds.forEach(() => el('i', '', strip)); }
         v.leds.forEach((c, i) => { strip.children[i].className = c; });
         card.querySelector('p').textContent = v.valor == null ? 'sin datos de la fuente' : v.valor + ' ' + v.unidad;
+      } else if (m.tipo === 'pantalla') {
+        if (v.png) card.querySelector('img').src = 'data:image/png;base64,' + v.png;
       } else if (m.tipo === 'boton') {
         card.querySelector('p').textContent = 'Vuelta ' + v.vuelta + (v.t_vuelta_s ? ' · última ' + v.t_vuelta_s.toFixed(2) + ' s' : '') + ' · página ' + v.pagina;
       } else card.querySelector('p').textContent = JSON.stringify(v);
