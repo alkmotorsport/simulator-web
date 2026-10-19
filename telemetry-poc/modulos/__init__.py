@@ -20,13 +20,14 @@ from .base import Hardware, Modulo
 from .boton import Boton
 from .imu import IMU
 from .infrarrojos import Infrarrojos
+from .pantalla import Pantalla
 from .rueda import Rueda
 from .suspension import Suspension
 from .termopar import Termopar
 from .tira import TiraLeds
 
 TIPOS = {c.TIPO: c for c in (Suspension, IMU, Infrarrojos, Termopar, Rueda,
-                             Boton, AlertasRGB, TiraLeds)}
+                             Boton, AlertasRGB, TiraLeds, Pantalla)}
 
 CATALOGO = [
     ("suspension", Suspension, {}),
@@ -41,6 +42,7 @@ CATALOGO = [
     ("boton", Boton, {}),
     ("alertas", AlertasRGB, {}),
     ("tira", TiraLeds, {}),
+    ("pantalla", Pantalla, {}),
 ]
 
 
