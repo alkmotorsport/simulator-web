@@ -1,14 +1,18 @@
 """
 Alertas de suspension en dos LEDs RGB, en modo semaforo.
 
-  RGB1   compresion   verde normal | ambar > comp_ambar | rojo parpadeo > comp_rojo
-  RGB2   oscilacion   verde estable | ambar oscilacion | rojo parpadeo oscilacion fuerte
-  Ambos en azul: calibrando (fijo) o sensor sin eco (parpadeo).
+  luz A  compresion   verde normal | ambar > comp_ambar | rojo parpadeo > comp_rojo
+  luz B  oscilacion   verde estable | ambar oscilacion | rojo parpadeo oscilacion fuerte
+  Ambos en azul: calibrando (fijo) o sensor sin eco (parpadeo). Si el azul no
+  esta cableado (solo R y G), en su lugar ambar en las dos luces.
 La web replica el semaforo aunque no haya LEDs conectados.
 
-Lee la suspension del modulo 'fuente' (rel_mm). Si las luces resultan ser
-WS2812, iran en la cadena de la tira; esto es para LED RGB de 4 pines
-(3 GPIO con su resistencia cada uno).
+Lee la suspension del modulo 'fuente' (rel_mm). Luces RGB de 4 pines
+(+, R, G, B) de anodo comun: el + a 3,3 V (pin 17) y cada color a un GPIO,
+que lo enciende en bajo. Solo se cablean rojo y verde (ambar = los dos):
+  luz A (RGB1): R GPIO5 (pin 29), G GPIO6 (pin 31)
+  luz B (RGB2): R GPIO16 (pin 36), G GPIO26 (pin 37)
+Para cablear tambien el azul, anade su pin: "5,6,13".
 
 Deteccion de oscilacion: paso alto (media exponencial) sobre la compresion;
 se cuentan cruces por cero con histeresis y se mide la amplitud de cada medio
@@ -31,13 +35,14 @@ NIVEL_COLOR = ("verde", "ambar", "rojo")
 
 def lista_pines(txt):
     pines = [int(p) for p in str(txt).split(",")]
-    if len(pines) != 3:
-        raise ValueError("hacen falta 3 pines R,G,B")
+    if len(pines) not in (2, 3):
+        raise ValueError("hacen falta 2 pines R,G (o 3 con el azul)")
     return pines
 
 
 class RGB:
-    """LED RGB de 3 pines, todo/nada por canal (ambar = rojo + verde)."""
+    """LED RGB, todo/nada por canal (ambar = rojo + verde). Con 2 pines
+    (sin azul), el azul se muestra como ambar."""
     MEZCLA = {"off": (0, 0, 0), "verde": (0, 1, 0), "ambar": (1, 1, 0),
               "rojo": (1, 0, 0), "azul": (0, 0, 1)}
 
@@ -51,7 +56,8 @@ class RGB:
     def poner(self, color):
         if color == self.actual:
             return
-        for p, on in zip(self.pines, self.MEZCLA[color]):
+        mezcla = self.MEZCLA["ambar" if color == "azul" and len(self.pines) < 3 else color]
+        for p, on in zip(self.pines, mezcla):
             self.pi.write(p, int(bool(on) != self.activo_bajo))
         self.actual = color
 
@@ -145,9 +151,9 @@ class AlertasRGB(Modulo):
     DETECTABLE = False
     DEFECTOS = {
         "fuente": "suspension",
-        "rgb1": "5,6,13",          # pines 29, 31, 33 (libres en el esquema)
-        "rgb2": "16,20,21",        # pines 36, 38, 40
-        "activo_bajo": True,       # anodo comun
+        "rgb1": "5,6",             # luz A: R pin 29, G pin 31 (azul sin cablear)
+        "rgb2": "16,26",           # luz B: R pin 36, G pin 37
+        "activo_bajo": True,       # anodo comun: el color se enciende en bajo
         "comp_ambar": 30.0,        # mm de compresion sobre la referencia
         "comp_rojo": 45.0,
         "osc_fmin": 3.0, "osc_fmax": 15.0, "osc_ciclos": 3,
@@ -162,7 +168,7 @@ class AlertasRGB(Modulo):
         self._probar = False
 
     def pines(self):
-        return f"RGB1 GPIO {self.cfg['rgb1']} · RGB2 GPIO {self.cfg['rgb2']}"
+        return f"luz A R,G GPIO {self.cfg['rgb1']} · luz B R,G GPIO {self.cfg['rgb2']} · + a 3,3 V"
 
     def meta(self):
         m = super().meta()
