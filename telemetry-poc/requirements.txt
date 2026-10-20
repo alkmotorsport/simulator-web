@@ -8,8 +8,9 @@
 # Instalacion en la Pi (Raspberry Pi OS Buster/Bullseye):
 #   sudo apt install pigpio python3-pigpio python3-smbus python3-spidev openssl i2c-tools
 #   sudo systemctl enable --now pigpiod
-#   sudo raspi-config nonint do_i2c 0      # MPU6050, MLX90614, pantalla
+#   sudo raspi-config nonint do_i2c 0      # MPU6050 y MLX90614
 #   sudo raspi-config nonint do_spi 0      # MAX6675 (hay que reiniciar)
+#   dtoverlay=spi1-1cs,cs0_pin=12 en /boot/config.txt   # pantalla por SPI1
 #   sudo pip3 install -r requirements.txt  # con sudo: la WS2812 corre como root
 #   sudo python3 telemetria.py --detectar  # que hay conectado
 #   sudo python3 telemetria.py --https     # web en https://<ip>:8081/
@@ -34,3 +35,7 @@ spidev>=3.5 ;sys_platform == "linux" and platform_machine in "armv6l armv7l aarc
 
 # Barra de LEDs WS2812 (necesita sudo)
 rpi_ws281x>=5.0.0 ; sys_platform == "linux" and platform_machine in "armv6l armv7l aarch64"
+
+# Pantalla OLED (SSD1309 por SPI1); usa RPi.GPIO para los pines DC y RST
+luma.oled>=3.8 ; sys_platform == "linux" and platform_machine in "armv6l armv7l aarch64"
+RPi.GPIO>=0.7.0 ; sys_platform == "linux" and platform_machine in "armv6l armv7l aarch64"

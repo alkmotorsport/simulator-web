@@ -7,8 +7,10 @@ CSV: t_s, ax_g, ay_g, az_g, gx_dps, gy_dps, gz_dps, incl_deg, cabeceo_deg
   cabeceo_deg  + morro arriba (derivada)
 
 Conexion: VCC 3,3 V (pin 1), GND (pin 6), SDA (pin 3), SCL (pin 5).
-Si el sensor no va montado con sus ejes como los de la moto, 'ejes' dice que
-eje del sensor apunta a cada eje de la moto, p. ej. "-y,x,z".
+'ejes' dice que eje del sensor apunta hacia delante, a la izquierda y arriba.
+En su caja impresa (cable hacia atras) Y va hacia delante y Z arriba; como los
+ejes del MPU6050 son de mano derecha, X queda entonces a la DERECHA: "y,-x,z".
+Si al calibrar avisa de que Z apunta abajo, la placa esta del reves: "y,x,-z".
 
 Al arrancar (y con la accion Calibrar) mide 2 s con la moto vertical y
 quieta: quita el sesgo del giroscopio y pone a cero inclinacion y cabeceo.
@@ -104,7 +106,7 @@ class IMU(Modulo):
     DEFECTOS = {
         "direccion": 0x68,
         "hz": 100.0,
-        "ejes": "x,y,z",            # eje del sensor hacia delante, izquierda, arriba
+        "ejes": "y,-x,z",           # delante, izquierda, arriba (caja impresa del PDF)
         "alfa": 0.98,               # peso del giroscopio en el filtro complementario
         "cero_seg": 2.0,
         "fuente_vel": "rueda_tras",  # modulo con columna kmh (opcional)
@@ -232,6 +234,10 @@ class IMU(Modulo):
             self.sesgo = [x / n for x in sg]
             self.cero = [math.atan2(ay, az), math.atan2(ax, math.hypot(ay, az))]
             self.aviso = None
+            if az < 0.5:
+                # en reposo la gravedad tiene que salir en +Z de la moto (~1 g)
+                self.aviso = (f"la gravedad no sale hacia arriba (az {az:+.2f} g): revisa "
+                              f"'ejes' ({self.cfg['ejes']}); con la placa del reves, \"y,x,-z\"")
             self.meta_ver += 1
             print(f"[{self.id}] calibrado: sesgo {[round(x, 2) for x in self.sesgo]} "
                   f"grados/s, cero {[round(math.degrees(x), 1) for x in self.cero]} grados")

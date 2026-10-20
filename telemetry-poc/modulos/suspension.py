@@ -8,8 +8,9 @@ CSV: t_s, echo_us, dist_mm, rel_mm
            (negativo = el objetivo se acerca al sensor)
   Sin eco: echo_us/dist_mm/rel_mm vacios, para que los huecos se vean.
 
-Conexion sin HAT: VCC 5 V (pin 4), GND (pin 6), TRIG GPIO23 (pin 16) y ECHO
-GPIO24 (pin 18) a traves de un divisor 2 x 10 kOhm (el ECHO sale a 5 V).
+Conexion: VCC a 3,3 V (pin 17), GND (pin 6), TRIG GPIO23 (pin 16) y ECHO
+GPIO24 (pin 18), todo directo: a 3,3 V el ECHO nunca pasa de 3,3 V. Nunca lo
+alimentes a 5 V con el ECHO directo (a 5 V necesita divisor 22k + 22k).
 Temporizacion por hardware con pigpio (resolucion de 1 us).
 """
 
@@ -33,7 +34,7 @@ class _EcoPigpio:
         self.pigpio, self.pi, self.trig = pigpio, pi, trig
         pi.set_mode(trig, pigpio.OUTPUT)
         pi.set_mode(echo, pigpio.INPUT)
-        pi.set_pull_up_down(echo, pigpio.PUD_DOWN)
+        pi.set_pull_up_down(echo, pigpio.PUD_OFF)   # el sensor ya fija el nivel
         pi.write(trig, 0)
         self.t_subida = None
         self.dt_us = None
@@ -129,8 +130,8 @@ class Suspension(Modulo):
                 time.sleep(0.02)
         finally:
             eco.cerrar()
-        return ("no", f"sin eco en GPIO{self.cfg['echo']}: revisa VCC 5 V, "
-                      "GND y el divisor del ECHO")
+        return ("no", f"sin eco en GPIO{self.cfg['echo']}: revisa VCC a 3,3 V, "
+                      "GND, TRIG y ECHO")
 
     def bucle(self):
         self._medir(_EcoPigpio(self.hw.pi(), self.cfg["trig"], self.cfg["echo"]))

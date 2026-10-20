@@ -6,13 +6,14 @@ CSV (a 'hz' fijos): t_s, pulsos, periodo_ms, rpm, kmh, dist_m
   periodo_ms  tiempo entre los dos ultimos pulsos
   kmh         0 si no llega ningun pulso en 'timeout_s'
 
-Conexion: rojo 5 V (pin 2), negro GND (pin 14), senal a GPIO27 (trasera) o
-GPIO22 (delantera) y 10 kOhm de la senal a 3,3 V (pin 1). Si el modulo ya
-saca 5 V en S sin iman, divisor 10k/10k en vez del pull-up.
+Modulo HW-477 / KY-003 (trae LED y resistencia: S da 4,6 V sin iman).
+Conexion: + a 5 V (pin 2), - a GND (pin 14) y S a GPIO27 (trasera, pin 13) o
+GPIO22 (delantera, pin 15) por un divisor junto a la Pi: 10 kOhm en serie y
+22 kOhm del GPIO a GND (~3,15 V sin iman). GPIO sin pull-up ni pull-down.
 El A3144 baja la senal a 0 V al pasar el iman (flanco de bajada).
 
-Autodeteccion: con el pull-down interno activado, la senal en reposo solo se
-lee alta si hay un pull-up externo (el modulo cableado).
+Autodeteccion: con el pull-down interno activado un momento, la senal en
+reposo solo se lee alta si el modulo esta alimentado y conectado.
 """
 
 import collections
@@ -27,7 +28,7 @@ class _HallPigpio:
         import pigpio
         self.pigpio, self.pi = pigpio, pi
         pi.set_mode(gpio, pigpio.INPUT)
-        pi.set_pull_up_down(gpio, pigpio.PUD_OFF)   # pull-up externo a 3,3 V
+        pi.set_pull_up_down(gpio, pigpio.PUD_OFF)   # nivel fijado por el divisor
         pi.set_glitch_filter(gpio, 100)              # ignora pulsos < 100 us
         self.gpio = gpio
         self.ticks = collections.deque(maxlen=2)
@@ -102,7 +103,7 @@ class Rueda(Modulo):
     def pines(self):
         fis = {27: 13, 22: 15}.get(self.cfg["gpio"])
         return f"GPIO{self.cfg['gpio']}" + (f" (pin {fis})" if fis else "") + \
-            " · 10 kΩ a 3,3 V"
+            " · divisor 10k + 22k"
 
     def meta(self):
         return {k: v for k, v in super().meta().items() if not k.startswith("sim_")}
@@ -118,9 +119,10 @@ class Rueda(Modulo):
         finally:
             pi.set_pull_up_down(g, pigpio.PUD_OFF)
         if nivel == 5:
-            return ("si", "senal alta en reposo: pull-up / modulo conectado")
+            return ("si", "senal alta en reposo: modulo conectado")
         if nivel == 0:
-            return ("no", f"GPIO{g} a 0: sin pull-up (o iman delante del sensor)")
+            return ("no", f"GPIO{g} a 0: modulo sin alimentar o sin conectar "
+                          "(o el iman justo delante)")
         return ("no", f"GPIO{g} inestable: revisa el cableado")
 
     def bucle(self):
