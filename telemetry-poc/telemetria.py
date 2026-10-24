@@ -389,7 +389,8 @@ class Maestro:
                     ult_fsync = ahora
                 self._cada_segundo(ahora - ult)
                 ult = ahora
-                print(self.linea_estado(), end="", flush=True)
+                if sys.stdout.isatty():  # con systemd el \r llenaria el journal
+                    print(self.linea_estado(), end="", flush=True)
         except KeyboardInterrupt:
             pass
         finally:
