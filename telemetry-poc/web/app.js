@@ -73,6 +73,8 @@
       buildView([]);
     }
     $('#view').hidden = !view.sets.length || (name === 'live') !== view.live;
+    $('#file-vacio').hidden = name !== 'file' || !!lastFile;
+    dispatchEvent(new CustomEvent('tele-pestana', { detail: name }));   // cuenta.js: botones de tu raspi
   }
 
   function mostrarFichero(f) {
@@ -1078,9 +1080,9 @@
     listPiFiles();
   }
   window.Telemetria = {
-    openFiles, showTab, fileMsg, serverBase, servedByPi, usarRaspi,
+    openFiles, showTab, fileMsg, serverBase, servedByPi, usarRaspi, pestana: () => tab,
     conectar(base) { usarRaspi(base); connect(); },
-    desconectar: disconnect, listarPi: listPiFiles,
+    desconectar: disconnect, listarPi: listPiFiles, conectado: () => !!live.es,
   };
 
   // ---------------------------------------------------------------- init ---

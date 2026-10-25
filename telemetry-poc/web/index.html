@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Telemetría">
-<link rel="stylesheet" href="style.css?v=20261025f">
+<link rel="stylesheet" href="style.css?v=20261025h">
 </head>
 <body>
 
@@ -130,15 +130,7 @@
 </section>
 
 <section id="pane-file" class="card" hidden>
-  <label id="drop" class="drop">
-    <input type="file" id="file" accept=".csv,.txt,.json" multiple hidden>
-    <b>Arrastra aquí los CSV de una sesión</b>
-    <span>o pulsa para elegirlos. Añade también su <code>sesion.json</code> (o el <code>.meta.txt</code> de los CSV antiguos).</span>
-  </label>
   <p id="file-msg" class="msg" hidden></p>
-  <div class="actions">
-    <button id="demo" class="ghost small">Cargar sesión de ejemplo</button>
-  </div>
   <div id="nube" hidden>
     <div class="sub-head">
       <h3 id="nube-tit">Sesiones en la nube</h3>
@@ -154,6 +146,18 @@
     </div>
     <ul id="pi-list" class="files"></ul>
   </div>
+  <p id="file-vacio" class="hint" hidden>Elige una sesión de la lista para verla aquí debajo.</p>
+  <details id="otras" class="fold" open>
+    <summary>Abrir CSV del ordenador o la sesión de ejemplo</summary>
+    <label id="drop" class="drop">
+      <input type="file" id="file" accept=".csv,.txt,.json" multiple hidden>
+      <b>Arrastra aquí los CSV de una sesión</b>
+      <span>o pulsa para elegirlos. Añade también su <code>sesion.json</code> (o el <code>.meta.txt</code> de los CSV antiguos).</span>
+    </label>
+    <div class="actions">
+      <button id="demo" class="ghost small">Cargar sesión de ejemplo</button>
+    </div>
+  </details>
 </section>
 
 <section id="view" hidden>
@@ -197,13 +201,13 @@
   </p>
 </section>
 
-<script src="plot.js?v=20261025f"></script>
-<script src="sensors.js?v=20261025f"></script>
-<script src="app.js?v=20261025f"></script>
-<script src="config.js?v=20261025f"></script>
-<script src="cripto.js?v=20261025f"></script>
-<script src="repo.js?v=20261025f"></script>
-<script src="cuenta.js?v=20261025f"></script>
+<script src="plot.js?v=20261025h"></script>
+<script src="sensors.js?v=20261025h"></script>
+<script src="app.js?v=20261025h"></script>
+<script src="config.js?v=20261025h"></script>
+<script src="cripto.js?v=20261025h"></script>
+<script src="repo.js?v=20261025h"></script>
+<script src="cuenta.js?v=20261025h"></script>
 <script>
   // app instalable (PWA); solo en https: la web de la Pi (http) no lo necesita
   if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(() => {});

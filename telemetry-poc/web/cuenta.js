@@ -122,6 +122,10 @@
     $('#cuenta-btn').textContent = cuenta ? 'Salir' : 'Entrar';
     $('#raspis').hidden = !cuenta;
     $('#nube').hidden = !cuenta || !repo;
+    // con cuenta, el modo se elige con los botones de tu raspi y la direccion la pone la app
+    document.querySelector('.tabs').hidden = !!cuenta;
+    $('#conn-box').hidden = !!cuenta;
+    $('#otras').open = !cuenta;
   }
 
   $('#cuenta-btn').addEventListener('click', () => {
@@ -181,7 +185,7 @@
     await refrescar();
     pintarRaspis();
     if (T.servedByPi) { T.listarPi(); T.conectar(location.origin); }   // la web de esta raspi
-    else listar();
+    else { T.showTab('file'); listar(); }                               // la app empieza en Sesiones
   }
 
   /** Direcciones al dia (cambian en cada arranque del tunel); si el admin ha
@@ -212,9 +216,10 @@
       const txt = el('div', 'raspi-txt', li);
       el('b', '', txt, r.nombre);
       const est = el('span', 'muted', txt, ' · comprobando…');
-      const acc = el('div', 'bar', li);
+      const acc = el('div', 'bar modo', li);
       const vivo = el('button', 'small', acc, 'En vivo');
-      const ses = el('button', 'ghost small', acc, 'Sesiones');
+      const ses = el('button', 'small', acc, 'Sesiones');
+      r.botones = { vivo, ses };
       vivo.disabled = true;
       ses.addEventListener('click', () => elegir(r, false));
       vivo.addEventListener('click', () => elegir(r, true));
@@ -226,16 +231,40 @@
         if (base && r === cuenta.sel && !T.servedByPi) T.usarRaspi(base);
       });
     }
+    pintarModo();
   }
+
+  /** El boton del modo visible, en naranja; el resto en blanco. */
+  function pintarModo() {
+    if (!cuenta) return;
+    const tab = T.pestana();
+    for (const r of cuenta.raspis) {
+      if (!r.botones) continue;
+      const sel = r === cuenta.sel;
+      r.botones.vivo.className = 'small' + (sel && tab === 'live' ? '' : ' ghost');
+      r.botones.ses.className = 'small' + (sel && tab === 'file' ? '' : ' ghost');
+      r.botones.vivo.setAttribute('aria-pressed', sel && tab === 'live');
+      r.botones.ses.setAttribute('aria-pressed', sel && tab === 'file');
+    }
+  }
+  addEventListener('tele-pestana', pintarModo);
   $('#raspis-refresh').addEventListener('click', async () => { await refrescar(); pintarRaspis(); listar(); });
 
   function elegir(r, vivo) {
+    const otra = r !== cuenta.sel;
     cuenta.sel = r;
     store('tele-raspi', r.id);
-    pintarRaspis();
+    if (otra) pintarRaspis();
     if (r.base) T.usarRaspi(r.base);
-    if (vivo && r.base) T.conectar(r.base);
-    else { T.showTab('file'); listar(); }
+    if (vivo) {
+      // ya conectado a esta raspi: solo cambia lo que se ve
+      if (r.base && (otra || T.serverBase() !== r.base || !T.conectado())) T.conectar(r.base);
+      else T.showTab('live');
+    } else {
+      T.showTab('file');
+      if (otra || !$('#nube-list').children.length) listar();
+      if (T.servedByPi) T.listarPi();
+    }
   }
 
   // ------------------------------------------------- sesiones de la nube ---
