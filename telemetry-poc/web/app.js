@@ -178,7 +178,7 @@
       for (const c0 of s.def.charts(s.ds)) {
         const c = Object.assign({}, c0, { height: Math.round((c0.height || 200) * 0.75) });   // compacto: mas sensores a la vista
         if (c.type === 'time') s.charts[c.key] = view.group.add(new Plot.TimeChart(tBox, c));
-        else s.hists[c.key] = new Plot.Histogram(hBox, c);
+        else s.hists[c.key] = new (c.type === 'gg' ? Plot.GG : Plot.Histogram)(hBox, c);
       }
       tBox.hidden = !Object.keys(s.charts).length;
       hBox.hidden = !Object.keys(s.hists).length;
@@ -374,7 +374,7 @@
       const hd = s.def.histograms(s.derived, i0, i1, s.opt);
       for (const [k, h] of Object.entries(s.hists)) {
         const d = hd[k] || { edges: [], values: [] };
-        h.setData(d.edges, d.values);
+        h.setData(d.edges, d.values, d.ahora);
         h.draw();
       }
     }

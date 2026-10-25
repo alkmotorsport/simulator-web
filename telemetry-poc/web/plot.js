@@ -5,6 +5,7 @@
  *   TimeChart   serie temporal; reduce a min/max por pixel, asi que pinta
  *               cientos de miles de muestras sin problema. Los NaN son huecos.
  *   Histogram   barras con los bordes de los bins y su valor (en %).
+ *   GG          diagrama g-g (lateral / longitudinal) como mapa de densidad.
  *
  * Los colores se leen de variables CSS en cada repintado, de modo que el
  * tema claro/oscuro se aplica solo con llamar a draw().
@@ -402,5 +403,100 @@
     }
   }
 
-  global.Plot = { ChartGroup, TimeChart, Histogram, niceStep, lowerBound };
+  // ------------------------------------------------------------ g-g ---
+
+  class GG {
+    /**
+     * Diagrama g-g (circulo de friccion) como mapa de densidad: lateral en X
+     * (+ derecha), longitudinal en Y (+ acelera). setData(edges, values, ahora):
+     * edges de los bins (iguales en X e Y), values[iy * n + ix] en % del tiempo
+     * y, en vivo, el punto actual [x, y].
+     * opts: title, unit, note, height, color (variable CSS)
+     */
+    constructor(container, opts) {
+      this.opts = Object.assign({ height: 260, color: '--series-1' }, opts);
+      this.s = new Surface(container, this.opts, () => this.draw());
+      this.edges = []; this.values = []; this.ahora = null; this.hover = null;
+      const over = this.s.over;
+      over.addEventListener('pointermove', e => {
+        const r = over.getBoundingClientRect(), Q = this.cuadro();
+        if (!Q) return;
+        const ix = Math.floor((e.clientX - r.left - Q.x) / Q.c), iy = Math.floor((Q.y + Q.l - (e.clientY - r.top)) / Q.c);
+        this.hover = ix >= 0 && iy >= 0 && ix < Q.n && iy < Q.n ? [ix, iy] : null;
+        this.drawOverlay();
+      });
+      over.addEventListener('pointerleave', () => { this.hover = null; this.drawOverlay(); });
+    }
+    setData(edges, values, ahora) { this.edges = edges; this.values = values; this.ahora = ahora || null; }
+    destroy() { this.s.destroy(); }
+
+    /** Zona cuadrada centrada: x, y (arriba-izquierda), lado l, n bins de c px. */
+    cuadro() {
+      const s = this.s, n = this.edges.length - 1;
+      if (!s.w || n < 1) return null;
+      const l = Math.max(10, Math.min(s.w - 70, s.h - 30));
+      return { x: (s.w - l) / 2, y: 8, l, n, c: l / n, lo: this.edges[0], hi: this.edges[n] };
+    }
+    px(Q, gx, gy) {
+      return [Q.x + (gx - Q.lo) / (Q.hi - Q.lo) * Q.l, Q.y + Q.l - (gy - Q.lo) / (Q.hi - Q.lo) * Q.l];
+    }
+
+    draw() {
+      const s = this.s; if (!s.w) return;
+      const ctx = s.base.getContext('2d'), C = themeColors();
+      ctx.clearRect(0, 0, s.w, s.h);
+      const Q = this.cuadro();
+      if (!Q) { this.drawOverlay(); return; }
+      // densidad: escala logaritmica para que se vea tambien lo poco frecuente
+      let vmax = 0; for (const v of this.values) if (v > vmax) vmax = v;
+      ctx.fillStyle = cssVar(this.opts.color);
+      for (let iy = 0; iy < Q.n; iy++) for (let ix = 0; ix < Q.n; ix++) {
+        const v = this.values[iy * Q.n + ix];
+        if (!(v > 0)) continue;
+        ctx.globalAlpha = 0.15 + 0.85 * Math.log1p(v * 1000) / Math.log1p(vmax * 1000);
+        ctx.fillRect(Q.x + ix * Q.c, Q.y + Q.l - (iy + 1) * Q.c, Math.ceil(Q.c), Math.ceil(Q.c));
+      }
+      ctx.globalAlpha = 1;
+      // ejes y circulos cada 0,25 g (con texto los de g entera y media)
+      const [cx, cy] = this.px(Q, 0, 0), k = Q.l / (Q.hi - Q.lo);
+      ctx.lineWidth = 1; ctx.strokeStyle = C.axis;
+      ctx.beginPath(); ctx.moveTo(Q.x, cy); ctx.lineTo(Q.x + Q.l, cy); ctx.moveTo(cx, Q.y); ctx.lineTo(cx, Q.y + Q.l); ctx.stroke();
+      ctx.font = '11px system-ui, sans-serif'; ctx.fillStyle = C.muted;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+      for (let g = 0.25; g <= Q.hi + 1e-9; g += 0.25) {
+        const entero = Math.abs(g * 2 - Math.round(g * 2)) < 1e-9;
+        ctx.strokeStyle = entero ? C.axis : C.grid;
+        ctx.beginPath(); ctx.arc(cx, cy, g * k, 0, 2 * Math.PI); ctx.stroke();
+        if (entero) ctx.fillText(String(g).replace('.', ',') + ' g', cx + g * k * 0.71 + 2, cy - g * k * 0.71 - 1);
+      }
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText('← izquierda · lateral · derecha →', cx, Q.y + Q.l + 4);
+      ctx.save(); ctx.translate(Q.x - 8, cy); ctx.rotate(-Math.PI / 2); ctx.textBaseline = 'bottom';
+      ctx.fillText('← frena · acelera →', 0, 0); ctx.restore();
+      this.drawOverlay();
+    }
+
+    drawOverlay() {
+      const s = this.s; if (!s.w) return;
+      const ctx = s.over.getContext('2d');
+      ctx.clearRect(0, 0, s.w, s.h);
+      const Q = this.cuadro();
+      s.readout.textContent = '';
+      if (!Q) return;
+      if (this.ahora && this.ahora.every(v => v === v)) {
+        const [x, y] = this.px(Q, Math.max(Q.lo, Math.min(Q.hi, this.ahora[0])), Math.max(Q.lo, Math.min(Q.hi, this.ahora[1])));
+        ctx.fillStyle = themeColors().warn;
+        ctx.beginPath(); ctx.arc(x, y, 5, 0, 2 * Math.PI); ctx.fill();
+        s.readout.textContent = 'ahora ' + this.ahora[0].toFixed(2) + ' / ' + this.ahora[1].toFixed(2) + ' g';
+      }
+      if (!this.hover) return;
+      const [ix, iy] = this.hover, e = this.edges, v = this.values[iy * Q.n + ix] || 0;
+      ctx.fillStyle = themeColors().select;
+      ctx.fillRect(Q.x + ix * Q.c, Q.y + Q.l - (iy + 1) * Q.c, Q.c, Q.c);
+      s.readout.textContent = 'lateral ' + ((e[ix] + e[ix + 1]) / 2).toFixed(2) + ' g · longitudinal ' +
+        ((e[iy] + e[iy + 1]) / 2).toFixed(2) + ' g · ' + (v < 0.01 && v > 0 ? '<0,01' : v.toFixed(2)) + ' % del tiempo';
+    }
+  }
+
+  global.Plot = { ChartGroup, TimeChart, Histogram, GG, niceStep, lowerBound };
 })(window);

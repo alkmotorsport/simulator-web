@@ -291,6 +291,40 @@
     return { d: out, corte };
   }
 
+  /**
+   * Aceleracion lateral real (g) a partir de la inclinacion: en curva la moto
+   * se tumba hasta que la resultante va por su eje, asi que la caja mide ~0
+   * lateral; la que da el neumatico es tan(inclinacion) (web, Modulo 2.2).
+   */
+  function lateralDeIncl(incl) {
+    const n = incl.length, out = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      const v = incl[i];
+      out[i] = v === v && Math.abs(v) < 70 ? Math.tan(v * Math.PI / 180) : NaN;
+    }
+    return out;
+  }
+
+  /** Mapa de densidad g-g del tramo: bins de 0,025 g hasta 1 / 1,5 / 2 g. */
+  function ggGrid(lat, lon, i0, i1) {
+    let m = 0, c = 0;
+    for (let i = i0; i < i1; i++) {
+      const x = lat[i], y = lon[i];
+      if (x === x && y === y) { c++; m = Math.max(m, Math.abs(x), Math.abs(y)); }
+    }
+    if (!c) return { edges: [], values: [] };
+    const lim = m <= 0.95 ? 1 : m <= 1.45 ? 1.5 : 2, n = Math.round(2 * lim / 0.025);
+    const values = new Float64Array(n * n), k = n / (2 * lim);
+    for (let i = i0; i < i1; i++) {
+      const x = lat[i], y = lon[i];
+      if (x !== x || y !== y) continue;
+      const ix = Math.min(n - 1, Math.max(0, Math.floor((x + lim) * k)));
+      const iy = Math.min(n - 1, Math.max(0, Math.floor((y + lim) * k)));
+      values[iy * n + ix] += 100 / c;
+    }
+    return { edges: Array.from({ length: n + 1 }, (_, j) => -lim + j / k), values };
+  }
+
   const imu = {
     id: 'imu',
     name: 'IMU · MPU6050',
@@ -299,34 +333,43 @@
     derive(ds) {
       // en vivo los datos crecen: tal cual (ahi la vibracion se ve en directo)
       if (ds.live) return Object.assign({}, ds.cols,
-        { ax_f: ds.cols.ax_g, ay_f: ds.cols.ay_g, vib: rmsMovil(ds.t, ds.cols.az_g, 1) });
+        { ax_f: ds.cols.ax_g, lat: lateralDeIncl(ds.cols.incl_deg), vib: rmsMovil(ds.t, ds.cols.az_g, 1), live: true });
       if (ds.imu === undefined) {   // una vez por sesion
         ds.imu = imuDatos(ds);
-        // frenar o acelerar dura decimas: la media de 0,2 s quita la vibracion
-        // del motor, que da picos de hasta 4 g (el tope del sensor)
-        const d = ds.imu.d || ds.cols, w = Math.max(1, Math.round(0.2 * (+(ds.meta && ds.meta.hz) || 100)));
-        ds.imu.f = { ax_f: smooth(d.ax_g, w), ay_f: smooth(d.ay_g, w), vib: rmsMovil(ds.t, d.az_g, 1) };
+        // una frenada dura segundos: la media de 0,5 s quita la vibracion del
+        // motor (picos de hasta 4 g, el tope del sensor, y aliasing a 100 Hz)
+        // sin aplanar el inicio y el final de cada frenada
+        const d = ds.imu.d || ds.cols, w = Math.max(1, Math.round(0.5 * (+(ds.meta && ds.meta.hz) || 100)));
+        ds.imu.f = { ax_f: smooth(d.ax_g, w), lat: lateralDeIncl(d.incl_deg), vib: rmsMovil(ds.t, d.az_g, 1) };
       }
       return Object.assign({}, ds.imu.d || ds.cols, ds.imu.f);
     },
     charts: () => [
       { type: 'time', key: 'incl_deg', title: 'Inclinación', unit: '°', note: '+ derecha · − izquierda', color: '--series-1', zero: true, height: 190 },
-      { type: 'time', key: 'ax_f', title: 'Aceleración longitudinal', unit: 'g', note: '+ acelera · − frena · media 0,2 s', color: '--series-2', zero: true, decimals: 2, height: 160 },
-      { type: 'time', key: 'ay_f', title: 'Aceleración lateral', unit: 'g', note: 'media 0,2 s', color: '--series-3', zero: true, decimals: 2, height: 140 },
+      { type: 'time', key: 'ax_f', title: 'Aceleración longitudinal', unit: 'g', note: '+ acelera · − frena · media 0,5 s', color: '--series-2', zero: true, decimals: 2, height: 160 },
+      { type: 'time', key: 'lat', title: 'Aceleración lateral', unit: 'g', note: '+ derecha · tan(inclinación): la caja mide ~0 en curva', color: '--series-3', zero: true, decimals: 2, height: 140 },
       { type: 'time', key: 'cabeceo_deg', title: 'Cabeceo', unit: '°', note: '+ morro arriba', color: '--series-7', zero: true, height: 140 },
       { type: 'time', key: 'vib', title: 'Vibración vertical', unit: 'g RMS', note: 'RMS en 1 s · motor, asfalto y golpes', color: '--series-7', zero: true, decimals: 2, height: 140 },
       { type: 'hist', key: 'inclHist', title: 'Tiempo por inclinación', unit: '°', note: '% de tiempo', colorFor: c => (c >= 0 ? '--series-1' : '--series-2') },
+      { type: 'gg', key: 'gg', title: 'Diagrama g-g', unit: 'g', note: 'círculo de fricción · más oscuro = más tiempo', color: '--series-1', height: 300 },
     ],
     histograms(d, i0, i1) {
       const v = finite(d.incl_deg, i0, i1);
       const lim = Math.max(5, percentile(v.map(Math.abs), 0.995));
-      return { inclHist: histogram(v, -lim, lim, 24) };
+      const gg = ggGrid(d.lat, d.ax_f, i0, i1);
+      if (d.live && i1 > i0) gg.ahora = [d.lat[i1 - 1], d.ax_f[i1 - 1]];
+      return { inclHist: histogram(v, -lim, lim, 24), gg };
     },
     stats(ds, d, i0, i1) {
       const tm = timing(ds.t, i0, i1);
       const [ilo, ihi] = minmax(finite(d.incl_deg, i0, i1));
       const [alo, ahi] = minmax(finite(d.ax_f, i0, i1));
-      const [ylo, yhi] = minmax(finite(d.ay_f, i0, i1));
+      const [ylo, yhi] = minmax(finite(d.lat, i0, i1));
+      let gmax = NaN, tg = NaN;
+      for (let i = i0; i < i1; i++) {
+        const g = Math.hypot(d.lat[i], d.ax_f[i]);
+        if (g === g && !(g <= gmax)) { gmax = g; tg = ds.t[i]; }
+      }
       const az = finite(d.az_g, i0, i1), azm = mean(az);
       let s = 0; for (const v of az) s += (v - azm) * (v - azm);
       const recalc = [];
@@ -344,7 +387,8 @@
         { label: 'Incl. máx izquierda', value: f(ilo < 0 ? -ilo : NaN, 1), unit: '°' },
         { label: 'Frenada máx', value: f(alo < 0 ? -alo : NaN, 2), unit: 'g' },
         { label: 'Aceleración máx', value: f(ahi > 0 ? ahi : NaN, 2), unit: 'g' },
-        { label: 'Lateral máx', value: f(Math.max(-ylo, yhi), 2), unit: 'g' },
+        { label: 'Lateral máx', value: f(Math.max(-ylo, yhi), 2), unit: 'g', sub: 'tan(inclinación)' },
+        { label: 'G combinada máx', value: f(gmax, 2), unit: 'g', sub: 'a los ' + f(tg, 0) + ' s · neumático de calle ≈ 1 g' },
         { label: 'Vibración vertical', value: f(az.length ? Math.sqrt(s / az.length) : NaN, 3), unit: 'g RMS' },
       ]);
     },
