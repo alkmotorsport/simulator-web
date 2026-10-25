@@ -58,6 +58,23 @@
     return out;
   }
 
+  /**
+   * RMS respecto a la media local en una ventana centrada de 'seg' segundos
+   * (ignora los NaN y los conserva): cuanto vibra la senal en cada momento.
+   */
+  function rmsMovil(t, y, seg) {
+    const n = y.length, out = new Float64Array(n).fill(NaN);
+    let a = 0, b = 0, s = 0, s2 = 0, c = 0;   // ventana [a, b)
+    for (let i = 0; i < n; i++) {
+      if (y[i] !== y[i]) continue;
+      while (b < n && t[b] <= t[i] + seg / 2) { const v = y[b++]; if (v === v) { s += v; s2 += v * v; c++; } }
+      while (t[a] < t[i] - seg / 2) { const v = y[a++]; if (v === v) { s -= v; s2 -= v * v; c--; } }
+      const m = s / c;
+      out[i] = Math.sqrt(Math.max(0, s2 / c - m * m));
+    }
+    return out;
+  }
+
   /** Derivada hacia atras, como el --resumen del script (dt valido < maxDt). */
   function derivative(t, y, maxDt) {
     const n = y.length, out = new Float64Array(n).fill(NaN);
@@ -281,13 +298,14 @@
     options: [],
     derive(ds) {
       // en vivo los datos crecen: tal cual (ahi la vibracion se ve en directo)
-      if (ds.live) return Object.assign({}, ds.cols, { ax_f: ds.cols.ax_g, ay_f: ds.cols.ay_g });
+      if (ds.live) return Object.assign({}, ds.cols,
+        { ax_f: ds.cols.ax_g, ay_f: ds.cols.ay_g, vib: rmsMovil(ds.t, ds.cols.az_g, 1) });
       if (ds.imu === undefined) {   // una vez por sesion
         ds.imu = imuDatos(ds);
         // frenar o acelerar dura decimas: la media de 0,2 s quita la vibracion
         // del motor, que da picos de hasta 4 g (el tope del sensor)
         const d = ds.imu.d || ds.cols, w = Math.max(1, Math.round(0.2 * (+(ds.meta && ds.meta.hz) || 100)));
-        ds.imu.f = { ax_f: smooth(d.ax_g, w), ay_f: smooth(d.ay_g, w) };
+        ds.imu.f = { ax_f: smooth(d.ax_g, w), ay_f: smooth(d.ay_g, w), vib: rmsMovil(ds.t, d.az_g, 1) };
       }
       return Object.assign({}, ds.imu.d || ds.cols, ds.imu.f);
     },
@@ -296,6 +314,7 @@
       { type: 'time', key: 'ax_f', title: 'Aceleración longitudinal', unit: 'g', note: '+ acelera · − frena · media 0,2 s', color: '--series-2', zero: true, decimals: 2, height: 160 },
       { type: 'time', key: 'ay_f', title: 'Aceleración lateral', unit: 'g', note: 'media 0,2 s', color: '--series-3', zero: true, decimals: 2, height: 140 },
       { type: 'time', key: 'cabeceo_deg', title: 'Cabeceo', unit: '°', note: '+ morro arriba', color: '--series-7', zero: true, height: 140 },
+      { type: 'time', key: 'vib', title: 'Vibración vertical', unit: 'g RMS', note: 'RMS en 1 s · motor, asfalto y golpes', color: '--series-7', zero: true, decimals: 2, height: 140 },
       { type: 'hist', key: 'inclHist', title: 'Tiempo por inclinación', unit: '°', note: '% de tiempo', colorFor: c => (c >= 0 ? '--series-1' : '--series-2') },
     ],
     histograms(d, i0, i1) {
