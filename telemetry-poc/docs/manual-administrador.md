@@ -107,6 +107,8 @@ sudo python3 sincro.py ahora         # subirlas ya
 Los usuarios ven y borran sus sesiones desde la app (ver el *Manual de
 usuario*):
 
+- **Nombre y descripción** de las sesiones de la nube: los pone el usuario con
+  **Editar**; los guarda el sistema (en línea) en el índice cifrado.
 - **Borrar de la nube:** lo hace el sistema, que tiene que estar en línea. Su
   copia en el sistema, si la hay, se queda y ya no se vuelve a subir.
 - **Borrar del sistema:** borra la copia local. Si no estaba subida, se

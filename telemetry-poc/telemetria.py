@@ -299,9 +299,11 @@ class Maestro:
             return self.sincro.consultar_alta(cuerpo.get("inv"))
         elif p == ["sesion", "borrar"]:          # la copia de la raspi
             return self.borrar_sesion(cuerpo.get("nombre"))
-        elif p == ["nube", "borrar"]:            # la del repo de datos
+        elif p in (["nube", "borrar"], ["nube", "editar"]):   # las del repo de datos
             if not self.sincro:
                 raise ValueError("este sistema no tiene repo de datos")
+            if p[1] == "editar":
+                return self.sincro.editar_en_nube(cuerpo.get("id"), cuerpo.get("titulo"), cuerpo.get("nota"))
             return self.sincro.borrar_de_nube(cuerpo.get("id"))
         elif p == ["grabar"]:
             if cuerpo.get("grabar"):

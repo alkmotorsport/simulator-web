@@ -111,6 +111,15 @@ input, select {
 .files li > span { margin-left: auto; }
 .files li { align-items: center; }
 button.borrar { color: var(--status-err); padding: 2px 8px; }
+/* sesiones de la nube: nombre, datos, descripcion y botones */
+.files li.ses { flex-wrap: nowrap; align-items: flex-start; }
+.ses-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.files .ses-txt > span { margin-left: 0; }
+.ses-nota { margin: 2px 0 0; font-size: 0.82rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ses-acc { display: flex; gap: 6px; flex: none; }
+.ses-editar { display: grid; gap: 8px; width: 100%; padding: 4px 0; }
+.ses-editar input, .ses-editar textarea { width: 100%; font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; }
+#nube .files { max-height: 420px; }
 button.borrar:hover:not(:disabled) { border-color: var(--status-err); }
 
 .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }

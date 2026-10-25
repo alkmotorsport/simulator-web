@@ -60,6 +60,8 @@ MAGIA = b"TLM1"                # cabecera de los .enc: version del formato
 PASS_MIN = 10
 MAX_ENC = 95 * 1024 * 1024     # GitHub rechaza ficheros de mas de 100 MB
 PERIODO = 600                  # s entre reintentos (sin internet en el circuito)
+TITULO_MAX = 80                # nombre y descripcion de una sesion de la nube
+NOTA_MAX = 500
 BORRADA = "borrada"             # en subidas.json: borrada de la nube a proposito
 ID_OK = re.compile(r"^[a-z0-9][a-z0-9._-]{1,31}$")
 
@@ -305,6 +307,32 @@ class Sincro:
         hechas = self._leer_subidas()
         return {n for n, h in self._sesiones_locales().items() if hechas.get(n) == h}
 
+    def editar_en_nube(self, sid, titulo, nota):
+        """Nombre y descripcion de una sesion de la nube (van en el indice, cifrados)."""
+        if not re.match(r"^[0-9a-f]{20}$", sid or ""):
+            raise ValueError("sesion no valida")
+        titulo = " ".join(str(titulo or "").split())[:TITULO_MAX]
+        nota = str(nota or "").strip()[:NOTA_MAX]
+        ri = "raspis/{}/indice.enc".format(self.raspi)
+
+        def preparar():
+            blob = self._leer(ri)
+            sesiones = json.loads(descifrar(self.clave, blob, ri))["sesiones"] if blob else []
+            s = next((x for x in sesiones if x["id"] == sid), None)
+            if s is None:
+                raise ValueError("esa sesion ya no esta en la nube")
+            for k, v in (("titulo", titulo), ("nota", nota)):
+                if v:
+                    s[k] = v
+                else:
+                    s.pop(k, None)
+            self._escribir(ri, cifrar(self.clave, json.dumps({"sesiones": sesiones}, ensure_ascii=False).encode(), ri))
+            return s["nombre"]
+
+        with self.lock:
+            nombre, _ = self._publicar("raspi {}: edita una sesion".format(self.raspi), preparar)
+        return {"ok": True, "titulo": titulo, "nota": nota, "mensaje": "Guardado: " + (titulo or nombre)}
+
     def borrar_de_nube(self, sid):
         """Quita una sesion del repo de datos (y de su indice). La copia local,
         si la hay, se queda y no se vuelve a subir."""
@@ -352,6 +380,10 @@ class Sincro:
                 for nombre in nuevas:
                     ent = self._empaquetar(base, nombre)
                     if ent:
+                        viejo = por_nombre.get(nombre, {})
+                        for k in ("titulo", "nota"):        # puestos por los usuarios
+                            if viejo.get(k):
+                                ent[k] = viejo[k]
                         por_nombre[nombre] = ent
                 lista = sorted(por_nombre.values(), key=lambda s: s["nombre"], reverse=True)
                 if lista != indice["sesiones"]:

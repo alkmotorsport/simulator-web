@@ -541,12 +541,13 @@
     return { sets, avisos, sj };
   }
 
-  function openFiles(title, files) {
+  function openFiles(title, files, nota) {
     const { sets, avisos, sj } = datasetsFromFiles(files);
     if (!sets.length) return fileMsg('No hay ningún CSV con datos' + (avisos.length ? ' (' + avisos.join('; ') + ')' : ''), true);
     if (live.paused) togglePause();
     const sub = sets.length + (sets.length === 1 ? ' sensor' : ' sensores') +
-      (sj && sj.inicio ? ' · ' + sj.inicio.replace('T', ' ') : '') + (sj && sj.simulada ? ' · simulada' : '');
+      (sj && sj.inicio ? ' · ' + sj.inicio.replace('T', ' ') : '') + (sj && sj.simulada ? ' · simulada' : '') +
+      (nota ? ' — ' + nota : '');
     abrirSesionEnVista(title, sub, sets);
     fileMsg(avisos.length ? 'Sin datos: ' + avisos.join('; ') : '');
   }

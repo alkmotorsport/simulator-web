@@ -261,8 +261,8 @@
       else T.showTab('live');
     } else {
       T.showTab('file');
-      if (otra || !$('#nube-list').children.length) listar();
-      if (T.servedByPi) T.listarPi();
+      listar();                      // al dia: lo subido o editado desde la ultima vez
+      if (r.base) T.listarPi();
     }
   }
 
@@ -278,23 +278,67 @@
       const buf = await repo.raw(ri);
       const lista = buf ? (await Cripto.descifrarJSON(r.clave, buf, ri)).sesiones : [];
       ul.innerHTML = '';
-      for (const s of lista) {
-        const li = el('li', '', ul);
-        const b = el('button', 'link', li, s.nombre);
-        b.addEventListener('click', () => abrirSesion(r, s));
-        el('span', '', li, s.sensores.length + (s.sensores.length === 1 ? ' sensor · ' : ' sensores · ') +
-          (s.inicio ? new Date(s.inicio).toLocaleString() : '') + ' · ' + (s.bytes / 1024).toFixed(0) + ' kB' +
-          (s.simulada ? ' · simulada' : '') + (s.fin ? '' : ' · cortada'));
-        const x = el('button', 'ghost small borrar', li, 'Borrar');
-        x.title = 'Borrar de la nube (lo hace tu sistema de telemetría: tiene que estar en línea)';
-        x.addEventListener('click', () => borrarDeNube(r, s, li, x));
-      }
+      for (const s of lista) pintarSesion(el('li', 'ses', ul), r, s);
       msg('#nube-msg', lista.length ? '' : 'Este sistema aún no ha subido ninguna sesión.');
     } catch (e) {
       msg('#nube-msg', 'No se pudieron cargar: ' + e.message, true);
     }
   }
   $('#nube-refresh').addEventListener('click', listar);
+
+  /** Una sesion de la nube: su nombre y descripcion (si se los pusieron) y sus botones. */
+  function pintarSesion(li, r, s) {
+    li.innerHTML = '';
+    const txt = el('div', 'ses-txt', li);
+    const b = el('button', 'link', txt, s.titulo || s.nombre);
+    b.addEventListener('click', () => abrirSesion(r, s));
+    el('span', '', txt, (s.titulo ? s.nombre + ' · ' : '') + s.sensores.length + (s.sensores.length === 1 ? ' sensor · ' : ' sensores · ') +
+      (s.inicio ? new Date(s.inicio).toLocaleString() : '') + ' · ' + (s.bytes / 1024).toFixed(0) + ' kB' +
+      (s.simulada ? ' · simulada' : '') + (s.fin ? '' : ' · cortada'));
+    if (s.nota) el('p', 'ses-nota', txt, s.nota);
+    const acc = el('div', 'ses-acc', li);
+    const ed = el('button', 'ghost small', acc, 'Editar');
+    ed.title = 'Ponerle nombre y descripción (lo guarda tu sistema de telemetría: tiene que estar en línea)';
+    ed.addEventListener('click', () => editarSesion(li, r, s));
+    const x = el('button', 'ghost small borrar', acc, 'Borrar');
+    x.title = 'Borrar de la nube (lo hace tu sistema de telemetría: tiene que estar en línea)';
+    x.addEventListener('click', () => borrarDeNube(r, s, li, x));
+  }
+
+  /** Nombre y descripcion: los guarda el sistema en el indice (cifrado) del repo. */
+  function editarSesion(li, r, s) {
+    if (!r.base) return msg('#nube-msg', 'Para editar, ' + r.nombre + ' tiene que estar encendido y con internet.', true);
+    li.innerHTML = '';
+    const f = el('form', 'ses-editar', li);
+    const l1 = el('label', 'field', f, 'Nombre');
+    const tit = el('input', '', l1);
+    tit.maxLength = 80; tit.value = s.titulo || ''; tit.placeholder = s.nombre;
+    const l2 = el('label', 'field', f, 'Descripción');
+    const nota = el('textarea', '', l2);
+    nota.maxLength = 500; nota.rows = 3; nota.value = s.nota || '';
+    nota.placeholder = 'Circuito, reglajes, condiciones de pista…';
+    const bar = el('div', 'bar', f);
+    const ok = el('button', 'small', bar, 'Guardar');
+    const no = el('button', 'ghost small', bar, 'Cancelar');
+    no.type = 'button';
+    no.addEventListener('click', () => pintarSesion(li, r, s));
+    f.addEventListener('submit', async e => {
+      e.preventDefault();
+      ok.disabled = true;
+      msg('#nube-msg', 'Guardando…');
+      try {
+        const h = await window.TelemetriaAcceso.cabeceras(r.base);
+        const j = await pedir(r.base + '/api/nube/editar', { body: { id: s.id, titulo: tit.value, nota: nota.value }, headers: h, timeout: 60000 });
+        s.titulo = j.titulo; s.nota = j.nota;
+        pintarSesion(li, r, s);
+        msg('#nube-msg', j.mensaje + '.');
+      } catch (err) {
+        ok.disabled = false;
+        msg('#nube-msg', 'No se pudo guardar: ' + err.message, true);
+      }
+    });
+    tit.focus();
+  }
 
   /** El repo solo lo puede escribir la raspi: se le pide a ella. */
   async function borrarDeNube(r, s, li, boton) {
@@ -321,7 +365,7 @@
       const buf = await repo.raw(rel);
       if (!buf) throw new Error('no está en el repo');
       const p = await Cripto.descifrarJSON(r.clave, buf, rel);
-      T.openFiles(s.nombre, Object.entries(p.ficheros).map(([name, text]) => ({ name, text })));
+      T.openFiles(s.titulo || s.nombre, Object.entries(p.ficheros).map(([name, text]) => ({ name, text })), s.nota);
     } catch (e) {
       T.fileMsg('No se pudo abrir ' + s.nombre + ': ' + e.message, true);
     }

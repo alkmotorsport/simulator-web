@@ -17,6 +17,7 @@ Servidor web + tiempo real para la telemetria. Solo libreria estandar.
                     modulo/<id> {"activo": true|false|"auto"},
                     modulo/<id>/accion {"accion": "calibrar"},
                     sesion/borrar {"nombre"}, nube/borrar {"id"} (borrar sesiones),
+                    nube/editar {"id", "titulo", "nota"} (nombre y descripcion),
                     detectar, auto, grabar {"grabar": true|false},
                     alta/consultar {"inv"}, alta {"inv", "secreto", "password"}
                     (alta de un usuario invitado: ver sincro.py)

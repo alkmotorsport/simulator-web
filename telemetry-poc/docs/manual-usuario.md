@@ -120,6 +120,10 @@ Pulsa **Sesiones** en tu sistema.
   - Con las **casillas** de arriba ocultas o muestras sensores; con **⠿**
     arrastras un bloque para cambiar el orden. **⚙ Ajustes** guarda ese orden
     y las opciones.
+- **Editar** (solo en las de la nube): ponle un **nombre** (por ejemplo
+  «Jarama · tanda 2») y una **descripción** (reglajes, condiciones de pista…).
+  Se ven en la lista y como título al abrirla. Lo guarda tu sistema, así que
+  tiene que estar «en línea» para editar.
 - **Borrar** (pide confirmación y no se puede deshacer):
   - **De la nube:** lo borra tu sistema, así que tiene que estar «en línea».
     Su copia en el sistema, si la hay, no se borra.
