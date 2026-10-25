@@ -548,7 +548,14 @@
   /** Problema conocido de la conexion con la Pi, o '' si no se detecta. */
   function mixedContent(base) {
     return location.protocol === 'https:' && base.startsWith('http:')
-      ? 'Esta página es https y el navegador bloquea http: arranca la Pi con --https y usa https://' : '';
+      ? 'Desde la app (https) el navegador no deja hablar con la raspi por http.' : '';
+  }
+
+  /** Enlace para abrir la web de la propia raspi (mismo wifi): alli va el modo en vivo. */
+  function piLink(p, base) {
+    const a = document.createElement('a');
+    a.href = base + '/'; a.textContent = 'Abre la web de la raspi';
+    p.append(' ', a, ' para el modo en vivo (o arranca la Pi con --https).');
   }
 
   function setConn(txt, cls, certBase) {
@@ -572,7 +579,7 @@
     const base = serverBase(), box = $('#pi-files');
     if (!base) { box.hidden = true; setConn(''); return; }
     const mixed = mixedContent(base);
-    if (mixed) { box.hidden = true; setConn(mixed, 'err'); return; }
+    if (mixed) { box.hidden = true; setConn(mixed, 'err'); piLink($('#conn-status'), base); return; }
     try {
       const r = await fetch(base + '/api/sesiones');
       if (!r.ok) throw new Error(r.status);
@@ -654,7 +661,7 @@
     const base = serverBase();
     if (!base) return setStatus('Indica arriba la dirección de la Raspberry', 'err');
     const mixed = mixedContent(base);
-    if (mixed) return setStatus(mixed, 'err');
+    if (mixed) { setStatus(mixed, 'err'); piLink($('#live-status'), base); return; }
     store('tele-server', $('#server').value.trim());
     disconnect();
     live.sets = {}; live.vivos = {}; live.key = ''; live.control = true;
@@ -968,6 +975,9 @@
   $('#connect').addEventListener('click', () => (live.es ? disconnect() : connect()));
   $('#pause').addEventListener('click', togglePause);
   $('#win').addEventListener('change', () => { live.dirty = true; });
+
+  // cuenta.js (usuarios y sesiones del repo de datos) usa la misma vista
+  window.Telemetria = { openFiles, showTab, fileMsg, serverBase, servedByPi };
 
   // ---------------------------------------------------------------- init ---
 

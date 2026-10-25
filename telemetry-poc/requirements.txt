@@ -6,7 +6,8 @@
 # Si falta alguno, solo fallan los modulos que lo usan (se ve en la web).
 #
 # Instalacion en la Pi (Raspberry Pi OS Buster/Bullseye):
-#   sudo apt install pigpio python3-pigpio python3-smbus python3-spidev openssl i2c-tools
+#   sudo apt install pigpio python3-pigpio python3-smbus python3-spidev openssl i2c-tools \
+#        python3-cryptography git          # repo de datos (sincro.py)
 #   sudo systemctl enable --now pigpiod
 #   sudo raspi-config nonint do_i2c 0      # MPU6050 y MLX90614
 #   sudo raspi-config nonint do_spi 0      # MAX6675 (hay que reiniciar)

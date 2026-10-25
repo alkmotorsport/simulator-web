@@ -1,0 +1,51 @@
+# Publica la web (motorsport.amorgante.es) en GitHub Pages.
+# El token de SOLO LECTURA del repo de datos se mete aqui, desde el secreto
+# DATOS_TOKEN, en telemetry-poc/web/config.js: nunca esta en el codigo fuente.
+# Requiere Settings > Pages > Source: "GitHub Actions".
+name: Publicar web
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Token del repo de datos en config.js
+        env:
+          DATOS_TOKEN: ${{ secrets.DATOS_TOKEN }}
+        run: |
+          test -n "$DATOS_TOKEN" || { echo "::error::falta el secreto DATOS_TOKEN"; exit 1; }
+          python3 - <<'PY'
+          import os, re
+          p = "telemetry-poc/web/config.js"
+          s = open(p).read()
+          s2 = re.sub(r"token: ''", "token: '%s'" % os.environ["DATOS_TOKEN"], s)
+          assert s2 != s, "config.js no tiene token: ''"
+          open(p, "w").write(s2)
+          PY
+          # que no se cuelen ficheros que no son de la web
+          rm -rf .github telemetry-poc/datos telemetry-poc/certs
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deploy
+        uses: actions/deploy-pages@v4

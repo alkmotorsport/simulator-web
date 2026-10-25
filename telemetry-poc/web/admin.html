@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Telemetría · Admin</title>
+<link rel="icon" href="logo.jpg" type="image/jpeg">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <img src="logo.jpg" alt="ALK Motorsport" width="72" height="72">
+    <div>
+      <h1>Administración</h1>
+      <p>Usuarios, invitaciones y raspis del repo de datos</p>
+    </div>
+  </div>
+  <a class="muted" href="./">← Volver a la app</a>
+</header>
+
+<section class="card">
+  <h2>Acceso</h2>
+  <p class="muted">Token de GitHub con escritura en <code id="repo-name"></code>
+    (fine-grained, solo ese repo, permiso <i>Contents: Read and write</i>).
+    Se guarda solo en este navegador.</p>
+  <form id="tok-form" class="bar form">
+    <label class="field grow">Token
+      <input id="tok" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…">
+    </label>
+    <button type="submit">Conectar</button>
+    <button id="tok-forget" type="button" class="ghost">Olvidar</button>
+  </form>
+  <p id="tok-msg" class="msg" hidden></p>
+</section>
+
+<div id="panel-admin" hidden>
+  <section class="card">
+    <h2>Nueva invitación</h2>
+    <p class="muted">El usuario abre el link, se conecta a la wifi de su moto y elige su contraseña en la raspi.</p>
+    <form id="inv-form" class="bar form">
+      <label class="field">Usuario
+        <input id="inv-user" type="text" autocapitalize="none" spellcheck="false" pattern="[a-z0-9][a-z0-9._\-]{1,31}" required
+          title="minúsculas, números, punto, guion o guion bajo (2 a 32)">
+      </label>
+      <label class="field">Raspi
+        <select id="inv-raspi" required></select>
+      </label>
+      <label class="field">Caduca en
+        <select id="inv-dias">
+          <option value="1">1 día</option>
+          <option value="7" selected>7 días</option>
+          <option value="30">30 días</option>
+        </select>
+      </label>
+      <button type="submit">Crear link</button>
+    </form>
+    <div id="inv-out" class="link-out" hidden>
+      <input id="inv-link" type="text" readonly>
+      <button id="inv-copy" type="button" class="ghost small">Copiar</button>
+    </div>
+    <p id="inv-msg" class="msg" hidden></p>
+  </section>
+
+  <section class="card">
+    <div class="sub-head"><h2>Usuarios</h2><button id="reload" class="ghost small">Actualizar</button></div>
+    <ul id="users" class="files admin-list"></ul>
+  </section>
+
+  <section class="card">
+    <h2>Invitaciones pendientes</h2>
+    <ul id="invs" class="files admin-list"></ul>
+  </section>
+
+  <section class="card">
+    <h2>Raspis</h2>
+    <p class="muted">Una raspi aparece aquí cuando se configura con <code>sudo python3 sincro.py iniciar --raspi &lt;id&gt;</code>.</p>
+    <ul id="raspis" class="files admin-list"></ul>
+  </section>
+</div>
+
+<script src="config.js"></script>
+<script src="cripto.js"></script>
+<script src="repo.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

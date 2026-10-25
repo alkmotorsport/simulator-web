@@ -221,7 +221,28 @@ body.dragging-block, body.dragging-block * { cursor: grabbing !important; user-s
 label.btn { display: inline-flex; align-items: center; cursor: pointer; border-radius: 9px; border: 1px solid var(--border); padding: 4px 10px; font-size: 0.82rem; color: var(--text); }
 label.btn:hover { border-color: var(--steel); }
 
+/* cuenta: entrar, activar */
+.top-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; }
+#login h2, #alta h2 { margin-bottom: 10px; }
+#alta p { margin: 0 0 10px; }
+.form .field input { min-width: 200px; }
+.check { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--sub); padding-bottom: 7px; }
+.check input { accent-color: var(--accent); }
+.msg a { color: var(--steel); }
+
+/* portal de admin */
+.top > a { font-size: 0.85rem; }
+.card h2 + p.muted { margin: 4px 0 12px; }
+.card > .sub-head:first-child { margin-top: 0; }
+.admin-list { max-height: none; }
+.admin-list li { align-items: center; }
+.link-out { display: flex; gap: 8px; margin-top: 12px; }
+.link-out input { flex: 1; min-width: 0; font: 0.8rem ui-monospace, Menlo, Consolas, monospace; }
+
 @media (max-width: 520px) {
+  .top { flex-wrap: wrap; }
+  .form .field { flex: 1 1 100%; }
+  .form .field input { min-width: 0; width: 100%; }
   body { padding: 12px; }
   .tile b { font-size: 1.15rem; }
 }

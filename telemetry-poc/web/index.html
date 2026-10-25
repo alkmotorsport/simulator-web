@@ -5,7 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Telemetría</title>
 <link rel="icon" href="logo.jpg" type="image/jpeg">
-<link rel="apple-touch-icon" href="logo.jpg">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#14283c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Telemetría">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -18,8 +23,49 @@
     <p>Sensores de la moto en tiempo real y sesiones grabadas en la Raspberry Pi</p>
     </div>
   </div>
-  <button id="theme" class="ghost small">Tema: auto</button>
+  <div class="top-actions">
+    <span id="cuenta-sum" class="muted"></span>
+    <button id="cuenta-btn" class="small">Entrar</button>
+    <button id="theme" class="ghost small">Tema: auto</button>
+  </div>
 </header>
+
+<section id="login" class="card" hidden>
+  <h2>Entrar</h2>
+  <form id="login-form" class="bar form">
+    <label class="field">Usuario
+      <input id="login-user" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+    </label>
+    <label class="field">Contraseña
+      <input id="login-pass" type="password" autocomplete="current-password" required>
+    </label>
+    <label class="check"><input id="login-keep" type="checkbox" checked> Recordar en este dispositivo</label>
+    <button id="login-go" type="submit">Entrar</button>
+  </form>
+  <p id="login-msg" class="msg" hidden></p>
+</section>
+
+<section id="alta" class="card" hidden>
+  <h2>Activar tu cuenta</h2>
+  <p id="alta-txt"></p>
+  <div id="alta-ir" class="bar" hidden>
+    <label class="field grow">Dirección de tu raspi
+      <input id="alta-dir" type="text" inputmode="url" placeholder="http://192.168.1.50:8081" autocomplete="off">
+    </label>
+    <button id="alta-abrir" type="button">Abrir mi raspi</button>
+  </div>
+  <form id="alta-form" class="bar form" hidden>
+    <input id="alta-user" type="text" autocomplete="username" hidden>
+    <label class="field">Contraseña
+      <input id="alta-pass" type="password" autocomplete="new-password" required>
+    </label>
+    <label class="field">Repítela
+      <input id="alta-pass2" type="password" autocomplete="new-password" required>
+    </label>
+    <button id="alta-go" type="submit">Guardar contraseña</button>
+  </form>
+  <p id="alta-msg" class="msg" hidden></p>
+</section>
 
 <details id="conn-box" class="card conn fold">
   <summary><b>Raspberry</b> <span id="conn-sum" class="muted"></span></summary>
@@ -83,6 +129,14 @@
   <div class="actions">
     <button id="demo" class="ghost small">Cargar sesión de ejemplo</button>
   </div>
+  <div id="nube" hidden>
+    <div class="sub-head">
+      <h3>Tus sesiones en la nube</h3>
+      <button id="nube-refresh" class="ghost small">Actualizar</button>
+    </div>
+    <ul id="nube-list" class="files"></ul>
+    <p id="nube-msg" class="msg muted" hidden></p>
+  </div>
   <div id="pi-files" hidden>
     <div class="sub-head">
       <h3>Sesiones guardadas en la Raspberry</h3>
@@ -136,5 +190,13 @@
 <script src="plot.js"></script>
 <script src="sensors.js"></script>
 <script src="app.js"></script>
+<script src="config.js"></script>
+<script src="cripto.js"></script>
+<script src="repo.js"></script>
+<script src="cuenta.js"></script>
+<script>
+  // app instalable (PWA); solo en https: la web de la Pi (http) no lo necesita
+  if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
 </body>
 </html>

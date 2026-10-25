@@ -14,7 +14,9 @@ Servidor web + tiempo real para la telemetria. Solo libreria estandar.
   POST /api/...     control desde la web (solo con el maestro, telemetria.py):
                     modulo/<id> {"activo": true|false|"auto"},
                     modulo/<id>/accion {"accion": "calibrar"},
-                    detectar, auto, grabar {"grabar": true|false}
+                    detectar, auto, grabar {"grabar": true|false},
+                    alta/consultar {"inv"}, alta {"inv", "secreto", "password"}
+                    (alta de un usuario invitado: ver sincro.py)
 
 Suelto, para revisar sesiones guardadas en la Raspberry sin registrar:
   python3 live_server.py --dir datos --port 8081
@@ -196,6 +198,8 @@ class LiveServer:
                     return srv._json(self, srv.control.peticion(ruta, cuerpo))
                 except (KeyError, ValueError) as e:
                     return srv._json(self, {"error": str(e)}, 400)
+                except RuntimeError as e:       # git / repo de datos
+                    return srv._json(self, {"error": str(e)}, 503)
 
         self.httpd = _Servidor(("0.0.0.0", self.port), Handler)
         if self.tls:

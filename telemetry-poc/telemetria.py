@@ -10,7 +10,8 @@ publica cada sensor va a la vez a:
   - la web (tiempo real y control: activar sensores, calibrar, grabar);
   - las salidas suscritas (LEDs de alerta, barra WS2812).
 Un sensor que no esta (p. ej. sin sonda de aceite) no se ejecuta ni aparece
-en la telemetria.
+en la telemetria. Si la raspi tiene repo de datos (sincro.py), cada sesion
+terminada se sube cifrada a GitHub.
 
 Uso:
   sudo python3 telemetria.py                  # autodetecta, web en :8081, graba
@@ -36,6 +37,7 @@ import time
 from datetime import datetime
 
 import modulos
+import sincro
 from live_server import LiveServer
 from modulos.base import pc
 
@@ -100,6 +102,8 @@ class Grabador:
             self._json()
             self.sesion = None
         print(f"\nSesion guardada: {os.path.abspath(s['ruta'])}")
+        if self.m.sincro:
+            self.m.sincro.avisar()
 
     def fila(self, mod, t, valores):
         if self.sesion is None or not mod.COLS:
@@ -171,6 +175,7 @@ class Maestro:
         self.subs = {}
         self.modulos = modulos.crear(self.cfg["modulos"], self.hw, self)
         self.grabador = Grabador(args.dir, self)
+        self.sincro = None          # repo de datos (sincro.py), si esta configurado
         self.live = None
         self._cont = {m: (0, 0) for m in self.modulos}
         self._ritmo = {m: (0.0, 0.0) for m in self.modulos}
@@ -278,6 +283,13 @@ class Maestro:
             guardar_config(self.ruta_cfg, self.cfg)
             self.detectar()
             self.aplicar()
+        elif p in (["alta"], ["alta", "consultar"]):
+            if not self.sincro:
+                raise ValueError("esta raspi no tiene repo de datos (sincro.py iniciar)")
+            if p == ["alta"]:
+                return self.sincro.alta(cuerpo.get("inv"), cuerpo.get("secreto") or "",
+                                        cuerpo.get("password"))
+            return self.sincro.consultar_alta(cuerpo.get("inv"))
         elif p == ["grabar"]:
             if cuerpo.get("grabar"):
                 self.grabador.iniciar()
@@ -317,6 +329,7 @@ class Maestro:
                 "nombre": s["nombre"], "inicio": s["inicio"],
                 "duracion_s": round(self.reloj() - s["t0"], 1),
                 "ficheros": sorted(s["ficheros"])},
+            "sincro": self.sincro.estado() if self.sincro else None,
         }
 
     def publicar_estado(self):
@@ -368,6 +381,14 @@ class Maestro:
         signal.signal(signal.SIGTERM, parar)
 
         os.makedirs(a.dir, exist_ok=True)
+        try:
+            self.sincro = sincro.cargar(
+                a.dir, activa=lambda: self.grabador.sesion and self.grabador.sesion["nombre"])
+        except Exception as e:      # sin repo de datos se graba igual, en local
+            print(f"Repo de datos desactivado: {e}")
+        if self.sincro:
+            self.sincro.arrancar()
+            print(f"Repo de datos: {self.sincro.cfg['repo']} (raspi {self.sincro.raspi})")
         self.live = LiveServer(a.puerto, data_dir=a.dir, https=a.https or bool(a.cert),
                                cert=a.cert, key=a.key, control=self).start()
         print(f"Web: {self.live.url()}" + ("   [SIMULADO]" if self.hw.sim else ""))
@@ -398,6 +419,8 @@ class Maestro:
             for m in sorted(self.modulos.values(), key=lambda m: m.CLASE != "salida"):
                 m.detener()
             self.grabador.parar()
+            if self.sincro:
+                self.sincro.detener()
             self.live.stop()
             self.hw.cerrar()
 
