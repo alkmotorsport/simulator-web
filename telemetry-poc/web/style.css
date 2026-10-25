@@ -125,7 +125,13 @@ dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; margi
 dt { color: var(--sub); }
 dd { margin: 0; font-variant-numeric: tabular-nums; }
 
-.range-bar { display: flex; align-items: center; gap: 10px; margin: 6px 0 10px; font-weight: 600; font-size: 0.88rem; }
+.range-bar { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 6px 0 8px; margin: 0 0 6px; font-weight: 600; font-size: 0.88rem; }
+.range-top { display: flex; align-items: center; gap: 10px; }
+/* navegar por el tiempo con un tramo ampliado: la pista es toda la sesion */
+.nav { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.nav-pista { position: relative; flex: 1; height: 30px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); touch-action: none; cursor: pointer; }
+.nav-ventana { position: absolute; top: 2px; bottom: 2px; min-width: 16px; border-radius: 6px; background: var(--chart-select); border: 1px solid var(--steel); cursor: grab; }
+.nav-pista:active .nav-ventana { cursor: grabbing; }
 
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); gap: 8px; margin-bottom: 12px; }
 .tile { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 7px 10px; }

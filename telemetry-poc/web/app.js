@@ -355,6 +355,7 @@
       ? 'Últimos ' + $('#win').value + ' s' + (live.paused ? ' (en pausa)' : '')
       : r ? 'Tramo ' + r[0].toFixed(2) + ' – ' + r[1].toFixed(2) + ' s' : 'Todo el registro';
     $('#reset-zoom').hidden = !r || (view.live && !live.paused);
+    pintarNav(r);
 
     for (const s of view.sets) {
       if (!s.el) continue;
@@ -377,6 +378,69 @@
       }
     }
   }
+
+  // ------------------------------------------------ navegar por el tiempo ---
+  // Con un tramo ampliado: pista con toda la sesion y la ventana visible, que
+  // se arrastra (dedo o raton); botones de media ventana; trackpad horizontal.
+
+  let navRaf = 0, navPend = null;
+
+  function pintarNav(r) {
+    const ok = !!r && view.group.zoomable && !(view.live && !live.paused);
+    $('#nav').hidden = !ok;
+    if (!ok) return;
+    const [e0, e1] = view.group.extent(), sp = (e1 - e0) || 1;
+    const v = $('#nav-ventana');
+    v.style.left = Math.max(0, (r[0] - e0) / sp * 100) + '%';
+    v.style.width = Math.min(100, (r[1] - r[0]) / sp * 100) + '%';
+  }
+
+  /** Lleva el tramo ampliado a 'inicio', con la misma anchura y sin salir de los datos. */
+  function moverTramo(inicio) {
+    const g = view.group, r = navPend || (g && g.range);
+    if (!r) return;
+    const [e0, e1] = g.extent(), w = r[1] - r[0];
+    const a = Math.min(Math.max(inicio, e0), e1 - w);
+    navPend = [a, a + w];
+    if (!navRaf) navRaf = requestAnimationFrame(() => {
+      navRaf = 0;
+      const p = navPend; navPend = null;
+      if (p && view.group.range) view.group.setRange(p);
+    });
+  }
+
+  $('#nav-pista').addEventListener('pointerdown', e => {
+    const g = view.group, r = g && g.range;
+    if (!r) return;
+    e.preventDefault();
+    const pista = e.currentTarget;
+    pista.setPointerCapture(e.pointerId);
+    const caja = pista.getBoundingClientRect(), [e0, e1] = g.extent();
+    const tEn = x => e0 + (x - caja.left) / caja.width * (e1 - e0);
+    // se agarra la ventana por donde se toca; fuera de ella, salta a ese punto
+    const ancla = e.target.id === 'nav-ventana' ? tEn(e.clientX) - r[0] : (r[1] - r[0]) / 2;
+    if (e.target.id !== 'nav-ventana') moverTramo(tEn(e.clientX) - ancla);
+    const mover = ev => moverTramo(tEn(ev.clientX) - ancla);
+    const fin = () => {
+      pista.removeEventListener('pointermove', mover);
+      pista.removeEventListener('pointerup', fin);
+      pista.removeEventListener('pointercancel', fin);
+    };
+    pista.addEventListener('pointermove', mover);
+    pista.addEventListener('pointerup', fin);
+    pista.addEventListener('pointercancel', fin);
+  });
+  const paso = dir => () => { const r = view.group && view.group.range; if (r) moverTramo(r[0] + dir * (r[1] - r[0]) / 2); };
+  $('#nav-izq').addEventListener('click', paso(-1));
+  $('#nav-der').addEventListener('click', paso(1));
+  $('#blocks').addEventListener('wheel', e => {
+    const r = view.group && view.group.range;
+    if (!r || $('#nav').hidden || Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;   // vertical: scroll normal
+    e.preventDefault();
+    const ancho = e.target.closest('.chart-wrap') ? e.target.closest('.chart-wrap').clientWidth : 600;
+    const cur = navPend || r;
+    moverTramo(cur[0] + e.deltaX / ancho * (cur[1] - cur[0]));
+  }, { passive: false });
 
   function renderTiles(box, tiles) {
     box.innerHTML = '';

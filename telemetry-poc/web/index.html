@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Telemetría">
-<link rel="stylesheet" href="style.css?v=20261025l">
+<link rel="stylesheet" href="style.css?v=20261025m">
 </head>
 <body>
 
@@ -193,8 +193,17 @@
     <div id="meta-list"></div>
   </details>
   <div class="range-bar">
-    <span id="range-label"></span>
-    <button id="reset-zoom" class="ghost small" hidden>Ver todo</button>
+    <div class="range-top">
+      <span id="range-label"></span>
+      <button id="reset-zoom" class="ghost small" hidden>Ver todo</button>
+    </div>
+    <div id="nav" class="nav" hidden>
+      <button id="nav-izq" class="ghost small" aria-label="Retroceder">◀</button>
+      <div id="nav-pista" class="nav-pista" title="Arrastra para moverte por la sesión">
+        <div id="nav-ventana" class="nav-ventana"></div>
+      </div>
+      <button id="nav-der" class="ghost small" aria-label="Avanzar">▶</button>
+    </div>
   </div>
   <div id="blocks"></div>
   <p class="hint">
@@ -204,13 +213,13 @@
   </p>
 </section>
 
-<script src="plot.js?v=20261025l"></script>
-<script src="sensors.js?v=20261025l"></script>
-<script src="app.js?v=20261025l"></script>
-<script src="config.js?v=20261025l"></script>
-<script src="cripto.js?v=20261025l"></script>
-<script src="repo.js?v=20261025l"></script>
-<script src="cuenta.js?v=20261025l"></script>
+<script src="plot.js?v=20261025m"></script>
+<script src="sensors.js?v=20261025m"></script>
+<script src="app.js?v=20261025m"></script>
+<script src="config.js?v=20261025m"></script>
+<script src="cripto.js?v=20261025m"></script>
+<script src="repo.js?v=20261025m"></script>
+<script src="cuenta.js?v=20261025m"></script>
 <script>
   // app instalable (PWA); solo en https: la web de la Pi (http) no lo necesita
   if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(() => {});

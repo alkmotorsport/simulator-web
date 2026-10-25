@@ -109,8 +109,14 @@ Pulsa **Sesiones** en tu sistema.
   gráficas:
   - Todas las gráficas comparten el eje de tiempo: el cursor marca el mismo
     instante en todos los sensores.
-  - **Arrastra en horizontal** para ampliar un tramo (las cifras se recalculan
-    para ese tramo). **Doble clic** o **Ver todo** para volver.
+  - **Arrastra en horizontal** sobre una gráfica para ampliar un tramo (las
+    cifras se recalculan para ese tramo). **Doble clic** o **Ver todo** para
+    volver.
+  - Con un tramo ampliado, arriba sale una **barra con toda la sesión**:
+    arrastra la parte resaltada (o toca otro punto de la barra) para moverte
+    en el tiempo sin perder el zoom. **◀ ▶** avanzan o retroceden media
+    ventana. En el portátil también vale deslizar en horizontal en el
+    trackpad.
   - Con las **casillas** de arriba ocultas o muestras sensores; con **⠿**
     arrastras un bloque para cambiar el orden. **⚙ Ajustes** guarda ese orden
     y las opciones.
