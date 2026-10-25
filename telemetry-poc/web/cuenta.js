@@ -159,6 +159,18 @@
 
   // ------------------------------------------------------------ activar ---
 
+  const USADA = 'Esta invitación ya se ha usado (o no existe). Si ya elegiste tu contraseña, tu cuenta está lista: pulsa «Entrar» arriba con tu usuario.';
+
+  /** Invitacion usada o inexistente: nada que rellenar, solo como entrar. */
+  function altaUsada() {
+    $('#alta-txt').textContent = '';
+    $('#alta-ir').hidden = true;
+    $('#alta-form').hidden = true;
+    history.replaceState(null, '', location.pathname);
+    const m = msg('#alta-msg', USADA);
+    if (T.servedByPi) { m.textContent = USADA.replace('pulsa «Entrar» arriba', 'entra en la app') + ' '; const a = el('a', '', m, 'Abrir la app'); a.href = APP_URL; }
+  }
+
   async function alta(inv, secreto) {
     const box = $('#alta');
     box.hidden = false;
@@ -173,7 +185,7 @@
     try { dir.value = localStorage.getItem('tele-server') || ''; } catch (e) { dir.value = ''; }   // si no hay repo
     if (repo) try {
       const i = await repo.json('invitaciones/' + inv + '.json');
-      if (!i) return msg('#alta-msg', 'Esta invitación no existe o ya se ha usado.', true);
+      if (!i) return altaUsada();
       const r = await repo.json('raspis/' + i.raspi + '/raspi.json');
       $('#alta-txt').textContent = 'Usuario ' + i.usuario + ' en ' + ((r && r.nombre) || i.raspi) +
         '. Conéctate a la wifi de la moto y abre la raspi para elegir tu contraseña. Si el navegador avisa del certificado, acéptalo: es el de tu raspi.';
@@ -194,6 +206,7 @@
     $('#alta-txt').textContent = 'Comprobando la invitación en la raspi…';
     let info;
     try { info = await api('/api/alta/consultar', { inv }); } catch (e) {
+      if (/ya se ha usado/.test(e.message)) return altaUsada();
       $('#alta-txt').textContent = '';
       return msg('#alta-msg', e.message, true);
     }

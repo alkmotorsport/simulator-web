@@ -29,6 +29,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }   /* que no lo anule un display de clase (.bar...) */
 body {
   margin: 0; padding: 16px 24px;
   background: var(--bg); color: var(--text);
