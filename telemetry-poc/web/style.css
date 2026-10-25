@@ -136,6 +136,25 @@ dd { margin: 0; font-variant-numeric: tabular-nums; }
 
 .range-bar { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 6px 0 8px; margin: 0 0 6px; font-weight: 600; font-size: 0.88rem; }
 .range-top { display: flex; align-items: center; gap: 10px; }
+#analizar { margin-left: auto; }
+
+/* Analizar trazas */
+.analisis { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px; margin: 0 0 16px; }
+.analisis-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.analisis-head h3 { margin: 0; margin-right: auto; font-size: 1rem; }
+.analisis-head h3 small { font-weight: 400; color: var(--sub); font-size: 0.82rem; }
+.analisis > p.muted { margin: 6px 0 4px; }
+.analisis a { color: var(--steel); }
+.analisis h4 { margin: 14px 0 6px; font-size: 0.78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--sub); }
+.hallazgo { border: 1px solid var(--border); border-left: 4px solid var(--series-1); border-radius: 10px; padding: 8px 10px; margin: 0 0 8px; background: var(--bg); }
+.hallazgo.aviso { border-left-color: var(--status-warning); }
+.hallazgo.ok { border-left-color: var(--status-ok); }
+.hallazgo b { display: block; font-size: 0.9rem; }
+.hallazgo.aviso b::before { content: "⚠ "; color: var(--status-warning); }
+.hallazgo p { margin: 4px 0 0; font-size: 0.84rem; line-height: 1.45; }
+.hallazgo .acciones { display: flex; gap: 8px; margin-top: 6px; align-items: center; }
+.hallazgo .acciones a { font-size: 0.8rem; }
+
 /* navegar por el tiempo con un tramo ampliado: la pista es toda la sesion */
 .nav { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .nav-pista { position: relative; flex: 1; height: 32px; border: 2px solid var(--accent); border-radius: 9px;

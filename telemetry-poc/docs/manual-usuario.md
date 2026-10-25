@@ -125,6 +125,15 @@ Pulsa **Sesiones** en tu sistema.
   - Con las **casillas** de arriba ocultas o muestras sensores; con **⠿**
     arrastras un bloque para cambiar el orden. **⚙ Ajustes** guarda ese orden
     y las opciones.
+- **Analizar trazas** (arriba, junto a la barra de tiempo): explica lo que se
+  ve en el tramo visible (o en toda la sesión) con la teoría de la
+  [formación](https://motorsport.amorgante.es): inclinación y radio de las
+  curvas, agarre usado (círculo de fricción), frenadas y transferencia de
+  carga, temperatura del disco, suspensión… y cruza los sensores entre sí
+  (por ejemplo, la frenada de la IMU con la de la rueda). Avisa también de
+  datos dudosos (caja movida, vibración, huecos). **Ver** lleva a ese momento
+  en las gráficas y **Teoría en la formación** abre el capítulo. Si amplías
+  otro tramo, pulsa **Analizar el tramo visible**.
 - **Editar** (solo en las de la nube): ponle un **nombre** (por ejemplo
   «Jarama · tanda 2») y una **descripción** (reglajes, condiciones de pista…).
   Se ven en la lista y como título al abrirla. Lo guarda tu sistema, así que

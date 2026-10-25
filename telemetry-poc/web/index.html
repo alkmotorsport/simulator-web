@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Telemetría">
-<link rel="stylesheet" href="style.css?v=20261025u">
+<link rel="stylesheet" href="style.css?v=20261025v">
 </head>
 <body>
 
@@ -196,6 +196,7 @@
     <div class="range-top">
       <span id="range-label"></span>
       <button id="reset-zoom" class="ghost small" hidden>Ver todo</button>
+      <button id="analizar" class="small">Analizar trazas</button>
     </div>
     <div id="nav" class="nav" hidden>
       <button id="nav-izq" class="ghost small" aria-label="Retroceder">◀</button>
@@ -205,6 +206,17 @@
       <button id="nav-der" class="ghost small" aria-label="Avanzar">▶</button>
     </div>
   </div>
+  <section id="analisis" class="analisis" hidden aria-live="polite">
+    <div class="analisis-head">
+      <h3>Análisis <small id="analisis-tramo"></small></h3>
+      <button id="analisis-otra" class="small" hidden>Analizar el tramo visible</button>
+      <button id="analisis-cerrar" class="ghost small">Cerrar</button>
+    </div>
+    <p class="muted">Lo que se ve en la sesión explicado con la teoría de la
+      <a href="https://motorsport.amorgante.es/" target="_blank" rel="noopener">formación</a>
+      (mismas fórmulas y valores de referencia). <b>Ver</b> lleva al momento en las gráficas.</p>
+    <div id="analisis-lista"></div>
+  </section>
   <div id="blocks"></div>
   <p class="hint">
     Todas las gráficas comparten el eje de tiempo: el cursor marca el mismo instante en
@@ -213,13 +225,14 @@
   </p>
 </section>
 
-<script src="plot.js?v=20261025u"></script>
-<script src="sensors.js?v=20261025u"></script>
-<script src="app.js?v=20261025u"></script>
-<script src="config.js?v=20261025u"></script>
-<script src="cripto.js?v=20261025u"></script>
-<script src="repo.js?v=20261025u"></script>
-<script src="cuenta.js?v=20261025u"></script>
+<script src="plot.js?v=20261025v"></script>
+<script src="sensors.js?v=20261025v"></script>
+<script src="analisis.js?v=20261025v"></script>
+<script src="app.js?v=20261025v"></script>
+<script src="config.js?v=20261025v"></script>
+<script src="cripto.js?v=20261025v"></script>
+<script src="repo.js?v=20261025v"></script>
+<script src="cuenta.js?v=20261025v"></script>
 <script>
   // app instalable (PWA); solo en https: la web de la Pi (http) no lo necesita
   if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(() => {});

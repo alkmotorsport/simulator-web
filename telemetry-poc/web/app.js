@@ -30,6 +30,7 @@
   const view = { sets: [], group: null, live: false, fichero: null };
   let tab = 'live';        // pestana visible: 'live' o 'file'
   let lastFile = null;     // ultima sesion abierta: {title, sub, sets}
+  let analizado = null;    // tramo de Analizar trazas: [t0, t1] o 'todo'
   const live = {
     es: null, estado: null, sets: {}, ctx: {}, vivos: {}, rows: {}, key: '',
     paused: false, dirty: false, lastDraw: 0, lastSession: null, control: true,
@@ -115,6 +116,7 @@
     const prev = {};
     if (!reloadOpts) view.sets.forEach(s => { prev[s.ds.id] = s; });
     if (!isLive || !view.live) clearRange();
+    if (isLive !== view.live || !isLive) cerrarAnalisis();
     view.live = isLive;
     view.sets = datasets.map(ds => {
       const def = Sensors.byId(ds.sensor) || Sensors.detect(Object.keys(ds.cols));
@@ -356,6 +358,8 @@
       ? 'Últimos ' + $('#win').value + ' s' + (live.paused ? ' (en pausa)' : '')
       : r ? 'Tramo ' + r[0].toFixed(2) + ' – ' + r[1].toFixed(2) + ' s' : 'Todo el registro';
     $('#reset-zoom').hidden = !r || (view.live && !live.paused);
+    $('#analizar').hidden = view.live && !live.paused;
+    if (analizado) $('#analisis-otra').hidden = mismoTramo(analizado, tramoActual());
     pintarNav(r);
 
     for (const s of view.sets) {
@@ -455,6 +459,54 @@
   }
 
   $('#reset-zoom').addEventListener('click', () => view.group && view.group.setRange(null));
+
+  // ----------------------------------------------------- analizar trazas ---
+  // Reglas de analisis.js sobre el tramo visible. El resultado se queda fijo
+  // aunque se amplie o se mueva (para poder ir a cada momento con «Ver»); si
+  // el tramo cambia, se ofrece analizar el nuevo.
+
+  function tramoActual() { return view.group && view.group.range ? view.group.range.slice() : 'todo'; }
+  function mismoTramo(a, b) { return a === b || (Array.isArray(a) && Array.isArray(b) && Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(a[1] - b[1]) < 1e-6); }
+
+  function analizar() {
+    const tramo = tramoActual();
+    const lista = Analisis.analizar(view.sets.filter(s => s.derived), tramo === 'todo' ? null : tramo);
+    analizado = tramo;
+    $('#analisis-tramo').textContent = tramo === 'todo' ? '· toda la sesión' : '· tramo ' + tramo[0].toFixed(1) + ' – ' + tramo[1].toFixed(1) + ' s';
+    const box = $('#analisis-lista');
+    box.innerHTML = '';
+    if (!lista.length) el('p', 'muted', box, 'No hay datos suficientes en este tramo para sacar conclusiones.');
+    let tema = '';
+    for (const h of lista) {
+      if (h.tema !== tema) { tema = h.tema; el('h4', '', box, tema); }
+      const d = el('div', 'hallazgo ' + h.nivel, box);
+      el('b', '', d, h.titulo);
+      el('p', '', d, h.texto);
+      if (h.t === null && !h.ref) continue;
+      const acc = el('div', 'acciones', d);
+      if (h.t !== null) el('button', 'ghost small', acc, 'Ver').addEventListener('click', () => verInstante(h.t));
+      if (h.ref) {
+        const a = el('a', '', acc, 'Teoría en la formación ↗');
+        a.href = Analisis.WEB + h.ref; a.target = '_blank'; a.rel = 'noopener';
+      }
+    }
+    $('#analisis').hidden = false;
+    $('#analisis-otra').hidden = true;
+  }
+
+  /** Amplia 20 s alrededor de t (sin salir de los datos). */
+  function verInstante(t) {
+    const [e0, e1] = view.group.extent(), w = Math.min(20, e1 - e0);
+    const a = Math.min(Math.max(t - w / 2, e0), e1 - w);
+    view.group.setRange([a, a + w]);
+    $('#blocks').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function cerrarAnalisis() { analizado = null; $('#analisis').hidden = true; }
+
+  $('#analizar').addEventListener('click', analizar);
+  $('#analisis-otra').addEventListener('click', analizar);
+  $('#analisis-cerrar').addEventListener('click', cerrarAnalisis);
 
   function showHeader(title, sub, metas) {
     $('#view-title').textContent = title;
