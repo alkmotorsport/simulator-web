@@ -6,6 +6,8 @@ Servidor web + tiempo real para la telemetria. Solo libreria estandar.
   /stream           Server-Sent Events: 'estado' (modulos y sesion), 'vivo'
                     (semaforo, tira...) y mensajes con las muestras nuevas
                     de cada modulo: {"d": {"suspension": [[t, ...], ...]}}
+  /api/vivo?c=<id>  lo mismo por consultas (el tunel retiene el SSE):
+                    {"estado", "vivos", "d"} con lo nuevo para ese cliente
   /api/estado       estado actual de los modulos (JSON)
   /api/sesiones     sesiones guardadas en la carpeta de datos
   /files/<ruta>     CSV / sesion.json de una sesion, para postprocesar
@@ -17,6 +19,10 @@ Servidor web + tiempo real para la telemetria. Solo libreria estandar.
                     detectar, auto, grabar {"grabar": true|false},
                     alta/consultar {"inv"}, alta {"inv", "secreto", "password"}
                     (alta de un usuario invitado: ver sincro.py)
+
+Con 'acceso' (telemetria.py, si la raspi tiene repo de datos) todo pide
+entrar con un usuario de la raspi salvo la pagina, /api/raspi, el login y el
+alta: ver acceso.py.
 
 Suelto, para revisar sesiones guardadas en la Raspberry sin registrar:
   python3 live_server.py --dir datos --port 8081
@@ -39,7 +45,7 @@ import threading
 import time
 from collections import deque
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 WEB_DIR = os.path.join(AQUI, "web")
@@ -48,6 +54,7 @@ AJUSTES = os.path.join(AQUI, "ajustes_web.json")
 # fichero suelto (CSV antiguos) o dentro de la carpeta de una sesion
 NOMBRE_OK = re.compile(r"^(?:[\w\-]+/)?[\w\-][\w.\-]*\.(?:csv|json|meta\.txt)$")
 BACKLOG = 4000       # muestras por modulo que recibe un cliente al conectar
+CLIENTE_OK = re.compile(r"^[\w-]{8,64}$")
 
 
 def ip_local():
@@ -105,12 +112,14 @@ class _Servidor(ThreadingHTTPServer):
 
 class LiveServer:
     def __init__(self, port=8081, data_dir=".", web_dir=WEB_DIR, https=False,
-                 cert=None, key=None, control=None):
+                 cert=None, key=None, control=None, acceso=None):
         self.port = port
         self.tls = certificado_autofirmado(cert, key) if https else None
         self.data_dir = os.path.realpath(data_dir)
         self.web_dir = web_dir
         self.control = control      # el maestro: atiende los POST de la web
+        self.acceso = acceso        # acceso.Acceso, o None: web abierta
+        self.clientes = {}          # /api/vivo: id -> lo que ya tiene ese cliente
         self.lock = threading.Lock()
         self.bufs = {}              # id de modulo -> deque de filas
         self.seqs = {}              # id de modulo -> filas publicadas
@@ -177,13 +186,41 @@ class LiveServer:
             def do_OPTIONS(self):
                 self.send_response(204)
                 self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-                self.send_header("Access-Control-Allow-Headers", "*")
+                # '*' no incluye Authorization: hay que nombrarla
+                self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type")
+                self.send_header("Access-Control-Max-Age", "600")
                 self.end_headers()
+
+            def _query(self):
+                return {k: v[0] for k, v in parse_qs(urlparse(self.path).query).items()}
+
+            def _autorizado(self):
+                if srv.acceso is None:
+                    return True
+                cab = self.headers.get("Authorization") or ""
+                sesion = cab[7:].strip() if cab.startswith("Bearer ") else self._query().get("s")
+                if srv.acceso.usuario(sesion):
+                    return True
+                srv._json(self, {"error": "entra con tu usuario de esta raspi", "acceso": True}, 401)
+                return False
 
             def do_GET(self):
                 ruta = urlparse(self.path).path
+                # publico: la pagina, quien es esta raspi y el login
+                if ruta == "/api/raspi":
+                    return srv._json(self, srv.acceso.info() if srv.acceso else {"acceso": False})
+                if ruta == "/api/reto" and srv.acceso:
+                    return srv._json(self, srv.acceso.reto())
+                if ruta.startswith("/api/usuario/") and srv.control is not None:
+                    u = srv.control.usuario_para_web(unquote(ruta[len("/api/usuario/"):]))
+                    return srv._json(self, u or {"error": "no existe"}, 200 if u else 404)
+                if (ruta.startswith("/api/") or ruta.startswith("/files/") or
+                        ruta == "/stream") and not self._autorizado():
+                    return
                 if ruta == "/stream":
                     return srv._stream(self)
+                if ruta == "/api/vivo":
+                    return srv._vivo(self, self._query())
                 if ruta == "/api/estado":
                     with srv.lock:
                         estado = srv.estado
@@ -198,18 +235,31 @@ class LiveServer:
 
             def do_POST(self):
                 ruta = urlparse(self.path).path
+                if ruta == "/api/entrar" and srv.acceso:
+                    try:
+                        c = self._cuerpo()
+                        return srv._json(self, srv.acceso.entrar(c.get("usuario"), c.get("reto"), c.get("firma")))
+                    except (ValueError, PermissionError) as e:
+                        return srv._json(self, {"error": str(e)}, 403)
+                # el alta se protege con el secreto de la invitacion
+                if not ruta.startswith("/api/alta") and not self._autorizado():
+                    return
                 if ruta == "/api/ajustes":
                     return srv._guardar_ajustes(self)
                 if srv.control is None or not ruta.startswith("/api/"):
                     return srv._json(self, {"error": "solo con telemetria.py"}, 404)
                 try:
-                    n = int(self.headers.get("Content-Length") or 0)
-                    cuerpo = json.loads(self.rfile.read(n) or b"{}") if n else {}
-                    return srv._json(self, srv.control.peticion(ruta, cuerpo))
+                    return srv._json(self, srv.control.peticion(ruta, self._cuerpo()))
                 except (KeyError, ValueError) as e:
                     return srv._json(self, {"error": str(e)}, 400)
                 except RuntimeError as e:       # git / repo de datos
                     return srv._json(self, {"error": str(e)}, 503)
+
+            def _cuerpo(self):
+                n = int(self.headers.get("Content-Length") or 0)
+                if n > 65536:
+                    raise ValueError("peticion demasiado grande")
+                return json.loads(self.rfile.read(n) or b"{}") if n else {}
 
         self.httpd = _Servidor(("0.0.0.0", self.port), Handler)
         if self.tls:
@@ -243,7 +293,8 @@ class LiveServer:
             self.stop()
 
     def _pendiente(self, cli):
-        """Lo que le falta a un cliente: estado, vivos y filas nuevas."""
+        """Lo que le falta a un cliente: estado, vivos y filas nuevas. La
+        primera vez, como mucho cli['max'] filas por modulo (historico)."""
         with self.lock:
             estado = None
             if cli["estado"] != self.estado_ver:
@@ -253,6 +304,8 @@ class LiveServer:
             datos = {}
             for m, buf in self.bufs.items():
                 nuevas = min(self.seqs[m] - cli["seqs"].get(m, 0), len(buf))
+                if m not in cli["seqs"]:
+                    nuevas = min(nuevas, cli.get("max", BACKLOG))
                 if nuevas > 0:
                     datos[m] = list(buf)[-nuevas:]
                 cli["seqs"][m] = self.seqs[m]
@@ -287,6 +340,30 @@ class LiveServer:
                 time.sleep(0.05)  # ~20 envios/s, varias muestras por envio
         except (BrokenPipeError, ConnectionResetError, OSError):
             pass
+
+    def _vivo(self, h, q):
+        """Una consulta del modo en vivo: lo nuevo desde la anterior de ese
+        cliente. Clientes sin consultar en 60 s se olvidan."""
+        cid = q.get("c", "")
+        if not CLIENTE_OK.match(cid):
+            return self._json(h, {"error": "falta c=<id de cliente>"}, 400)
+        ahora = time.monotonic()
+        with self.lock:
+            self.clientes = {k: v for k, v in self.clientes.items() if ahora - v["visto"] < 60}
+            cli = self.clientes.get(cid)
+            if cli is None:
+                if len(self.clientes) >= 50:
+                    return self._json(h, {"error": "demasiados clientes"}, 503)
+                cli = self.clientes[cid] = {"estado": -1, "vivo": 0, "seqs": {},
+                                            "max": max(0, min(int(q.get("n", 400)), BACKLOG))}
+            cli["visto"] = ahora
+        estado, vivos, datos = self._pendiente(cli)
+        out = {"d": datos}
+        if estado is not None:
+            out["estado"] = estado
+        if vivos:
+            out["vivos"] = vivos
+        self._json(h, out)
 
     def _json(self, h, obj, code=200):
         cuerpo = json.dumps(obj).encode()

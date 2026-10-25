@@ -9,9 +9,10 @@ es la misma clave cifrada con su contrasena (PBKDF2-SHA256): entrar en la app
 es descifrarla, asi que solo ve los datos de su Raspberry.
 
 Repo de datos (lo leen la app y el portal de admin):
-  usuarios/<usuario>.json         clave de su raspi cifrada con su contrasena
+  usuarios/<usuario>.json         {"usuario", "raspis": {<raspi>: clave de esa raspi
+                                  cifrada con su contrasena}} (uno puede tener varias)
   invitaciones/<id>.json          alta pendiente: usuario, raspi, sha256(secreto)
-  raspis/<raspi>/raspi.json       nombre e IP (para el link de activacion)
+  raspis/<raspi>/raspi.json       nombre y direcciones: la publica (tunel) y la local
   raspis/<raspi>/indice.enc       lista de sesiones (cifrada)
   raspis/<raspi>/sesiones/<s>.enc una sesion: sus CSV y sesion.json (cifrada)
 
@@ -99,18 +100,27 @@ def _aad_usuario(usuario, raspi):
 
 
 def envolver_clave(clave, usuario, raspi, password):
+    """La entrada de una raspi en usuarios/<usuario>.json."""
     sal, iv = os.urandom(16), os.urandom(12)
     kek = hashlib.pbkdf2_hmac("sha256", password.encode(), sal, ITER, 32)
     ct = _aesgcm(kek).encrypt(iv, clave, _aad_usuario(usuario, raspi))
-    return {"usuario": usuario, "raspi": raspi, "kdf": "PBKDF2-SHA256", "iter": ITER,
-            "sal": b64(sal), "iv": b64(iv), "clave": b64(ct),
-            "creado": datetime.now().isoformat(timespec="seconds")}
+    return {"kdf": "PBKDF2-SHA256", "iter": ITER, "sal": b64(sal), "iv": b64(iv),
+            "clave": b64(ct), "creado": datetime.now().isoformat(timespec="seconds")}
 
 
-def abrir_clave(u, password):
-    kek = hashlib.pbkdf2_hmac("sha256", password.encode(), unb64(u["sal"]), u["iter"], 32)
-    return _aesgcm(kek).decrypt(unb64(u["iv"]), unb64(u["clave"]),
-                                _aad_usuario(u["usuario"], u["raspi"]))
+def abrir_clave(usuario, raspi, e, password):
+    kek = hashlib.pbkdf2_hmac("sha256", password.encode(), unb64(e["sal"]), e["iter"], 32)
+    return _aesgcm(kek).decrypt(unb64(e["iv"]), unb64(e["clave"]), _aad_usuario(usuario, raspi))
+
+
+def entradas(u):
+    """{raspi: entrada} de un fichero de usuario (tambien el formato antiguo,
+    de una sola raspi, con la entrada en la raiz)."""
+    if "raspis" in u:
+        return dict(u["raspis"])
+    if "raspi" in u:
+        return {u["raspi"]: {k: u[k] for k in ("kdf", "iter", "sal", "iv", "clave", "creado") if k in u}}
+    return {}
 
 
 # ---------------------------------------------------------- sincronizador ---
@@ -125,7 +135,9 @@ class Sincro:
         with open(os.path.join(conf_dir, "sincro.json"), encoding="utf-8") as f:
             self.cfg = json.load(f)
         self.raspi = self.cfg["raspi"]
-        self.direccion = None                    # web de la raspi (la pone telemetria.py)
+        self.direccion = None                    # web publica (tunel) o local: telemetria.py
+        self.local = None                        # web en la wifi de la raspi
+        self.usuarios = {}                       # usuario -> su entrada para esta raspi
         self.clave = None                        # sin ella solo vale 'recuperar'
         ruta = os.path.join(conf_dir, "clave")
         if os.path.exists(ruta):
@@ -139,6 +151,7 @@ class Sincro:
         self.ultima = None                       # fecha de la ultima sincro buena
         self.error = None
         self.pendientes = None
+        self._leer_usuarios()                    # sin red vale la copia que haya
 
     # ------------------------------------------------------------- git ---
 
@@ -183,6 +196,33 @@ class Sincro:
             self._git("checkout", "--orphan", RAMA, check=False)  # repo recien creado
         else:
             raise RuntimeError("git fetch: " + r.stdout.strip()[-300:])
+        self._leer_usuarios()
+
+    def _leer_usuarios(self):
+        """Copia en memoria de los usuarios de esta raspi: la web los consulta
+        sin chocar con git (que rehace la carpeta en cada sincronizacion)."""
+        dir_ = self._ruta("usuarios")
+        us = {}
+        if os.path.isdir(dir_):
+            for f in os.listdir(dir_):
+                if not f.endswith(".json"):
+                    continue
+                try:
+                    with open(os.path.join(dir_, f), encoding="utf-8") as fh:
+                        e = entradas(json.load(fh)).get(self.raspi)
+                except (OSError, ValueError):
+                    continue
+                if e:
+                    us[f[:-5]] = e
+        self.usuarios = us
+
+    def existe_usuario(self, usuario):
+        return usuario in self.usuarios
+
+    def usuario_para_web(self, usuario):
+        """Lo que necesita la web de la Pi para entrar: su clave cifrada."""
+        e = self.usuarios.get(usuario)
+        return e and {"usuario": usuario, "raspis": {self.raspi: e}}
 
     def _publicar(self, mensaje, preparar):
         """preparar() escribe en la copia; commit + push, y si otra raspi ha
@@ -319,10 +359,10 @@ class Sincro:
     def _raspi_json(self, base):
         rel = base + "/raspi.json"
         viejo = json.loads(self._leer(rel) or b"{}")
-        direccion = self.direccion or viejo.get("direccion") or \
+        local = self.local or viejo.get("local") or \
             "https://{}:{}".format(_ip_local(), self.cfg.get("puerto", 8081))
         nuevo = dict(viejo, id=self.raspi, nombre=self.cfg.get("nombre") or self.raspi,
-                     direccion=direccion)
+                     direccion=self.direccion or viejo.get("direccion") or local, local=local)
         nuevo.setdefault("creada", datetime.now().isoformat(timespec="seconds"))
         if nuevo != viejo:
             self._escribir(rel, self._json(nuevo))
@@ -350,7 +390,8 @@ class Sincro:
         with self.lock:
             self._actualizar()
             i = self._invitacion(inv, None)
-            existe = self._leer("usuarios/{}.json".format(i["usuario"])) is not None
+            blob = self._leer("usuarios/{}.json".format(i["usuario"]))
+            existe = blob is not None and self.raspi in entradas(json.loads(blob))
             return {"usuario": i["usuario"], "raspi": self.raspi,
                     "nombre_raspi": self.cfg.get("nombre") or self.raspi,
                     "cambio": existe, "pass_min": PASS_MIN}
@@ -370,16 +411,17 @@ class Sincro:
             def preparar():
                 i = self._invitacion(inv, secreto)   # sigue ahi tras actualizar
                 viejo = self._leer("usuarios/{}.json".format(usuario))
-                if viejo is not None:
-                    if not i.get("cambio"):
-                        raise ValueError("ya existe el usuario {}".format(usuario))
-                    if json.loads(viejo).get("raspi") != self.raspi:
-                        raise ValueError("{} es de otra raspi".format(usuario))
-                self._escribir("usuarios/{}.json".format(usuario), self._json(entrada))
+                ent = entradas(json.loads(viejo)) if viejo else {}
+                if self.raspi in ent and not i.get("cambio"):
+                    raise ValueError("{} ya es usuario de esta raspi".format(usuario))
+                ent[self.raspi] = entrada         # sus otras raspis se quedan igual
+                self._escribir("usuarios/{}.json".format(usuario),
+                               self._json({"usuario": usuario, "raspis": ent}))
                 os.remove(self._ruta("invitaciones/{}.json".format(inv)))
                 self._raspi_json("raspis/" + self.raspi)
 
             self._publicar("alta de {} en {}".format(usuario, self.raspi), preparar)
+            self._leer_usuarios()
         return {"ok": True, "usuario": usuario,
                 "mensaje": "Usuario {} listo: ya puedes entrar en la app".format(usuario)}
 
@@ -566,11 +608,11 @@ def _recuperar(a):
     blob = s._leer("usuarios/{}.json".format(a.usuario))
     if blob is None:
         sys.exit("no existe el usuario " + a.usuario)
-    u = json.loads(blob)
-    if u["raspi"] != s.raspi:
-        sys.exit("{} es de la raspi {}".format(a.usuario, u["raspi"]))
+    e = entradas(json.loads(blob)).get(s.raspi)
+    if e is None:
+        sys.exit("{} no es usuario de la raspi {}".format(a.usuario, s.raspi))
     try:
-        clave = abrir_clave(u, getpass.getpass("Contrasena de {}: ".format(a.usuario)))
+        clave = abrir_clave(a.usuario, s.raspi, e, getpass.getpass("Contrasena de {}: ".format(a.usuario)))
     except Exception:
         sys.exit("contrasena incorrecta")
     if s.clave == clave:

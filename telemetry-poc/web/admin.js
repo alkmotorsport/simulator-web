@@ -67,19 +67,14 @@
     ]);
     estado.raspis = (await Promise.all(dirs.filter(d => d.type === 'dir')
       .map(d => repo.json(d.path + '/raspi.json').then(r => r || { id: d.name })))).sort((a, b) => a.id.localeCompare(b.id));
-    estado.usuarios = usuarios.sort((a, b) => a.usuario.localeCompare(b.usuario));
+    // un usuario puede serlo de varias raspis
+    estado.usuarios = usuarios.map(u => Object.assign(u, { _raspis: Object.keys(Cripto.entradas(u)).sort() }))
+      .sort((a, b) => a.usuario.localeCompare(b.usuario));
     estado.invs = invs.map(i => Object.assign(i, { _id: i._ruta.split('/').pop().replace(/\.json$/, '') }))
       .sort((a, b) => b.caduca - a.caduca);
     pintar();
   }
   $('#reload').addEventListener('click', () => cargar().catch(e => msg('#inv-msg', e.message, true)));
-
-  /** Direccion que anuncia la raspi (la pone ella en raspi.json). */
-  function direccion(id) {
-    const r = estado.raspis.find(x => x.id === id);
-    return (r && r.direccion) || '';
-  }
-  $('#inv-raspi').addEventListener('change', () => { $('#inv-dir').value = direccion($('#inv-raspi').value); });
 
   function nombreRaspi(id) {
     const r = estado.raspis.find(x => x.id === id);
@@ -105,15 +100,15 @@
     const sel = $('#inv-raspi'), prev = sel.value;
     sel.innerHTML = '';
     for (const r of estado.raspis) sel.add(new Option(nombreRaspi(r.id), r.id, false, r.id === prev));
-    if (!$('#inv-dir').value || sel.value !== prev) $('#inv-dir').value = direccion(sel.value);
 
     const uu = $('#users');
     uu.innerHTML = '';
     for (const u of estado.usuarios) {
-      fila(uu, u.usuario, '· ' + nombreRaspi(u.raspi) + ' · alta ' + fecha(u.creado), [
-        ['Cambiar contraseña', () => invitar(u.usuario, u.raspi, 7, true, direccion(u.raspi))],
+      const varias = u._raspis.length > 1;
+      fila(uu, u.usuario, '· ' + u._raspis.map(nombreRaspi).join(', '), [
+        ...u._raspis.map(r => [varias ? 'Contraseña en ' + nombreRaspi(r) : 'Cambiar contraseña', () => invitar(u.usuario, r, 7, true)]),
         ['Borrar', () => borrar(u._ruta, u._sha, 'el usuario ' + u.usuario +
-          '. Deja de poder entrar, pero si ya tenía la clave de su raspi podría seguir leyendo lo subido hasta ahora'), 'danger'],
+          '. Deja de poder entrar, pero si ya tenía la clave de sus raspis podría seguir leyendo lo subido hasta ahora'), 'danger'],
       ]);
     }
     if (!estado.usuarios.length) el('li', 'muted', uu, 'Aún no hay usuarios.');
@@ -131,9 +126,10 @@
     const ur = $('#raspis');
     ur.innerHTML = '';
     for (const r of estado.raspis) {
-      const n = estado.usuarios.filter(u => u.raspi === r.id).length;
+      const n = estado.usuarios.filter(u => u._raspis.includes(r.id)).length;
+      const tunel = r.direccion && /trycloudflare\.com/.test(r.direccion);
       fila(ur, r.nombre || r.id, '· id ' + r.id + ' · ' + n + (n === 1 ? ' usuario' : ' usuarios') +
-        (r.direccion ? ' · ' + r.direccion : ''), []);
+        (tunel ? ' · por internet: ' + r.direccion : ' · sin túnel') + (r.local ? ' · en su wifi: ' + r.local : ''), []);
     }
     if (!estado.raspis.length) el('li', 'muted', ur, 'Ninguna raspi configurada todavía.');
   }
@@ -144,19 +140,10 @@
     await cargar();
   }
 
-  function baseRaspi(dir) {
-    let b = (dir || '').trim().replace(/\/+$/, '');
-    if (!b) throw new Error('Falta la dirección de la raspi (p. ej. https://192.168.68.41:8081).');
-    if (!/^https?:\/\//.test(b)) b = 'https://' + b;
-    return b;
-  }
-
-  async function invitar(usuario, raspi, dias, cambio, dir) {
-    const base = baseRaspi(dir);
-    const existe = estado.usuarios.some(u => u.usuario === usuario);
-    if (existe && !cambio) throw new Error('Ya existe el usuario ' + usuario + ': usa «Cambiar contraseña».');
-    const otra = estado.usuarios.find(u => u.usuario === usuario && u.raspi !== raspi);
-    if (otra) throw new Error(usuario + ' es de otra raspi (' + otra.raspi + ').');
+  async function invitar(usuario, raspi, dias, cambio) {
+    const u = estado.usuarios.find(x => x.usuario === usuario);
+    if (u && u._raspis.includes(raspi) && !cambio)
+      throw new Error(usuario + ' ya es usuario de ' + nombreRaspi(raspi) + ': usa «Cambiar contraseña».');
     const id = [...crypto.getRandomValues(new Uint8Array(8))].map(x => x.toString(16).padStart(2, '0')).join('');
     const secreto = Cripto.aleatorio(32);
     const inv = {
@@ -165,10 +152,12 @@
     };
     await repo.poner('invitaciones/' + id + '.json', JSON.stringify(inv, null, 2) + '\n',
       'admin: invitación para ' + usuario + ' en ' + raspi);
-    $('#inv-link').value = base + '/#alta=' + id + '.' + secreto;
+    // a la app: ella busca la raspi (su direccion por internet cambia en cada arranque)
+    $('#inv-link').value = new URL('./', location.href).href + '#alta=' + id + '.' + secreto;
     $('#inv-out').hidden = false;
-    msg('#inv-msg', 'Link para ' + usuario + (cambio ? ' (cambio de contraseña)' : '') +
-      ': ábrelo conectado a la wifi de la moto. Solo se muestra ahora; caduca en ' + dias + (dias === 1 ? ' día.' : ' días.'));
+    msg('#inv-msg', 'Link para ' + usuario + (cambio ? ' (cambio de contraseña)' : u ? ' (raspi nueva para él)' : '') +
+      '. Se abre desde cualquier sitio con la raspi encendida y con internet. Solo se muestra ahora; caduca en ' +
+      dias + (dias === 1 ? ' día.' : ' días.'));
     await cargar();
   }
 
@@ -178,7 +167,7 @@
     if (!ID_OK.test(usuario)) return msg('#inv-msg', 'Usuario: minúsculas, números, punto, guion o guion bajo (2 a 32).', true);
     if (!$('#inv-raspi').value) return msg('#inv-msg', 'No hay ninguna raspi configurada.', true);
     $('#inv-out').hidden = true;
-    try { await invitar(usuario, $('#inv-raspi').value, +$('#inv-dias').value, false, $('#inv-dir').value); $('#inv-user').value = ''; } catch (err) { msg('#inv-msg', err.message, true); }
+    try { await invitar(usuario, $('#inv-raspi').value, +$('#inv-dias').value, false); $('#inv-user').value = ''; } catch (err) { msg('#inv-msg', err.message, true); }
   });
 
   $('#inv-copy').addEventListener('click', async () => {

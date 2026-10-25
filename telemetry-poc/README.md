@@ -1,72 +1,77 @@
 # Telemetría de moto: guía de uso
 
-Una Raspberry Pi en la moto lee los sensores. Mientras preparas la moto la ves
-**en vivo** desde la wifi, y cada sesión grabada se sube **cifrada** al repo
-privado `alkmotorsport/telemetry-data`, desde donde la consultas con la app
-estés donde estés.
+Una Raspberry Pi en la moto lee los sensores. Arranca sola al encenderla y,
+con tu usuario, la manejas **desde cualquier sitio** con la app: modo en vivo,
+grabar sesiones y activar sensores. Cada sesión grabada se sube **cifrada** al
+repo privado `alkmotorsport/telemetry-data`, y la consultas también desde la app.
 
-## Las tres direcciones
+## Las direcciones
 
 | Para qué | URL | Desde dónde |
 |---|---|---|
-| **App**: entrar con tu usuario y ver las sesiones grabadas | https://motorsport.amorgante.es/telemetry-poc/web/ | Desde cualquier sitio. En el móvil, «Añadir a pantalla de inicio» |
-| **Raspi**: modo en vivo, grabar, activar sensores, dar de alta usuarios | https://192.168.68.41:8081 | Solo desde la misma wifi que la raspi, con la telemetría arrancada |
+| **App**: todo. Tus raspis, en vivo, grabar y sesiones | https://motorsport.amorgante.es/telemetry-poc/web/ | Desde cualquier sitio. En el móvil, «Añadir a pantalla de inicio» |
 | **Portal de admin**: invitar usuarios, cambiar contraseñas, borrar usuarios | https://motorsport.amorgante.es/telemetry-poc/web/admin.html | Desde cualquier sitio, con el token de admin |
+| **Web de la raspi en su wifi** (plan B, sin internet) | https://192.168.68.41:8081 | Solo desde la wifi de la raspi. Aviso de certificado: acéptalo |
 
-- La raspi usa un certificado autofirmado. La primera vez en cada dispositivo
-  sale un aviso de seguridad: acéptalo (Chrome: *Configuración avanzada →
-  Acceder*; Safari: *Mostrar detalles → visitar este sitio web*).
-- Si la raspi cambia de IP, la nueva aparece en el portal de admin, en
-  **Raspis**, y la app la usa sola al entrar.
+Cómo llega la app a la raspi: al arrancar, la raspi abre un **túnel** de
+Cloudflare (gratis, sin abrir puertos) que le da una dirección pública del tipo
+`https://palabras-al-azar.trycloudflare.com`. Cambia en cada arranque, pero la
+raspi la anuncia en el repo de datos y la app la encuentra sola. Para esto la
+raspi necesita internet: en casa, por la wifi; en el circuito, compartiendo
+datos desde el móvil.
 
 ## Uso diario
 
-Conéctate a la Pi con `ssh pi@192.168.68.41`.
+1. **Enciende la raspi.** La telemetría arranca sola, en vivo y **sin grabar**.
+   En 1 o 2 minutos aparece «en línea» en la app (*Tus raspis*).
+2. En la app: **Entrar** con tu usuario, y en tu raspi **En vivo**.
+3. **● Grabar** empieza una sesión, **■ Parar grabación** la cierra. Al
+   cerrarla se sube sola al repo (si no hay internet, en cuanto lo haya).
+4. Para ver sesiones grabadas: en tu raspi, **Sesiones**, y elige una.
+5. **Apaga la raspi con `sudo poweroff`** (o desde SSH), no desenchufándola:
+   así, si estabas grabando, la sesión se cierra y se sube bien.
 
+Si la raspi no tiene internet (circuito sin cobertura): conéctate a su wifi y
+abre su web (https://<ip-de-la-raspi>:8081). Pide el mismo usuario y
+contraseña, y funciona sin internet. Lo grabado se subirá cuando tenga red.
+
+Comandos útiles (`ssh pi@192.168.68.41`):
 ```sh
-sudo systemctl start telemetria      # arrancar (empieza a grabar)
-sudo systemctl stop telemetria       # parar: cierra la sesión y la sube
 systemctl status telemetria          # ¿está en marcha?
 journalctl -u telemetria -f          # ver lo que hace (Ctrl+C para salir)
+sudo systemctl restart telemetria    # reiniciarla
+cd ~/telemetry/simulator-web/telemetry-poc
+sudo python3 sincro.py estado        # sesiones pendientes de subir
+sudo python3 sincro.py ahora         # subirlas ya
 ```
-
-- **No arranca sola al encender la Pi**: se lanza a mano. Sigue en marcha
-  aunque cierres la sesión SSH.
-- **Graba nada más arrancar.** Desde la web de la raspi puedes parar y empezar
-  grabaciones con el botón ● Grabar.
-- **Subida al repo:** cada sesión se sube al terminarla (con el botón o al
-  parar el servicio). Al parar, espera hasta 4 minutos a que termine la subida.
-  Si no hay internet (en el circuito), se sube sola en el siguiente arranque
-  con red. Para subir a mano lo pendiente:
-  ```sh
-  cd ~/telemetry/simulator-web/telemetry-poc
-  sudo python3 sincro.py estado      # qué falta por subir
-  sudo python3 sincro.py ahora       # subirlo ya
-  ```
-- **Apaga la Pi con `sudo poweroff`**, no desenchufándola: así la sesión se
-  cierra bien.
 
 ## Usuarios
 
-Cada usuario ve **solo las sesiones de su raspi**. Las contraseñas no se
-guardan en ningún sitio: la contraseña descifra la clave de su raspi.
+Cada usuario ve **solo sus raspis**: su web en vivo y sus sesiones. Un usuario
+puede tener varias raspis. Las contraseñas no se guardan en ningún sitio: la
+contraseña descifra la clave de cada raspi suya, y con esa clave la app
+demuestra a la raspi que eres usuario suyo (la contraseña no viaja).
 
 ### Dar de alta un usuario (o a ti mismo)
 1. En el **portal de admin**, en *Nueva invitación*, pon el usuario, elige la
-   raspi (la dirección se rellena sola) y pulsa **Crear link**.
+   raspi y pulsa **Crear link**.
 2. **Copia el link en ese momento**: solo se muestra una vez. Caduca a los 7
    días (puedes elegir otra duración).
-3. Quien lo reciba lo abre **conectado a la wifi de la moto, con la telemetría
-   arrancada**, acepta el aviso del certificado y elige su contraseña (mínimo
-   10 caracteres). Debe salir «Usuario … listo».
-4. A partir de ahí entra en la **app** con su usuario y contraseña, desde
-   cualquier sitio.
+3. Quien lo reciba lo abre **desde cualquier sitio**, con esa raspi encendida y
+   con internet, y elige su contraseña (mínimo 10 caracteres). Debe salir
+   «Usuario … listo».
+4. A partir de ahí entra en la **app** con su usuario y contraseña.
 
-El alta la hace la propia raspi, por eso hay que estar en su wifi.
+El alta la hace la propia raspi: por eso tiene que estar encendida. Si no tiene
+internet, la página deja poner su dirección en la wifi.
+
+Para dar **otra raspi a un usuario que ya existe**, crea una invitación con su
+mismo nombre de usuario y la raspi nueva. Usa la misma contraseña para que al
+entrar le salgan todas.
 
 ### Olvido de contraseña
-En el portal: *Usuarios → Cambiar contraseña*. Genera un link nuevo que se
-usa igual que el de alta.
+En el portal: *Usuarios → Cambiar contraseña* (si tiene varias raspis, hay un
+botón por raspi). Genera un link nuevo que se usa igual que el de alta.
 
 ### Borrar un usuario
 En el portal: *Usuarios → Borrar*. Deja de poder entrar. Aviso: si ya había
@@ -119,7 +124,12 @@ sudo python3 sincro.py recuperar --usuario alknopfler
 - El token de lectura está dentro de la web publicada, así que en la práctica
   es público. Solo permite leer, y lo que se lee está cifrado (se ven los
   nombres de usuario, los ids de raspi y las fechas).
-- La web de la raspi está abierta a cualquiera que esté en su wifi.
+- La web de la raspi es pública por el túnel, pero solo enseña la página:
+  todo lo demás (vivo, grabar, sesiones, ajustes) pide ser usuario de esa
+  raspi. Si borras un usuario, la raspi le corta el acceso en cuanto se
+  actualiza (cada 10 minutos, o al reiniciarla).
+- La raspi lleva Raspbian Buster, que ya no recibe actualizaciones de
+  seguridad: conviene no dejarla encendida y conectada sin necesidad.
 
 ## Actualizar el código
 
@@ -142,11 +152,14 @@ scripts. Así los navegadores no siguen usando la versión anterior guardada.
 
 ## Montar una raspi nueva
 
-1. Dependencias (Raspberry Pi OS):
+1. Dependencias (Raspberry Pi OS) y el túnel de Cloudflare:
    ```sh
    sudo apt install git python3-cryptography pigpio python3-pigpio python3-smbus python3-spidev openssl i2c-tools
    sudo systemctl enable --now pigpiod
+   curl -L -o /tmp/cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm
+   sudo install -m755 /tmp/cloudflared /usr/local/bin/cloudflared
    ```
+   (`cloudflared-linux-arm64` si la Pi lleva un sistema de 64 bits.)
    El resto del hardware (I2C, SPI, LEDs) está explicado en `requirements.txt`.
 2. Código y servicio:
    ```sh
@@ -164,17 +177,21 @@ scripts. Así los navegadores no siguen usando la versión anterior guardada.
    ```
    Te pide el token sin mostrarlo. Al terminar, la raspi aparece en el portal
    de admin.
-5. Guarda la copia de su clave de datos (ver arriba) y arranca la telemetría.
-   Ya puedes invitar a sus usuarios.
+5. Guarda la copia de su clave de datos (ver arriba) y reinicia la telemetría
+   (`sudo systemctl restart telemetria`). En 1 o 2 minutos aparece en el portal
+   de admin con su dirección por internet. Ya puedes invitar a sus usuarios.
 
 ## Problemas frecuentes
 
 | Qué pasa | Qué hacer |
 |---|---|
+| Tu raspi sale «apagada o sin internet» | ¿Está encendida y con internet? Tras encenderla tarda 1 o 2 minutos. Pulsa *Actualizar* en *Tus raspis*. En la Pi: `journalctl -u telemetria -f` debe mostrar «Tunel: https://…» |
+| El vivo va a saltos o se corta | Por internet llegan unas 4 actualizaciones por segundo; con mala cobertura, menos. En la wifi de la raspi (su web) va más fluido |
+| La web de la raspi dice «Entra con un usuario de …» | Es normal: pulsa **Entrar** con tu usuario |
 | La app dice «Usuario o contraseña incorrectos» y es correcta | ¿Se completó el alta? En el portal, el usuario debe salir en *Usuarios*, no en *Invitaciones pendientes* |
 | «Esta invitación ya se ha usado» | Si ya elegiste contraseña, la cuenta está lista: entra en la app |
 | Una sesión no aparece en la app | En la Pi: `sudo python3 sincro.py estado`. Si sale pendiente, `sudo python3 sincro.py ahora` |
-| La raspi no responde en https://192.168.68.41:8081 | ¿Está en marcha (`systemctl status telemetria`)? ¿Estás en su wifi? ¿Ha cambiado de IP (portal → *Raspis*)? |
+| La web de la raspi no responde en su wifi | ¿Está en marcha (`systemctl status telemetria`)? ¿Ha cambiado de IP (portal → *Raspis*, «en su wifi»)? |
 | El navegador avisa del certificado otra vez | La raspi cambió de IP y generó un certificado nuevo: acéptalo de nuevo |
 | El portal o la app muestran algo antiguo tras publicar | Recarga con Cmd+Shift+R |
 | Sesión muy larga (horas) | Pesa mucho (3,5 h de IMU son unos 76 MB): ábrela mejor en el portátil |
@@ -182,14 +199,19 @@ scripts. Así los navegadores no siguen usando la versión anterior guardada.
 ## Cómo está hecho (para quien lo toque)
 
 - `telemetria.py`: el programa de la Pi (sensores, grabación y web).
-  `live_server.py`: la web de la Pi y su API.
+  `live_server.py`: la web de la Pi y su API. `acceso.py`: el login en la web
+  de la Pi (reto y firma con la clave de la raspi). `tunel.py`: el túnel de
+  Cloudflare y el anuncio de su dirección.
 - `sincro.py`: cifrado (gzip + AES-256-GCM), subida al repo de datos por
   HTTPS y altas de usuario. El formato está descrito al principio del fichero.
 - `systemd/`: el servicio y su instalador.
 - `web/`: la app (la misma en la Pi y publicada). `cuenta.js` gestiona el
-  login, las sesiones de la nube y el alta; `cripto.js` el descifrado;
+  login, tus raspis, las sesiones de la nube y el alta; `cripto.js` el descifrado;
   `repo.js` el acceso a GitHub; `admin.html` y `admin.js` el portal; `sw.js` y
   `manifest.webmanifest` la app instalable.
 - `../.github/workflows/pages.yml`: publica la web y mete el token de lectura.
-- Repo de datos: `usuarios/<usuario>.json`, `invitaciones/<id>.json` y
-  `raspis/<id>/` (con `raspi.json`, `indice.enc` y `sesiones/*.enc`).
+- Repo de datos: `usuarios/<usuario>.json` (sus raspis), `invitaciones/<id>.json`
+  y `raspis/<id>/` (con `raspi.json` —sus direcciones—, `indice.enc` y
+  `sesiones/*.enc`).
+- El vivo va por streaming (SSE) en la wifi y por consultas a `/api/vivo` por
+  el túnel, porque el túnel rápido retiene el streaming.

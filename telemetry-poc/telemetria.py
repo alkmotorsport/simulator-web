@@ -21,6 +21,8 @@ Uso:
   sudo python3 telemetria.py --demo-pantalla  # solo la pantalla OLED, datos simulados
   python3 telemetria.py --demo-pantalla --png carpeta   # sus paginas en PNG
   python3 telemetria.py --sim                 # todo simulado (portatil, sin Pi)
+  sudo python3 telemetria.py --https --no-grabar --tunel   # como el servicio:
+                                              # web publica por tunel, solo usuarios
 
 Activar o forzar modulos: con el tick de la web, o en telemetria.json
 (ver modulos/__init__.py). sudo hace falta para la tira WS2812.
@@ -38,7 +40,9 @@ from datetime import datetime
 
 import modulos
 import sincro
+from acceso import Acceso
 from live_server import LiveServer
+from tunel import Tunel
 from modulos.base import pc
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
@@ -176,6 +180,7 @@ class Maestro:
         self.modulos = modulos.crear(self.cfg["modulos"], self.hw, self)
         self.grabador = Grabador(args.dir, self)
         self.sincro = None          # repo de datos (sincro.py), si esta configurado
+        self.tunel = None
         self.live = None
         self._cont = {m: (0, 0) for m in self.modulos}
         self._ritmo = {m: (0.0, 0.0) for m in self.modulos}
@@ -330,6 +335,7 @@ class Maestro:
                 "duracion_s": round(self.reloj() - s["t0"], 1),
                 "ficheros": sorted(s["ficheros"])},
             "sincro": self.sincro.estado() if self.sincro else None,
+            "tunel": self.tunel.url if self.tunel else None,
         }
 
     def publicar_estado(self):
@@ -389,11 +395,22 @@ class Maestro:
         if self.sincro:
             self.sincro.arrancar()
             print(f"Repo de datos: {self.sincro.cfg['repo']} (raspi {self.sincro.raspi})")
-        self.live = LiveServer(a.puerto, data_dir=a.dir, https=a.https or bool(a.cert),
-                               cert=a.cert, key=a.key, control=self).start()
-        print(f"Web: {self.live.url()}" + ("   [SIMULADO]" if self.hw.sim else ""))
+        # con repo de datos, la web solo para los usuarios de esta raspi
+        acceso = self.sincro and Acceso(self.sincro.clave, self.sincro.raspi,
+                                        self.sincro.cfg.get("nombre") or self.sincro.raspi,
+                                        self.sincro.existe_usuario)
+        https = a.https or bool(a.cert)
+        self.live = LiveServer(a.puerto, data_dir=a.dir, https=https, cert=a.cert, key=a.key,
+                               control=self, acceso=acceso or None).start()
+        print(f"Web: {self.live.url()}" + ("   [SIMULADO]" if self.hw.sim else "") +
+              ("" if acceso else "   (abierta: sin repo de datos no hay usuarios)"))
         if self.sincro:
-            self.sincro.direccion = self.live.url().rstrip("/")   # para el link de alta
+            self.sincro.local = self.sincro.direccion = self.live.url().rstrip("/")
+        if a.tunel:
+            if acceso:
+                self.tunel = Tunel(a.puerto, https, self._tunel_cambia).arrancar()
+            else:
+                print("Tunel desactivado: sin usuarios la web quedaria abierta a internet")
         self.detectar()
         imprimir_deteccion(self)
         self.aplicar()
@@ -423,10 +440,23 @@ class Maestro:
             self.grabador.parar()
             if self.sincro:
                 self.sincro.detener()
+            if self.tunel:
+                self.tunel.detener()
             self.live.stop()
             self.hw.cerrar()
             if self.sincro:
                 self.sincro.subir_al_parar()
+
+
+    def _tunel_cambia(self, url):
+        """Nueva direccion publica (o None si se cae): al repo, para la app."""
+        if self.sincro:
+            self.sincro.direccion = url or self.sincro.local
+            self.sincro.avisar()
+        self.publicar_estado()
+
+    def usuario_para_web(self, usuario):
+        return self.sincro.usuario_para_web(usuario) if self.sincro else None
 
 
 def imprimir_deteccion(maestro):
@@ -460,6 +490,9 @@ def main():
     p.add_argument("--config", default=os.path.join(AQUI, "telemetria.json"),
                    help="configuracion de modulos (def. ./telemetria.json)")
     p.add_argument("--puerto", type=int, default=8081, help="puerto de la web (def. 8081)")
+    p.add_argument("--tunel", action="store_true",
+                   help="web tambien por internet (tunel rapido de Cloudflare, ver tunel.py); "
+                        "solo con repo de datos, para que pida usuario")
     p.add_argument("--https", action="store_true",
                    help="web por HTTPS con certificado autofirmado (./certs)")
     p.add_argument("--cert", help="certificado propio (PEM)")

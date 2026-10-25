@@ -1,5 +1,5 @@
 #!/bin/sh
-# Instala el servicio telemetria en la Pi, SIN activarlo al arrancar.
+# Instala el servicio telemetria en la Pi y lo activa al arrancar.
 #   sudo sh systemd/instalar.sh                  # con /usr/bin/python3
 #   sudo PYTHON=~/telemetria-venv/bin/python sh systemd/instalar.sh
 set -e
@@ -14,8 +14,8 @@ DEST=/etc/systemd/system/telemetria.service
 sed -e "s|@DIR@|$DIR|g" -e "s|@PYTHON@|$PYTHON|g" \
     "$DIR/systemd/telemetria.service" > "$DEST"
 systemctl daemon-reload
-# por si estaba activado de antes: que no arranque solo con el sistema
-systemctl disable telemetria 2>/dev/null || true
+systemctl enable telemetria
 
 echo "Instalado $DEST ($PYTHON, $DIR)"
-echo "  sudo systemctl start telemetria   |   journalctl -u telemetria -f"
+echo "Arranca solo al encender. Ahora:  sudo systemctl restart telemetria"
+echo "Ver lo que hace:  journalctl -u telemetria -f"

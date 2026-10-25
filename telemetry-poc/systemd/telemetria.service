@@ -1,9 +1,10 @@
 # Telemetria de moto como servicio de systemd.
 #
-# NO arranca con el sistema (no se hace enable): se lanza a mano y sigue
-# corriendo aunque cierres la sesion SSH, porque es un servicio del sistema.
-#   sudo systemctl start telemetria     # arrancar
-#   sudo systemctl stop telemetria      # parar (cierra la grabacion bien)
+# Arranca al encender la Pi, en vivo y SIN grabar (se graba desde la app con
+# el boton Grabar). Por el tunel (tunel.py) se puede usar desde cualquier sitio;
+# la web solo deja entrar a los usuarios de esta raspi.
+#   sudo systemctl restart telemetria   # reiniciar
+#   sudo systemctl stop telemetria      # parar (cierra y sube la grabacion)
 #   systemctl status telemetria
 #   journalctl -u telemetria -f         # ver la salida
 #
@@ -25,7 +26,7 @@ Type=simple
 # root: la tira WS2812 lo necesita
 User=root
 WorkingDirectory=@DIR@
-ExecStart=@PYTHON@ -u @DIR@/telemetria.py --https
+ExecStart=@PYTHON@ -u @DIR@/telemetria.py --https --no-grabar --tunel
 # telemetria.py convierte SIGTERM en una parada limpia (cierra CSV, LEDs, web)
 KillSignal=SIGTERM
 # al parar sube la ultima sesion al repo de datos (hasta 240 s; sin red, nada)

@@ -231,6 +231,12 @@ label.btn:hover { border-color: var(--steel); }
 .check input { accent-color: var(--accent); }
 .msg a { color: var(--steel); }
 
+/* tus raspis */
+.raspis { list-style: none; margin: 0; padding: 0; }
+.raspi { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 12px; padding: 8px 0; border-top: 1px solid var(--border); }
+.raspi.sel b { color: var(--accent); }
+.raspi .ok { color: var(--status-ok); font-size: 0.82rem; }
+
 /* portal de admin */
 .top > a { font-size: 0.85rem; }
 .card h2 + p.muted { margin: 4px 0 12px; }

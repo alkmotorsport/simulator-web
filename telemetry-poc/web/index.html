@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Telemetría">
-<link rel="stylesheet" href="style.css?v=20261025c">
+<link rel="stylesheet" href="style.css?v=20261025d">
 </head>
 <body>
 
@@ -49,10 +49,10 @@
   <h2>Activar tu cuenta</h2>
   <p id="alta-txt"></p>
   <div id="alta-ir" class="bar" hidden>
-    <label class="field grow">Dirección de tu raspi
+    <label class="field grow">Dirección de tu raspi en su wifi
       <input id="alta-dir" type="text" inputmode="url" placeholder="https://192.168.1.50:8081" autocomplete="off">
     </label>
-    <button id="alta-abrir" type="button">Abrir mi raspi</button>
+    <button id="alta-abrir" type="button">Conectar</button>
   </div>
   <form id="alta-form" class="bar form" hidden>
     <input id="alta-user" type="text" autocomplete="username" hidden>
@@ -65,6 +65,16 @@
     <button id="alta-go" type="submit">Guardar contraseña</button>
   </form>
   <p id="alta-msg" class="msg" hidden></p>
+</section>
+
+<section id="raspis" class="card" hidden>
+  <div class="sub-head">
+    <h2>Tus raspis</h2>
+    <button id="raspis-refresh" class="ghost small">Actualizar</button>
+  </div>
+  <ul id="raspis-list" class="raspis"></ul>
+  <p class="hint">«En vivo» funciona desde cualquier sitio si la raspi está encendida y con internet
+    (en el circuito, compartiendo datos desde el móvil).</p>
 </section>
 
 <details id="conn-box" class="card conn fold">
@@ -131,7 +141,7 @@
   </div>
   <div id="nube" hidden>
     <div class="sub-head">
-      <h3>Tus sesiones en la nube</h3>
+      <h3 id="nube-tit">Sesiones en la nube</h3>
       <button id="nube-refresh" class="ghost small">Actualizar</button>
     </div>
     <ul id="nube-list" class="files"></ul>
@@ -187,13 +197,13 @@
   </p>
 </section>
 
-<script src="plot.js?v=20261025c"></script>
-<script src="sensors.js?v=20261025c"></script>
-<script src="app.js?v=20261025c"></script>
-<script src="config.js?v=20261025c"></script>
-<script src="cripto.js?v=20261025c"></script>
-<script src="repo.js?v=20261025c"></script>
-<script src="cuenta.js?v=20261025c"></script>
+<script src="plot.js?v=20261025d"></script>
+<script src="sensors.js?v=20261025d"></script>
+<script src="app.js?v=20261025d"></script>
+<script src="config.js?v=20261025d"></script>
+<script src="cripto.js?v=20261025d"></script>
+<script src="repo.js?v=20261025d"></script>
+<script src="cuenta.js?v=20261025d"></script>
 <script>
   // app instalable (PWA); solo en https: la web de la Pi (http) no lo necesita
   if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(() => {});

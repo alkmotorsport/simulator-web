@@ -1,8 +1,11 @@
 /*
- * Telemetria: tiempo real (SSE desde la Pi, con control de los modulos) y
+ * Telemetria: tiempo real (desde la Pi, con control de los modulos) y
  * sesiones grabadas (una carpeta con un CSV por sensor). Ambos modos
  * alimentan la misma vista: un bloque por sensor (cifras + graficas), todas
  * las graficas temporales con el mismo eje, cursor y zoom.
+ * La Pi pide entrar con un usuario suyo: cada peticion lleva la sesion que
+ * consigue cuenta.js (window.TelemetriaAcceso). En la wifi el vivo va por SSE;
+ * por internet (tunel, que retiene el SSE) por consultas a /api/vivo.
  */
 (function () {
   'use strict';
@@ -242,7 +245,7 @@
     const base = serverBase();
     if (!base) return setMsg('Indica arriba la dirección de la Raspberry', true);
     try {
-      const r = await fetch(base + '/api/ajustes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(getSettings()) });
+      const r = await piFetch('/api/ajustes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(getSettings()) });
       if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'HTTP ' + r.status);
       setMsg('Guardados en la Pi: cualquier navegador puede cargarlos.');
     } catch (e) { setMsg('No se pudieron guardar en la Pi: ' + e.message, true); }
@@ -252,7 +255,7 @@
     const base = serverBase();
     if (!base) return setMsg('Indica arriba la dirección de la Raspberry', true);
     try {
-      const r = await fetch(base + '/api/ajustes');
+      const r = await piFetch('/api/ajustes');
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const a = await r.json();
       if (!Object.keys(a).length) return setMsg('La Pi aún no tiene ajustes guardados.', true);
@@ -539,8 +542,9 @@
     if (s && !/^https?:\/\//.test(s)) s = location.protocol + '//' + s;
     return s;
   }
-  const servedByPi = location.protocol.startsWith('http') && location.port !== '' &&
-    !/github\.io$/.test(location.hostname);
+  // la sirve la propia raspi: por su puerto (wifi) o por su tunel
+  const servedByPi = location.protocol.startsWith('http') && !/github\.io$/.test(location.hostname) &&
+    (location.port !== '' || /\.trycloudflare\.com$/.test(location.hostname));
   $('#server').value = store('tele-server') || (servedByPi ? location.origin : '');
   $('#server').addEventListener('change', () => { store('tele-server', $('#server').value.trim()); listPiFiles(); });
   $('#check').addEventListener('click', () => { store('tele-server', $('#server').value.trim()); listPiFiles(); });
@@ -574,6 +578,24 @@
     }
   }
 
+  /** Peticion a la raspi con la sesion de tu usuario; si ha caducado, se rehace una vez. */
+  async function piFetch(path, opts = {}, base = serverBase()) {
+    const A = window.TelemetriaAcceso;
+    for (let intento = 0; intento < 2; intento++) {
+      const headers = Object.assign({}, opts.headers || {}, A ? await A.cabeceras(base) : {});
+      const r = await fetch(base + path, Object.assign({}, opts, { headers, cache: 'no-store' }));
+      if (r.status !== 401 || !A) return r;
+      A.olvidar(base);
+    }
+    throw new Error('entra con tu usuario de esta raspi');
+  }
+
+  /** Raspi en la misma red (va por SSE) o por internet (consultas). */
+  function esLocal(base) {
+    const h = new URL(base).hostname;
+    return /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h) || h.endsWith('.local');
+  }
+
   let piSessions = [];
   async function listPiFiles() {
     const base = serverBase(), box = $('#pi-files');
@@ -581,7 +603,8 @@
     const mixed = mixedContent(base);
     if (mixed) { box.hidden = true; setConn(mixed, 'err'); piLink($('#conn-status'), base); return; }
     try {
-      const r = await fetch(base + '/api/sesiones');
+      const r = await piFetch('/api/sesiones', {}, base);
+      if (r.status === 401) { box.hidden = true; setConn('Entra con tu usuario para ver esta raspi.'); return; }
       if (!r.ok) throw new Error(r.status);
       piSessions = await r.json();
       const ul = $('#pi-list');
@@ -598,19 +621,20 @@
       setConn('Raspberry accesible · ' + piSessions.length + ' sesiones guardadas', 'ok');
     } catch (e) {
       box.hidden = true;
-      setConn('No conecto con ' + base + '.', 'err', base.startsWith('https:') ? base : null);
+      if (/^Entra/.test(e.message)) return setConn(e.message + '.');
+      setConn('No conecto con ' + base + '.', 'err', base.startsWith('https:') && esLocal(base) ? base : null);
     }
   }
   $('#pi-refresh').addEventListener('click', listPiFiles);
 
-  async function fetchText(url) {
-    const r = await fetch(url);
+  async function fetchText(base, path) {
+    const r = await piFetch(path, {}, base);
     if (!r.ok) throw new Error(r.status);
     return r.text();
   }
 
   async function loadPiEntry(base, f) {
-    const url = n => base + '/files/' + n.split('/').map(encodeURIComponent).join('/');
+    const url = n => '/files/' + n.split('/').map(encodeURIComponent).join('/');
     showTab('file');
     fileMsg('Descargando ' + f.name + '…');
     try {
@@ -618,10 +642,10 @@
       if (f.kind === 'sesion') {
         const names = f.files.map(n => f.name + '/' + n);
         if (f.json) names.push(f.name + '/sesion.json');
-        files = await Promise.all(names.map(async n => ({ name: n.split('/')[1], text: await fetchText(url(n)) })));
+        files = await Promise.all(names.map(async n => ({ name: n.split('/')[1], text: await fetchText(base, url(n)) })));
       } else {
-        files = [{ name: f.name, text: await fetchText(url(f.name)) }];
-        if (f.meta) files.push({ name: f.name + '.meta.txt', text: await fetchText(url(f.name + '.meta.txt')).catch(() => '') });
+        files = [{ name: f.name, text: await fetchText(base, url(f.name)) }];
+        if (f.meta) files.push({ name: f.name + '.meta.txt', text: await fetchText(base, url(f.name + '.meta.txt')).catch(() => '') });
       }
       openFiles(f.name, files);
     } catch (e) {
@@ -630,7 +654,7 @@
   }
 
   async function api(path, body) {
-    const r = await fetch(serverBase() + path, {
+    const r = await piFetch(path, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}),
     });
     const j = await r.json().catch(() => ({}));
@@ -657,26 +681,72 @@
     s.textContent = txt; s.className = 'status ' + (cls || '');
   }
 
-  function connect() {
+  async function connect() {
     const base = serverBase();
-    if (!base) return setStatus('Indica arriba la dirección de la Raspberry', 'err');
+    if (!base) return setStatus('Entra con tu usuario y elige una raspi (o pon su dirección arriba)', 'err');
     const mixed = mixedContent(base);
     if (mixed) { setStatus(mixed, 'err'); piLink($('#live-status'), base); return; }
     store('tele-server', $('#server').value.trim());
     disconnect();
     live.sets = {}; live.vivos = {}; live.key = ''; live.control = true;
-    live.es = new EventSource(base + '/stream');
+    const con = live.es = { close() { con.cerrada = true; } };   // ya cuenta como conectado
     setStatus('Conectando…');
     $('#connect').textContent = 'Desconectar';
-    live.es.onopen = () => setStatus('En vivo', 'ok');
-    live.es.onerror = () => {
-      setStatus('Sin conexión · reintentando…', 'err');
-      if (!live.estado) listPiFiles();   // muestra arriba el motivo / enlace al certificado
-    };
-    live.es.addEventListener('estado', e => onEstado(JSON.parse(e.data)));
-    live.es.addEventListener('vivo', e => { Object.assign(live.vivos, JSON.parse(e.data)); renderOutputs(); });
-    live.es.onmessage = e => appendRows(JSON.parse(e.data).d);
     showTab('live');
+    let s = null;
+    try { s = window.TelemetriaAcceso ? await window.TelemetriaAcceso.sesion(base) : null; } catch (e) {
+      if (live.es !== con) return;
+      disconnect();
+      setStatus(/^Entra/.test(e.message) ? e.message + ' (botón «Entrar» arriba).' : 'No conecto con ' + base + '.', 'err');
+      if (!/^Entra/.test(e.message)) listPiFiles();   // arriba el motivo / enlace al certificado
+      return;
+    }
+    if (live.es !== con || con.cerrada) return;
+    live.es = esLocal(base) ? streamSSE(base, s) : sondeo(base);
+  }
+
+  /** En la misma red: Server-Sent Events (EventSource no deja cabeceras: sesion en ?s=). */
+  function streamSSE(base, s) {
+    const es = new EventSource(base + '/stream' + (s ? '?s=' + encodeURIComponent(s) : ''));
+    es.onopen = () => setStatus('En vivo', 'ok');
+    es.onerror = () => {
+      setStatus('Sin conexión · reintentando…', 'err');
+      if (!live.estado) listPiFiles();
+    };
+    es.addEventListener('estado', e => onEstado(JSON.parse(e.data)));
+    es.addEventListener('vivo', e => { Object.assign(live.vivos, JSON.parse(e.data)); renderOutputs(); });
+    es.onmessage = e => appendRows(JSON.parse(e.data).d);
+    return es;
+  }
+
+  /** Por internet: consultas a /api/vivo (~4 por segundo) con lo nuevo desde la anterior. */
+  function sondeo(base) {
+    const c = { cerrada: false, close() { c.cerrada = true; } };
+    const id = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+    let fallos = 0;
+    (async () => {
+      while (!c.cerrada) {
+        const t0 = performance.now();
+        try {
+          const r = await piFetch('/api/vivo?c=' + id + '&n=400', {}, base);
+          if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'HTTP ' + r.status);
+          const j = await r.json();
+          if (c.cerrada) break;
+          if (fallos && live.estado) onEstado(live.estado);   // quita el aviso de error
+          fallos = 0;
+          if (j.estado) onEstado(j.estado);
+          if (j.vivos) { Object.assign(live.vivos, j.vivos); renderOutputs(); }
+          if (j.d && Object.keys(j.d).length) appendRows(j.d);
+        } catch (e) {
+          if (c.cerrada) break;
+          fallos++;
+          setStatus('Sin conexión · reintentando…', 'err');
+        }
+        const espera = fallos ? Math.min(5000, 500 * fallos) : 250;
+        await new Promise(res => setTimeout(res, Math.max(0, espera - (performance.now() - t0))));
+      }
+    })();
+    return c;
   }
 
   function disconnect() {
@@ -977,12 +1047,25 @@
   $('#win').addEventListener('change', () => { live.dirty = true; });
 
   // cuenta.js (usuarios y sesiones del repo de datos) usa la misma vista
-  window.Telemetria = { openFiles, showTab, fileMsg, serverBase, servedByPi };
+  function usarRaspi(base) {
+    if (serverBase() === base) return;
+    $('#server').value = base;
+    store('tele-server', base);
+    listPiFiles();
+  }
+  window.Telemetria = {
+    openFiles, showTab, fileMsg, serverBase, servedByPi, usarRaspi,
+    conectar(base) { usarRaspi(base); connect(); },
+    desconectar: disconnect, listarPi: listPiFiles,
+  };
 
   // ---------------------------------------------------------------- init ---
 
   applyTheme(theme);
-  listPiFiles();
   if (location.hash === '#file') showTab('file');
-  else if (servedByPi) connect();
+  // tras cargar cuenta.js, que da la sesion para hablar con la raspi
+  addEventListener('DOMContentLoaded', () => {
+    listPiFiles();
+    if (servedByPi && location.hash !== '#file') connect();
+  });
 })();
