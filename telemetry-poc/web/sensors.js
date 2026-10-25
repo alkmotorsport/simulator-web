@@ -234,19 +234,67 @@
     return out;
   }
 
+  /**
+   * Indice desde el que la caja ya no esta como al calibrar (se ha cogido,
+   * soltado o la moto esta caida), o -1. Senal: caja quieta >= 1 s con la
+   * gravedad a mas de 35 grados de +Z. Se corta en el ultimo momento en calma
+   * (giro < 10 grados/s durante 2 s) antes de ese movimiento.
+   */
+  function cajaMovida(t, d) {
+    const n = t.length, cos35 = Math.cos(35 * Math.PI / 180);
+    const giro = i => Math.max(Math.abs(d.gx_dps[i]), Math.abs(d.gy_dps[i]), Math.abs(d.gz_dps[i]));
+    let q0 = -1;
+    for (let i = 0; i < n; i++) {
+      const a = Math.hypot(d.ax_g[i], d.ay_g[i], d.az_g[i]);
+      const quieta = a > 0.9 && a < 1.1 && giro(i) < 5 && d.az_g[i] / a < cos35;
+      if (!quieta) { q0 = -1; continue; }
+      if (q0 < 0) q0 = i;
+      if (t[i] - t[q0] < 1) continue;
+      let calma = q0;   // hacia atras: inicio del movimiento
+      for (let j = q0; j >= 0; j--) {
+        if (giro(j) >= 10) calma = j;
+        else if (t[calma] - t[j] >= 2) break;
+      }
+      return Math.max(0, calma - 1);
+    }
+    return -1;
+  }
+
+  /** Columnas de la IMU (recalculadas si hace falta) sin lo de despues de mover la caja. */
+  function imuDatos(ds) {
+    const base = imuNivelada(ds), d = base || ds.cols;
+    const corte = ds.live ? -1 : cajaMovida(ds.t, d);
+    if (corte < 0) return { d: base, corte: -1 };
+    const out = base || {};
+    for (const k of ['ax_g', 'ay_g', 'az_g', 'gx_dps', 'gy_dps', 'gz_dps', 'incl_deg', 'cabeceo_deg']) {
+      const v = base ? base[k] : Float64Array.from(ds.cols[k]);
+      v.fill(NaN, corte);
+      out[k] = v;
+    }
+    return { d: out, corte };
+  }
+
   const imu = {
     id: 'imu',
     name: 'IMU · MPU6050',
     detect: h => ['ax_g', 'gz_dps'].every(c => h.includes(c)),
     options: [],
     derive(ds) {
-      if (ds.nivelada === undefined) ds.nivelada = imuNivelada(ds);   // una vez por sesion
-      return ds.nivelada || ds.cols;
+      // en vivo los datos crecen: tal cual (ahi la vibracion se ve en directo)
+      if (ds.live) return Object.assign({}, ds.cols, { ax_f: ds.cols.ax_g, ay_f: ds.cols.ay_g });
+      if (ds.imu === undefined) {   // una vez por sesion
+        ds.imu = imuDatos(ds);
+        // frenar o acelerar dura decimas: la media de 0,2 s quita la vibracion
+        // del motor, que da picos de hasta 4 g (el tope del sensor)
+        const d = ds.imu.d || ds.cols, w = Math.max(1, Math.round(0.2 * (+(ds.meta && ds.meta.hz) || 100)));
+        ds.imu.f = { ax_f: smooth(d.ax_g, w), ay_f: smooth(d.ay_g, w) };
+      }
+      return Object.assign({}, ds.imu.d || ds.cols, ds.imu.f);
     },
     charts: () => [
       { type: 'time', key: 'incl_deg', title: 'Inclinación', unit: '°', note: '+ derecha · − izquierda', color: '--series-1', zero: true, height: 190 },
-      { type: 'time', key: 'ax_g', title: 'Aceleración longitudinal', unit: 'g', note: '+ acelera · − frena', color: '--series-2', zero: true, decimals: 2, height: 160 },
-      { type: 'time', key: 'ay_g', title: 'Aceleración lateral', unit: 'g', color: '--series-3', zero: true, decimals: 2, height: 140 },
+      { type: 'time', key: 'ax_f', title: 'Aceleración longitudinal', unit: 'g', note: '+ acelera · − frena · media 0,2 s', color: '--series-2', zero: true, decimals: 2, height: 160 },
+      { type: 'time', key: 'ay_f', title: 'Aceleración lateral', unit: 'g', note: 'media 0,2 s', color: '--series-3', zero: true, decimals: 2, height: 140 },
       { type: 'time', key: 'cabeceo_deg', title: 'Cabeceo', unit: '°', note: '+ morro arriba', color: '--series-7', zero: true, height: 140 },
       { type: 'hist', key: 'inclHist', title: 'Tiempo por inclinación', unit: '°', note: '% de tiempo', colorFor: c => (c >= 0 ? '--series-1' : '--series-2') },
     ],
@@ -258,14 +306,19 @@
     stats(ds, d, i0, i1) {
       const tm = timing(ds.t, i0, i1);
       const [ilo, ihi] = minmax(finite(d.incl_deg, i0, i1));
-      const [alo, ahi] = minmax(finite(d.ax_g, i0, i1));
-      const [ylo, yhi] = minmax(finite(d.ay_g, i0, i1));
+      const [alo, ahi] = minmax(finite(d.ax_f, i0, i1));
+      const [ylo, yhi] = minmax(finite(d.ay_f, i0, i1));
       const az = finite(d.az_g, i0, i1), azm = mean(az);
       let s = 0; for (const v of az) s += (v - azm) * (v - azm);
-      const recalc = ds.nivelada ? [{
-        label: 'Ángulos recalculados', value: f(ds.nivelada.tumbada, 0), unit: '° caja',
+      const recalc = [];
+      if (d.tumbada) recalc.push({
+        label: 'Ángulos recalculados', value: f(d.tumbada, 0), unit: '° caja',
         sub: 'grabada antes de nivelar los ejes al calibrar', warn: true,
-      }] : [];
+      });
+      if (ds.imu && ds.imu.corte >= 0) recalc.push({
+        label: 'Caja movida', value: f(ds.t[ds.imu.corte], 0), unit: 's',
+        sub: 'desde ahí no vale: se descarta', warn: true,
+      });
       return recalc.concat([
         { label: 'Tasa real', value: f(tm.hz, 0), unit: 'Hz', sub: tm.n + ' muestras' },
         { label: 'Incl. máx derecha', value: f(ihi > 0 ? ihi : NaN, 1), unit: '°' },
