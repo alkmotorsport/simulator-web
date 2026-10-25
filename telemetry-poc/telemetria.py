@@ -425,6 +425,8 @@ class Maestro:
                 self.sincro.detener()
             self.live.stop()
             self.hw.cerrar()
+            if self.sincro:
+                self.sincro.subir_al_parar()
 
 
 def imprimir_deteccion(maestro):

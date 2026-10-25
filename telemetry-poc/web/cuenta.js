@@ -84,9 +84,7 @@
       if (!raw) throw new Error('Usuario o contraseña incorrectos.');
       const r = await repo.json('raspis/' + u.raspi + '/raspi.json').catch(() => null);
       const datos = { usuario, raspi: u.raspi, nombre: (r && r.nombre) || u.raspi, clave: Cripto.b64(raw) };
-      // la direccion de su raspi para el modo en vivo, si aun no tiene una
-      const srv = $('#server');
-      if (r && r.direccion && !srv.value.trim()) { srv.value = r.direccion; srv.dispatchEvent(new Event('change')); }
+      usarDireccion(r);
       try { almacen($('#login-keep').checked).setItem('tele-cuenta', JSON.stringify(datos)); } catch (err) { /* solo esta pestana */ }
       await abrir(datos);
       $('#login').hidden = true;
@@ -97,6 +95,15 @@
       msg('#login-msg', err.message, true);
     } finally { btn.disabled = false; }
   });
+
+  /** La raspi anuncia su direccion actual en el repo: manda sobre la que
+   *  recuerde el navegador (la IP puede cambiar). */
+  function usarDireccion(r) {
+    const srv = $('#server');
+    if (!r || !r.direccion || srv.value.trim().replace(/\/+$/, '') === r.direccion) return;
+    srv.value = r.direccion;
+    srv.dispatchEvent(new Event('change'));
+  }
 
   async function abrir(datos) {
     cuenta = Object.assign({}, datos, { clave: await Cripto.importar(Cripto.ub64(datos.clave)) });
@@ -116,6 +123,7 @@
         cuenta = null; olvidar(); pintarCuenta();
         return msg('#file-msg', 'Tu usuario ya no existe: habla con el administrador.', true);
       }
+      repo.json('raspis/' + cuenta.raspi + '/raspi.json').then(usarDireccion).catch(() => {});
       const ri = 'raspis/' + cuenta.raspi + '/indice.enc';
       const buf = await repo.raw(ri);
       const lista = buf ? (await Cripto.descifrarJSON(cuenta.clave, buf, ri)).sesiones : [];
@@ -162,14 +170,14 @@
     $('#alta-txt').textContent = 'Conéctate a la wifi de tu moto y abre tu raspi para elegir la contraseña. Si el navegador avisa del certificado, acéptalo: es el de tu raspi.';
     $('#alta-ir').hidden = false;
     const dir = $('#alta-dir');
-    try { dir.value = localStorage.getItem('tele-server') || ''; } catch (e) { dir.value = ''; }
+    try { dir.value = localStorage.getItem('tele-server') || ''; } catch (e) { dir.value = ''; }   // si no hay repo
     if (repo) try {
       const i = await repo.json('invitaciones/' + inv + '.json');
       if (!i) return msg('#alta-msg', 'Esta invitación no existe o ya se ha usado.', true);
       const r = await repo.json('raspis/' + i.raspi + '/raspi.json');
       $('#alta-txt').textContent = 'Usuario ' + i.usuario + ' en ' + ((r && r.nombre) || i.raspi) +
         '. Conéctate a la wifi de la moto y abre la raspi para elegir tu contraseña. Si el navegador avisa del certificado, acéptalo: es el de tu raspi.';
-      if (r && r.direccion && !dir.value) dir.value = r.direccion;
+      if (r && r.direccion) dir.value = r.direccion;   // la actual, no la que recuerde el navegador
     } catch (e) { /* sin repo: el usuario pone la direccion */ }
     $('#alta-abrir').onclick = () => {
       let base = dir.value.trim().replace(/\/+$/, '');

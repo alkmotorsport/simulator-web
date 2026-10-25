@@ -28,7 +28,8 @@ WorkingDirectory=@DIR@
 ExecStart=@PYTHON@ -u @DIR@/telemetria.py --https
 # telemetria.py convierte SIGTERM en una parada limpia (cierra CSV, LEDs, web)
 KillSignal=SIGTERM
-TimeoutStopSec=20
+# al parar sube la ultima sesion al repo de datos (hasta 240 s; sin red, nada)
+TimeoutStopSec=300
 Restart=on-failure
 RestartSec=5
 

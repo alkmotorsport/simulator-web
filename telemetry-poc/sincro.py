@@ -397,6 +397,29 @@ class Sincro:
         self.parado = True
         self.evento.set()
 
+    def subir_al_parar(self, limite=240):
+        """Al cerrar telemetria.py: intenta subir ya la ultima sesion (si no,
+        esperaria al siguiente arranque). Sin red falla rapido y no pasa nada."""
+        resultado = {}
+
+        def subir():
+            try:
+                resultado["ok"] = self.sincronizar()
+            except Exception as e:
+                resultado["error"] = str(e) or e.__class__.__name__
+
+        if not self.pendientes_locales():
+            return
+        print("Subiendo la sesion al repo de datos (max. {} s)...".format(limite))
+        h = threading.Thread(target=subir, daemon=True)
+        h.start()
+        h.join(limite)
+        if "ok" in resultado:
+            print("Subida: " + (", ".join(resultado["ok"]) or "nada nuevo"))
+        else:
+            print("No se pudo subir ({}): se subira en el proximo arranque".format(
+                resultado.get("error", "tarda demasiado")))
+
     def _bucle(self):
         self.evento.wait(15)            # que arranque antes lo demas
         while not self.parado:
