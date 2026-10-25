@@ -28,7 +28,14 @@ datos desde el móvil.
 3. **● Grabar** empieza una sesión, **■ Parar grabación** la cierra. Al
    cerrarla se sube sola al repo (si no hay internet, en cuanto lo haya).
 4. Para ver sesiones grabadas: en tu raspi, **Sesiones**, y elige una.
-5. **Apaga la raspi con `sudo poweroff`** (o desde SSH), no desenchufándola:
+   Arriba están las de la nube; debajo, las guardadas en la propia raspi
+   («en la nube» o «sin subir»).
+5. **Borrar** (pide confirmación, no se puede deshacer):
+   - *De la nube*: lo hace tu raspi, así que tiene que estar en línea. Su
+     copia en la raspi, si la hay, se queda y ya no se vuelve a subir.
+   - *De la raspi*: borra su copia local. Si sale «sin subir», avisa de que
+     se perderá. La que se está grabando no se puede borrar.
+6. **Apaga la raspi con `sudo poweroff`** (o desde SSH), no desenchufándola:
    así, si estabas grabando, la sesión se cierra y se sube bien.
 
 Si la raspi no tiene internet (circuito sin cobertura): conéctate a su wifi y

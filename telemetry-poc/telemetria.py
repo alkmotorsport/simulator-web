@@ -32,6 +32,8 @@ import argparse
 import csv
 import json
 import os
+import re
+import shutil
 import signal
 import sys
 import threading
@@ -295,6 +297,12 @@ class Maestro:
                 return self.sincro.alta(cuerpo.get("inv"), cuerpo.get("secreto") or "",
                                         cuerpo.get("password"))
             return self.sincro.consultar_alta(cuerpo.get("inv"))
+        elif p == ["sesion", "borrar"]:          # la copia de la raspi
+            return self.borrar_sesion(cuerpo.get("nombre"))
+        elif p == ["nube", "borrar"]:            # la del repo de datos
+            if not self.sincro:
+                raise ValueError("esta raspi no tiene repo de datos")
+            return self.sincro.borrar_de_nube(cuerpo.get("id"))
         elif p == ["grabar"]:
             if cuerpo.get("grabar"):
                 self.grabador.iniciar()
@@ -454,6 +462,25 @@ class Maestro:
             self.sincro.direccion = url or self.sincro.local
             self.sincro.avisar()
         self.publicar_estado()
+
+    def borrar_sesion(self, nombre):
+        if not re.match(r"^[\w-]+$", nombre or ""):
+            raise ValueError("sesion no valida")
+        s = self.grabador.sesion
+        if s and s["nombre"] == nombre:
+            raise ValueError("se esta grabando: para la grabacion antes de borrarla")
+        ruta = os.path.join(self.args.dir, nombre)
+        if not os.path.isdir(ruta):
+            raise ValueError("esa sesion ya no esta en la raspi")
+        shutil.rmtree(ruta)
+        return {"ok": True, "mensaje": "Borrada de la raspi: " + nombre}
+
+    def subidas(self):
+        """Sesiones locales ya en la nube (None si no hay repo de datos)."""
+        try:
+            return self.sincro.al_dia() if self.sincro else None
+        except OSError:
+            return None
 
     def usuario_para_web(self, usuario):
         return self.sincro.usuario_para_web(usuario) if self.sincro else None

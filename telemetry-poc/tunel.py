@@ -7,8 +7,8 @@ raspi abre la conexion hacia fuera, asi que vale en casa y en el circuito
 La direccion cambia en cada arranque de cloudflared: se avisa con
 al_cambiar(url) y telemetria.py la anuncia en el repo de datos (raspi.json),
 de donde la toman la app y el portal de admin. Solo se avisa cuando ya
-responde por Cloudflare: si un navegador la consulta antes de existir, su DNS
-recuerda "no existe" durante minutos.
+responde por Cloudflare, y 30 s despues: si un navegador la consulta antes de
+que su DNS la conozca, recuerda "no existe" durante un minuto.
 
 Limitaciones del tunel rapido: sin garantias de Cloudflare, y retiene el
 streaming (SSE); por eso la app usa /api/vivo (consultas) cuando va por el
@@ -60,6 +60,10 @@ class Tunel:
         t0 = time.monotonic()
         while time.monotonic() - t0 < limite and proc.poll() is None and not self.parado:
             try:
+                urllib.request.urlopen(url + "/api/raspi", timeout=10).read()
+                # el DNS de algunos (1.1.1.1...) tarda algo mas en conocerla:
+                # margen y otra comprobacion antes de anunciarla
+                time.sleep(30)
                 urllib.request.urlopen(url + "/api/raspi", timeout=10).read()
                 print("\nTunel: " + url)
                 self._cambiar(url)

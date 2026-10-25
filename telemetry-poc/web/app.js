@@ -639,7 +639,13 @@
         const b = el('button', 'link', li, f.name);
         b.addEventListener('click', () => loadPiEntry(base, f));
         el('span', '', li, (f.kind === 'sesion' ? f.files.length + (f.files.length === 1 ? ' sensor · ' : ' sensores · ') : 'CSV antiguo · ') +
-          new Date(f.mtime * 1000).toLocaleString() + ' · ' + (f.size / 1024).toFixed(0) + ' kB');
+          new Date(f.mtime * 1000).toLocaleString() + ' · ' + (f.size / 1024).toFixed(0) + ' kB' +
+          (f.subida === true ? ' · en la nube' : f.subida === false ? ' · sin subir' : ''));
+        if (f.kind === 'sesion') {
+          const x = el('button', 'ghost small borrar', li, 'Borrar');
+          x.title = 'Borrar la copia guardada en la raspi';
+          x.addEventListener('click', () => borrarDeRaspi(f, li, x));
+        }
       }
       if (!piSessions.length) el('li', 'muted', ul, 'No hay sesiones en la carpeta de datos.');
       box.hidden = false;
@@ -651,6 +657,22 @@
     }
   }
   $('#pi-refresh').addEventListener('click', listPiFiles);
+
+  async function borrarDeRaspi(f, li, boton) {
+    const aviso = f.subida === false
+      ? '\n\n⚠ Esta sesión AÚN NO está en la nube: si la borras, se pierde.'
+      : f.subida ? '\n\nLa copia de la nube no se borra.' : '';
+    if (!confirm('¿Borrar ' + f.name + ' de la raspi?' + aviso + '\n\nNo se puede deshacer.')) return;
+    boton.disabled = true;
+    try {
+      const j = await api('/api/sesion/borrar', { nombre: f.name });
+      li.remove();
+      fileMsg(j.mensaje + '.');
+    } catch (e) {
+      boton.disabled = false;
+      fileMsg('No se pudo borrar: ' + e.message, true);
+    }
+  }
 
   async function fetchText(base, path) {
     const r = await piFetch(path, {}, base);

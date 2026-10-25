@@ -108,6 +108,10 @@ input, select {
 .files { list-style: none; margin: 0; padding: 0; max-height: 240px; overflow-y: auto; }
 .files li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; padding: 6px 0; border-top: 1px solid var(--border); }
 .files span, .muted { color: var(--sub); font-size: 0.82rem; }
+.files li > span { margin-left: auto; }
+.files li { align-items: center; }
+button.borrar { color: var(--status-err); padding: 2px 8px; }
+button.borrar:hover:not(:disabled) { border-color: var(--status-err); }
 
 .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
 .field { display: flex; flex-direction: column; gap: 3px; font-size: 0.78rem; color: var(--sub); }

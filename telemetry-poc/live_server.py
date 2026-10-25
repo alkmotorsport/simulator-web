@@ -16,6 +16,7 @@ Servidor web + tiempo real para la telemetria. Solo libreria estandar.
   POST /api/...     control desde la web (solo con el maestro, telemetria.py):
                     modulo/<id> {"activo": true|false|"auto"},
                     modulo/<id>/accion {"accion": "calibrar"},
+                    sesion/borrar {"nombre"}, nube/borrar {"id"} (borrar sesiones),
                     detectar, auto, grabar {"grabar": true|false},
                     alta/consultar {"inv"}, alta {"inv", "secreto", "password"}
                     (alta de un usuario invitado: ver sincro.py)
@@ -399,6 +400,8 @@ class LiveServer:
     def _lista(self, h):
         """Sesiones (carpetas con sesion.json o CSV) y CSV sueltos antiguos."""
         out = []
+        # ya en la nube: la web avisa al borrar una que todavia no lo esta
+        subidas = self.control.subidas() if self.control is not None else None
         if os.path.isdir(self.data_dir):
             for nombre in os.listdir(self.data_dir):
                 ruta = os.path.join(self.data_dir, nombre)
@@ -410,7 +413,8 @@ class LiveServer:
                         "name": nombre, "kind": "sesion", "files": csvs,
                         "json": os.path.exists(os.path.join(ruta, "sesion.json")),
                         "size": sum(os.path.getsize(os.path.join(ruta, f)) for f in csvs),
-                        "mtime": max(os.path.getmtime(os.path.join(ruta, f)) for f in csvs)})
+                        "mtime": max(os.path.getmtime(os.path.join(ruta, f)) for f in csvs),
+                        "subida": None if subidas is None else nombre in subidas})
                 elif nombre.endswith(".csv"):
                     st = os.stat(ruta)
                     out.append({"name": nombre, "kind": "csv", "size": st.st_size,

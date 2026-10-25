@@ -60,6 +60,7 @@ MAGIA = b"TLM1"                # cabecera de los .enc: version del formato
 PASS_MIN = 10
 MAX_ENC = 95 * 1024 * 1024     # GitHub rechaza ficheros de mas de 100 MB
 PERIODO = 600                  # s entre reintentos (sin internet en el circuito)
+BORRADA = "borrada"             # en subidas.json: borrada de la nube a proposito
 ID_OK = re.compile(r"^[a-z0-9][a-z0-9._-]{1,31}$")
 
 
@@ -292,15 +293,55 @@ class Sincro:
         except (OSError, ValueError):
             return {}
 
+    def _guardar_subidas(self, hechas):
+        """{sesion: huella de lo subido, o BORRADA si se borro de la nube}."""
+        os.makedirs(os.path.dirname(self.f_subidas), exist_ok=True)
+        with open(self.f_subidas + ".tmp", "w", encoding="utf-8") as f:
+            json.dump(hechas, f, indent=1)
+        os.replace(self.f_subidas + ".tmp", self.f_subidas)
+
+    def al_dia(self):
+        """Sesiones locales cuya copia en la nube coincide con la local."""
+        hechas = self._leer_subidas()
+        return {n for n, h in self._sesiones_locales().items() if hechas.get(n) == h}
+
+    def borrar_de_nube(self, sid):
+        """Quita una sesion del repo de datos (y de su indice). La copia local,
+        si la hay, se queda y no se vuelve a subir."""
+        if not re.match(r"^[0-9a-f]{20}$", sid or ""):
+            raise ValueError("sesion no valida")
+        base = "raspis/" + self.raspi
+
+        def preparar():
+            ri = base + "/indice.enc"
+            blob = self._leer(ri)
+            sesiones = json.loads(descifrar(self.clave, blob, ri))["sesiones"] if blob else []
+            borrada = [s for s in sesiones if s["id"] == sid]
+            if not borrada:
+                raise ValueError("esa sesion ya no esta en la nube")
+            quedan = [s for s in sesiones if s["id"] != sid]
+            self._escribir(ri, cifrar(self.clave, json.dumps({"sesiones": quedan}, ensure_ascii=False).encode(), ri))
+            ruta = self._ruta("{}/sesiones/{}.enc".format(base, sid))
+            if os.path.exists(ruta):
+                os.remove(ruta)
+            return borrada[0]["nombre"]
+
+        with self.lock:
+            nombre, _ = self._publicar("raspi {}: borra una sesion".format(self.raspi), preparar)
+            hechas = self._leer_subidas()
+            hechas[nombre] = BORRADA          # su copia local, si la hay, no se vuelve a subir
+            self._guardar_subidas(hechas)
+        return {"ok": True, "mensaje": "Borrada de la nube: " + nombre}
+
     def pendientes_locales(self):
         hechas = self._leer_subidas()
-        return [n for n, h in self._sesiones_locales().items() if hechas.get(n) != h]
+        return [n for n, h in self._sesiones_locales().items() if hechas.get(n) not in (h, BORRADA)]
 
     def sincronizar(self):
         with self.lock:
             locales = self._sesiones_locales()
             hechas = self._leer_subidas()
-            nuevas = [n for n, h in locales.items() if hechas.get(n) != h]
+            nuevas = [n for n, h in locales.items() if hechas.get(n) not in (h, BORRADA)]
             base = "raspis/" + self.raspi
 
             def preparar():
@@ -322,10 +363,7 @@ class Sincro:
                 self.raspi, len(nuevas)), preparar)
             for n in nuevas:
                 hechas[n] = locales[n]
-            os.makedirs(os.path.dirname(self.f_subidas), exist_ok=True)
-            with open(self.f_subidas + ".tmp", "w", encoding="utf-8") as f:
-                json.dump(hechas, f, indent=1)
-            os.replace(self.f_subidas + ".tmp", self.f_subidas)
+            self._guardar_subidas(hechas)
             self.ultima = datetime.now().isoformat(timespec="seconds")
             self.error = None
             self.pendientes = 0

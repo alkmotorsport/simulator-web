@@ -286,6 +286,9 @@
         el('span', '', li, s.sensores.length + (s.sensores.length === 1 ? ' sensor · ' : ' sensores · ') +
           (s.inicio ? new Date(s.inicio).toLocaleString() : '') + ' · ' + (s.bytes / 1024).toFixed(0) + ' kB' +
           (s.simulada ? ' · simulada' : '') + (s.fin ? '' : ' · cortada'));
+        const x = el('button', 'ghost small borrar', li, 'Borrar');
+        x.title = 'Borrar de la nube (lo hace tu raspi: tiene que estar en línea)';
+        x.addEventListener('click', () => borrarDeNube(r, s, li, x));
       }
       msg('#nube-msg', lista.length ? '' : 'Esta raspi aún no ha subido ninguna sesión.');
     } catch (e) {
@@ -293,6 +296,23 @@
     }
   }
   $('#nube-refresh').addEventListener('click', listar);
+
+  /** El repo solo lo puede escribir la raspi: se le pide a ella. */
+  async function borrarDeNube(r, s, li, boton) {
+    if (!r.base) return msg('#nube-msg', 'Para borrar de la nube, ' + r.nombre + ' tiene que estar encendida y con internet.', true);
+    if (!confirm('¿Borrar ' + s.nombre + ' de la nube?\n\nNo se puede deshacer. Si sigue guardada en la raspi, esa copia no se borra.')) return;
+    boton.disabled = true;
+    msg('#nube-msg', 'Borrando ' + s.nombre + '…');
+    try {
+      const h = await window.TelemetriaAcceso.cabeceras(r.base);
+      const j = await pedir(r.base + '/api/nube/borrar', { body: { id: s.id }, headers: h, timeout: 60000 });
+      li.remove();
+      msg('#nube-msg', j.mensaje + '.');
+    } catch (e) {
+      boton.disabled = false;
+      msg('#nube-msg', 'No se pudo borrar: ' + e.message, true);
+    }
+  }
 
   async function abrirSesion(r, s) {
     T.showTab('file');
