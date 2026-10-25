@@ -2,7 +2,7 @@
 Catalogo de modulos de la telemetria.
 
 Cada entrada es (id, clase, configuracion por defecto). Los pines son los del
-documento "Telemetria de moto clasica: sensores y correlaciones" (Pi sin HAT).
+cableado directo a la Pi (sin HAT).
 Cualquier valor se puede cambiar en telemetria.json sin tocar el codigo:
 
   {"modulos": {"suspension": {"activo": true, "max_cm": 60},
