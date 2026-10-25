@@ -225,6 +225,9 @@ body.dragging-block, body.dragging-block * { cursor: grabbing !important; user-s
 .menu > summary::-webkit-details-marker { display: none; }
 .menu-body { position: absolute; right: 0; top: calc(100% + 6px); z-index: 10; width: min(360px, calc(100vw - 32px)); background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.15); display: grid; gap: 10px; }
 .menu-body p { margin: 0; font-size: 0.8rem; }
+a.btn { display: inline-flex; align-items: center; border-radius: 9px; border: 1px solid var(--border); padding: 4px 10px; font-size: 0.82rem; color: var(--text); text-decoration: none; }
+a.btn:hover { border-color: var(--steel); }
+.hint a { color: var(--steel); }
 label.btn { display: inline-flex; align-items: center; cursor: pointer; border-radius: 9px; border: 1px solid var(--border); padding: 4px 10px; font-size: 0.82rem; color: var(--text); }
 label.btn:hover { border-color: var(--steel); }
 

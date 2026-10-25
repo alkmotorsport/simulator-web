@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Telemetría">
-<link rel="stylesheet" href="style.css?v=20261025k">
+<link rel="stylesheet" href="style.css?v=20261025l">
 </head>
 <body>
 
@@ -25,6 +25,7 @@
   </div>
   <div class="top-actions">
     <span id="cuenta-sum" class="muted"></span>
+    <a class="btn small" href="https://motorsport.amorgante.es/telemetry-poc/docs/manual-usuario.pdf" target="_blank" rel="noopener">Manual de usuario</a>
     <button id="cuenta-btn" class="small">Entrar</button>
     <button id="theme" class="ghost small">Tema: auto</button>
   </div>
@@ -43,6 +44,8 @@
     <button id="login-go" type="submit">Entrar</button>
   </form>
   <p id="login-msg" class="msg" hidden></p>
+  <p class="hint">¿Primera vez? Antes necesitas un link de invitación del administrador:
+    lo explica el <a href="https://motorsport.amorgante.es/telemetry-poc/docs/manual-usuario.pdf" target="_blank" rel="noopener">manual de usuario</a>.</p>
 </section>
 
 <section id="alta" class="card" hidden>
@@ -201,13 +204,13 @@
   </p>
 </section>
 
-<script src="plot.js?v=20261025k"></script>
-<script src="sensors.js?v=20261025k"></script>
-<script src="app.js?v=20261025k"></script>
-<script src="config.js?v=20261025k"></script>
-<script src="cripto.js?v=20261025k"></script>
-<script src="repo.js?v=20261025k"></script>
-<script src="cuenta.js?v=20261025k"></script>
+<script src="plot.js?v=20261025l"></script>
+<script src="sensors.js?v=20261025l"></script>
+<script src="app.js?v=20261025l"></script>
+<script src="config.js?v=20261025l"></script>
+<script src="cripto.js?v=20261025l"></script>
+<script src="repo.js?v=20261025l"></script>
+<script src="cuenta.js?v=20261025l"></script>
 <script>
   // app instalable (PWA); solo en https: la web de la Pi (http) no lo necesita
   if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(() => {});
