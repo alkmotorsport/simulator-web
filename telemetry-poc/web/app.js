@@ -27,7 +27,9 @@
   function storedList(k) { try { return JSON.parse(store(k) || '[]'); } catch (e) { return []; } }
   let hidden = new Set(storedList('tele-hidden'));
   let userOrder = storedList('tele-orden');   // ids de los bloques en el orden elegido
-  const view = { sets: [], group: null, live: false };
+  const view = { sets: [], group: null, live: false, fichero: null };
+  let tab = 'live';        // pestana visible: 'live' o 'file'
+  let lastFile = null;     // ultima sesion abierta: {title, sub, sets}
   const live = {
     es: null, estado: null, sets: {}, ctx: {}, vivos: {}, rows: {}, key: '',
     paused: false, dirty: false, lastDraw: 0, lastSession: null, control: true,
@@ -56,11 +58,33 @@
 
   // ----------------------------------------------------------- pestanas ---
 
+  /** Cada pestana ensena solo lo suyo: en vivo, los datos en vivo; en
+   *  Sesiones, la sesion abierta. Al volver, lo que habia. */
   function showTab(name) {
+    tab = name;
     document.querySelectorAll('[role=tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === name));
     $('#pane-file').hidden = name !== 'file';
     $('#pane-live').hidden = name !== 'live';
-    if (name === 'live' && live.es && !view.live) showLive();
+    if (name === 'live') {
+      if (live.es && !view.live) showLive();
+    } else if (lastFile && view.fichero !== lastFile) {
+      mostrarFichero(lastFile);
+    } else if (!lastFile && view.live) {
+      buildView([]);
+    }
+    $('#view').hidden = !view.sets.length || (name === 'live') !== view.live;
+  }
+
+  function mostrarFichero(f) {
+    buildView(f.sets);
+    view.fichero = f;
+    showHeader(f.title, f.sub, f.sets.map(s => [s.name, s.meta]));
+  }
+
+  /** Una sesion (CSV, de la Pi, de la nube o la de ejemplo): a la pestana Sesiones. */
+  function abrirSesionEnVista(title, sub, sets) {
+    lastFile = { title, sub, sets };
+    showTab('file');
   }
   document.querySelectorAll('[role=tab]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
@@ -456,8 +480,7 @@
     if (live.paused) togglePause();
     const sub = sets.length + (sets.length === 1 ? ' sensor' : ' sensores') +
       (sj && sj.inicio ? ' · ' + sj.inicio.replace('T', ' ') : '') + (sj && sj.simulada ? ' · simulada' : '');
-    buildView(sets);
-    showHeader(title, sub, sets.map(s => [s.name, s.meta]));
+    abrirSesionEnVista(title, sub, sets);
     fileMsg(avisos.length ? 'Sin datos: ' + avisos.join('; ') : '');
   }
 
@@ -531,9 +554,7 @@
       }, { apunta_a: 'disco de freno' }),
       mk('temp_bujia', 'termopar', 'Temperatura bujía (sonda K)', ['temp_c'], 4, (s, p) => [Math.round((150 + 40 * p.kmh / 160 - 60 * Math.exp(-s / 40) + noise(0.4)) * 4) / 4]),
     ];
-    showTab('file');
-    buildView(sets);
-    showHeader('Sesión de ejemplo', sets.length + ' sensores · 2 vueltas simuladas', sets.map(s => [s.name, s.meta]));
+    abrirSesionEnVista('Sesión de ejemplo', sets.length + ' sensores · 2 vueltas simuladas', sets);
     fileMsg('');
   });
 
@@ -795,7 +816,7 @@
     renderRec(e);
     renderPanel(e);
     renderOutputs();
-    if (view.live || !view.sets.length) showLive();
+    if (tab === 'live') showLive();     // en Sesiones no se toca la sesion abierta
   }
 
   /** Pone en la vista los sensores que estan en marcha (si han cambiado). */
@@ -811,6 +832,7 @@
     }
     live.key = key;
     buildView(sets, { isLive: true, zoomable: live.paused });
+    view.fichero = null;
     showHeader('En vivo', sets.length ? sets.length + (sets.length === 1 ? ' sensor activo' : ' sensores activos')
       : 'Ningún sensor en marcha: actívalos en la lista de arriba', sets.map(s => [s.name, s.meta]));
     $('#view').hidden = false;
