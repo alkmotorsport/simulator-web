@@ -202,7 +202,7 @@ class LiveServer:
                 sesion = cab[7:].strip() if cab.startswith("Bearer ") else self._query().get("s")
                 if srv.acceso.usuario(sesion):
                     return True
-                srv._json(self, {"error": "entra con tu usuario de esta raspi", "acceso": True}, 401)
+                srv._json(self, {"error": "entra con tu usuario de este sistema", "acceso": True}, 401)
                 return False
 
             def do_GET(self):

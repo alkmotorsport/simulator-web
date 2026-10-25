@@ -271,24 +271,24 @@
 
   $('#set-save-pi').addEventListener('click', async () => {
     const base = serverBase();
-    if (!base) return setMsg('Indica arriba la dirección de la Raspberry', true);
+    if (!base) return setMsg('Entra con tu usuario y elige tu sistema de telemetría', true);
     try {
       const r = await piFetch('/api/ajustes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(getSettings()) });
       if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'HTTP ' + r.status);
-      setMsg('Guardados en la Pi: cualquier navegador puede cargarlos.');
-    } catch (e) { setMsg('No se pudieron guardar en la Pi: ' + e.message, true); }
+      setMsg('Guardados en el sistema: cualquier navegador puede cargarlos.');
+    } catch (e) { setMsg('No se pudieron guardar en el sistema: ' + e.message, true); }
   });
 
   $('#set-load-pi').addEventListener('click', async () => {
     const base = serverBase();
-    if (!base) return setMsg('Indica arriba la dirección de la Raspberry', true);
+    if (!base) return setMsg('Entra con tu usuario y elige tu sistema de telemetría', true);
     try {
       const r = await piFetch('/api/ajustes');
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const a = await r.json();
-      if (!Object.keys(a).length) return setMsg('La Pi aún no tiene ajustes guardados.', true);
+      if (!Object.keys(a).length) return setMsg('El sistema aún no tiene ajustes guardados.', true);
       applySettings(a);
-      setMsg('Ajustes cargados de la Pi' + (a.guardado ? ' (guardados ' + new Date(a.guardado).toLocaleString() + ')' : '') + '.');
+      setMsg('Ajustes cargados del sistema' + (a.guardado ? ' (guardados ' + new Date(a.guardado).toLocaleString() + ')' : '') + '.');
     } catch (e) { setMsg('No se pudieron cargar: ' + e.message, true); }
   });
 
@@ -577,14 +577,14 @@
   /** Problema conocido de la conexion con la Pi, o '' si no se detecta. */
   function mixedContent(base) {
     return location.protocol === 'https:' && base.startsWith('http:')
-      ? 'Desde la app (https) el navegador no deja hablar con la raspi por http.' : '';
+      ? 'Desde la app (https) el navegador no deja hablar con el sistema por http.' : '';
   }
 
   /** Enlace para abrir la web de la propia raspi (mismo wifi): alli va el modo en vivo. */
   function piLink(p, base) {
     const a = document.createElement('a');
-    a.href = base + '/'; a.textContent = 'Abre la web de la raspi';
-    p.append(' ', a, ' para el modo en vivo (o arranca la Pi con --https).');
+    a.href = base + '/'; a.textContent = 'Abre la web del sistema';
+    p.append(' ', a, ' para el modo en vivo (o arráncalo con --https).');
   }
 
   function setConn(txt, cls, certBase) {
@@ -599,7 +599,7 @@
       const a = document.createElement('a');
       a.href = certBase + '/'; a.target = '_blank'; a.rel = 'noopener';
       a.textContent = 'abre ' + certBase + ' y acepta el certificado';
-      p.append(' Si la Pi usa certificado autofirmado, ', a, ' y vuelve a pulsar «Comprobar».');
+      p.append(' Si el sistema usa certificado autofirmado, ', a, ' y vuelve a pulsar «Comprobar».');
     }
   }
 
@@ -612,7 +612,7 @@
       if (r.status !== 401 || !A) return r;
       A.olvidar(base);
     }
-    throw new Error('entra con tu usuario de esta raspi');
+    throw new Error('entra con tu usuario de este sistema');
   }
 
   /** Raspi en la misma red (va por SSE) o por internet (consultas). */
@@ -629,7 +629,7 @@
     if (mixed) { box.hidden = true; setConn(mixed, 'err'); piLink($('#conn-status'), base); return; }
     try {
       const r = await piFetch('/api/sesiones', {}, base);
-      if (r.status === 401) { box.hidden = true; setConn('Entra con tu usuario para ver esta raspi.'); return; }
+      if (r.status === 401) { box.hidden = true; setConn('Entra con tu usuario para ver este sistema.'); return; }
       if (!r.ok) throw new Error(r.status);
       piSessions = await r.json();
       const ul = $('#pi-list');
@@ -643,13 +643,13 @@
           (f.subida === true ? ' · en la nube' : f.subida === false ? ' · sin subir' : ''));
         if (f.kind === 'sesion') {
           const x = el('button', 'ghost small borrar', li, 'Borrar');
-          x.title = 'Borrar la copia guardada en la raspi';
+          x.title = 'Borrar la copia guardada en el sistema';
           x.addEventListener('click', () => borrarDeRaspi(f, li, x));
         }
       }
       if (!piSessions.length) el('li', 'muted', ul, 'No hay sesiones en la carpeta de datos.');
       box.hidden = false;
-      setConn('Raspberry accesible · ' + piSessions.length + ' sesiones guardadas', 'ok');
+      setConn('Sistema accesible · ' + piSessions.length + ' sesiones guardadas', 'ok');
     } catch (e) {
       box.hidden = true;
       if (/^Entra/.test(e.message)) return setConn(e.message + '.');
@@ -662,7 +662,7 @@
     const aviso = f.subida === false
       ? '\n\n⚠ Esta sesión AÚN NO está en la nube: si la borras, se pierde.'
       : f.subida ? '\n\nLa copia de la nube no se borra.' : '';
-    if (!confirm('¿Borrar ' + f.name + ' de la raspi?' + aviso + '\n\nNo se puede deshacer.')) return;
+    if (!confirm('¿Borrar ' + f.name + ' del sistema?' + aviso + '\n\nNo se puede deshacer.')) return;
     boton.disabled = true;
     try {
       const j = await api('/api/sesion/borrar', { nombre: f.name });
@@ -730,7 +730,7 @@
 
   async function connect() {
     const base = serverBase();
-    if (!base) return setStatus('Entra con tu usuario y elige una raspi (o pon su dirección arriba)', 'err');
+    if (!base) return setStatus('Entra con tu usuario y elige tu sistema de telemetría', 'err');
     const mixed = mixedContent(base);
     if (mixed) { setStatus(mixed, 'err'); piLink($('#live-status'), base); return; }
     store('tele-server', $('#server').value.trim());

@@ -58,7 +58,7 @@ class Acceso:
                             hashlib.sha256).hexdigest()
         if not hmac.compare_digest(esperada, str(firma or "")) or \
                 not self.existe_usuario(usuario):
-            raise PermissionError("no eres usuario de esta raspi")
+            raise PermissionError("no eres usuario de este sistema")
         s = secrets.token_urlsafe(32)
         with self.lock:
             self.sesiones[s] = (usuario, time.monotonic() + DURACION)

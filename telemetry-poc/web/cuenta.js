@@ -90,7 +90,7 @@
         const info = await pedir(base + '/api/raspi');
         if (!info.acceso) return (sesiones[base] = null);
         const r = cuenta && cuenta.raspis.find(x => x.id === info.raspi);
-        if (!r) throw new Error('Entra con un usuario de ' + (info.nombre || 'esta raspi'));
+        if (!r) throw new Error('Entra con un usuario de ' + (info.nombre || 'este sistema'));
         const { reto } = await pedir(base + '/api/reto');
         const firma = await Cripto.firmar(r.raw, reto, cuenta.usuario);
         const j = await pedir(base + '/api/entrar', { body: { usuario: cuenta.usuario, reto, firma } });
@@ -125,7 +125,6 @@
     // con cuenta, el modo se elige con los botones de tu raspi y la direccion la pone la app
     document.querySelector('.tabs').hidden = !!cuenta;
     $('#conn-box').hidden = !!cuenta;
-    $('#otras').open = !cuenta;
   }
 
   $('#cuenta-btn').addEventListener('click', () => {
@@ -225,7 +224,7 @@
       vivo.addEventListener('click', () => elegir(r, true));
       probar(r).then(base => {
         r.base = base;
-        est.textContent = base ? (base === r.local && base !== r.direccion ? ' · en línea (wifi)' : ' · en línea') : ' · apagada o sin internet';
+        est.textContent = base ? (base === r.local && base !== r.direccion ? ' · en línea (wifi)' : ' · en línea') : ' · apagado o sin internet';
         est.className = base ? 'ok' : 'muted';
         vivo.disabled = !base;
         if (base && r === cuenta.sel && !T.servedByPi) T.usarRaspi(base);
@@ -287,10 +286,10 @@
           (s.inicio ? new Date(s.inicio).toLocaleString() : '') + ' · ' + (s.bytes / 1024).toFixed(0) + ' kB' +
           (s.simulada ? ' · simulada' : '') + (s.fin ? '' : ' · cortada'));
         const x = el('button', 'ghost small borrar', li, 'Borrar');
-        x.title = 'Borrar de la nube (lo hace tu raspi: tiene que estar en línea)';
+        x.title = 'Borrar de la nube (lo hace tu sistema de telemetría: tiene que estar en línea)';
         x.addEventListener('click', () => borrarDeNube(r, s, li, x));
       }
-      msg('#nube-msg', lista.length ? '' : 'Esta raspi aún no ha subido ninguna sesión.');
+      msg('#nube-msg', lista.length ? '' : 'Este sistema aún no ha subido ninguna sesión.');
     } catch (e) {
       msg('#nube-msg', 'No se pudieron cargar: ' + e.message, true);
     }
@@ -299,8 +298,8 @@
 
   /** El repo solo lo puede escribir la raspi: se le pide a ella. */
   async function borrarDeNube(r, s, li, boton) {
-    if (!r.base) return msg('#nube-msg', 'Para borrar de la nube, ' + r.nombre + ' tiene que estar encendida y con internet.', true);
-    if (!confirm('¿Borrar ' + s.nombre + ' de la nube?\n\nNo se puede deshacer. Si sigue guardada en la raspi, esa copia no se borra.')) return;
+    if (!r.base) return msg('#nube-msg', 'Para borrar de la nube, ' + r.nombre + ' tiene que estar encendido y con internet.', true);
+    if (!confirm('¿Borrar ' + s.nombre + ' de la nube?\n\nNo se puede deshacer. Si sigue guardada en el sistema, esa copia no se borra.')) return;
     boton.disabled = true;
     msg('#nube-msg', 'Borrando ' + s.nombre + '…');
     try {
@@ -346,7 +345,7 @@
     $('#alta-form').hidden = true;
     $('#alta-ir').hidden = true;
     if (T.servedByPi) return altaEn(location.origin, inv, secreto);
-    $('#alta-txt').textContent = 'Buscando tu raspi…';
+    $('#alta-txt').textContent = 'Buscando tu sistema de telemetría…';
     let r = null;
     if (repo) try {
       const i = await repo.json('invitaciones/' + inv + '.json');
@@ -356,20 +355,20 @@
       if (base) return altaEn(base, inv, secreto);
     } catch (e) { /* abajo: a mano */ }
     // apagada o sin internet: en su wifi, con su direccion local
-    $('#alta-txt').textContent = 'No encuentro ' + ((r && r.nombre) || 'tu raspi') + ' por internet. Enciéndela ' +
+    $('#alta-txt').textContent = 'No encuentro ' + ((r && r.nombre) || 'tu sistema de telemetría') + ' por internet. Enciéndelo ' +
       '(con internet) y recarga esta página, o conéctate a su wifi y pulsa «Conectar».';
     $('#alta-dir').value = (r && r.local) || '';
     $('#alta-ir').hidden = false;
     $('#alta-abrir').onclick = () => {
       let base = $('#alta-dir').value.trim().replace(/\/+$/, '');
-      if (!base) return msg('#alta-msg', 'Pon la dirección de la raspi (p. ej. https://192.168.1.50:8081)', true);
+      if (!base) return msg('#alta-msg', 'Pon la dirección del sistema (p. ej. https://192.168.1.50:8081)', true);
       if (!/^https?:\/\//.test(base)) base = 'https://' + base;
       altaEn(base, inv, secreto);
     };
   }
 
   async function altaEn(base, inv, secreto) {
-    $('#alta-txt').textContent = 'Comprobando la invitación en la raspi…';
+    $('#alta-txt').textContent = 'Comprobando la invitación en el sistema…';
     msg('#alta-msg', '');
     let info;
     try { info = await pedir(base + '/api/alta/consultar', { body: { inv }, timeout: 30000 }); } catch (e) {

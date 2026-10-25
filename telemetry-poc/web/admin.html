@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <title>Telemetría · Admin</title>
 <link rel="icon" href="logo.jpg" type="image/jpeg">
-<link rel="stylesheet" href="style.css?v=20261025j">
+<link rel="stylesheet" href="style.css?v=20261025k">
 </head>
 <body>
 
@@ -15,7 +15,7 @@
     <img src="logo.jpg" alt="ALK Motorsport" width="72" height="72">
     <div>
       <h1>Administración</h1>
-      <p>Usuarios, invitaciones y raspis del repo de datos</p>
+      <p>Usuarios, invitaciones y sistemas de telemetría</p>
     </div>
   </div>
   <a class="muted" href="./">← Volver a la app</a>
@@ -39,14 +39,14 @@
 <div id="panel-admin" hidden>
   <section class="card">
     <h2>Nueva invitación</h2>
-    <p class="muted">El usuario abre el link (desde cualquier sitio, con su raspi encendida y con internet) y elige su
-      contraseña. A un usuario que ya existe se le puede invitar a otra raspi.</p>
+    <p class="muted">El usuario abre el link (desde cualquier sitio, con su sistema de telemetría encendido y con internet) y elige su
+      contraseña. A un usuario que ya existe se le puede invitar a otro sistema.</p>
     <form id="inv-form" class="bar form">
       <label class="field">Usuario
         <input id="inv-user" type="text" autocapitalize="none" spellcheck="false" pattern="[a-z0-9][a-z0-9._\-]{1,31}" required
           title="minúsculas, números, punto, guion o guion bajo (2 a 32)">
       </label>
-      <label class="field">Raspi
+      <label class="field">Sistema
         <select id="inv-raspi" required></select>
       </label>
       <label class="field">Caduca en
@@ -76,15 +76,15 @@
   </section>
 
   <section class="card">
-    <h2>Raspis</h2>
-    <p class="muted">Una raspi aparece aquí cuando se configura con <code>sudo python3 sincro.py iniciar --raspi &lt;id&gt;</code>.</p>
+    <h2>Sistemas de telemetría</h2>
+    <p class="muted">Un sistema aparece aquí cuando se configura con <code>sudo python3 sincro.py iniciar --raspi &lt;id&gt;</code>.</p>
     <ul id="raspis" class="files admin-list"></ul>
   </section>
 </div>
 
-<script src="config.js?v=20261025j"></script>
-<script src="cripto.js?v=20261025j"></script>
-<script src="repo.js?v=20261025j"></script>
-<script src="admin.js?v=20261025j"></script>
+<script src="config.js?v=20261025k"></script>
+<script src="cripto.js?v=20261025k"></script>
+<script src="repo.js?v=20261025k"></script>
+<script src="admin.js?v=20261025k"></script>
 </body>
 </html>

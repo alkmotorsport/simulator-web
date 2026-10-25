@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Telemetría">
-<link rel="stylesheet" href="style.css?v=20261025j">
+<link rel="stylesheet" href="style.css?v=20261025k">
 </head>
 <body>
 
@@ -20,7 +20,7 @@
     <img src="logo.jpg" alt="ALK Motorsport" width="72" height="72">
     <div>
     <h1>Telemetría</h1>
-    <p>Sensores de la moto en tiempo real y sesiones grabadas en la Raspberry Pi</p>
+    <p>Sensores de la moto en tiempo real y sesiones grabadas por el sistema de telemetría</p>
     </div>
   </div>
   <div class="top-actions">
@@ -49,7 +49,7 @@
   <h2>Activar tu cuenta</h2>
   <p id="alta-txt"></p>
   <div id="alta-ir" class="bar" hidden>
-    <label class="field grow">Dirección de tu raspi en su wifi
+    <label class="field grow">Dirección del sistema de telemetría en su wifi
       <input id="alta-dir" type="text" inputmode="url" placeholder="https://192.168.1.50:8081" autocomplete="off">
     </label>
     <button id="alta-abrir" type="button">Conectar</button>
@@ -69,19 +69,19 @@
 
 <section id="raspis" class="card" hidden>
   <div class="sub-head">
-    <h2>Tus raspis</h2>
+    <h2>Tus sistemas de telemetría</h2>
     <button id="raspis-refresh" class="ghost small">Actualizar</button>
   </div>
   <ul id="raspis-list" class="raspis"></ul>
-  <p class="hint">«En vivo» funciona desde cualquier sitio si la raspi está encendida y con internet
+  <p class="hint">«En vivo» funciona desde cualquier sitio si el sistema está encendido y con internet
     (en el circuito, compartiendo datos desde el móvil).</p>
 </section>
 
 <details id="conn-box" class="card conn fold">
-  <summary><b>Raspberry</b> <span id="conn-sum" class="muted"></span></summary>
+  <summary><b>Sistema de telemetría</b> <span id="conn-sum" class="muted"></span></summary>
   <div class="bar">
     <label class="field grow">Dirección
-      <input id="server" type="text" inputmode="url" placeholder="https://raspberrypi.local:8081" autocomplete="off">
+      <input id="server" type="text" inputmode="url" placeholder="https://192.168.1.50:8081" autocomplete="off">
     </label>
     <button id="check" class="ghost">Comprobar</button>
   </div>
@@ -121,7 +121,7 @@
     </div>
     <ul id="mods" class="mods"></ul>
     <p class="hint">
-      El tick arranca o para el módulo en la Pi (y lo recuerda en <code>telemetria.json</code>).
+      El tick arranca o para el módulo en el sistema (y lo recuerda en <code>telemetria.json</code>).
       <b>auto</b> = arranca solo si se detecta conectado. Lo que no está activo ni se ejecuta ni se graba.
     </p>
   </details>
@@ -141,7 +141,7 @@
   </div>
   <div id="pi-files" hidden>
     <div class="sub-head">
-      <h3>Sesiones guardadas en la Raspberry</h3>
+      <h3>Sesiones guardadas en el sistema</h3>
       <button id="pi-refresh" class="ghost small">Actualizar</button>
     </div>
     <ul id="pi-list" class="files"></ul>
@@ -172,8 +172,8 @@
         <p class="muted">Orden y bloques visibles, opciones de cada sensor, ventana y tema.
           Arrastra un bloque por <b>⠿</b> para moverlo; se recuerda en este navegador.</p>
         <div class="bar">
-          <button id="set-save-pi" class="small">Guardar en la Pi</button>
-          <button id="set-load-pi" class="ghost small">Cargar de la Pi</button>
+          <button id="set-save-pi" class="small">Guardar en el sistema</button>
+          <button id="set-load-pi" class="ghost small">Cargar del sistema</button>
         </div>
         <div class="bar">
           <button id="set-export" class="ghost small">Exportar archivo</button>
@@ -201,13 +201,13 @@
   </p>
 </section>
 
-<script src="plot.js?v=20261025j"></script>
-<script src="sensors.js?v=20261025j"></script>
-<script src="app.js?v=20261025j"></script>
-<script src="config.js?v=20261025j"></script>
-<script src="cripto.js?v=20261025j"></script>
-<script src="repo.js?v=20261025j"></script>
-<script src="cuenta.js?v=20261025j"></script>
+<script src="plot.js?v=20261025k"></script>
+<script src="sensors.js?v=20261025k"></script>
+<script src="app.js?v=20261025k"></script>
+<script src="config.js?v=20261025k"></script>
+<script src="cripto.js?v=20261025k"></script>
+<script src="repo.js?v=20261025k"></script>
+<script src="cuenta.js?v=20261025k"></script>
 <script>
   // app instalable (PWA); solo en https: la web de la Pi (http) no lo necesita
   if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(() => {});

@@ -292,7 +292,7 @@ class Maestro:
             self.aplicar()
         elif p in (["alta"], ["alta", "consultar"]):
             if not self.sincro:
-                raise ValueError("esta raspi no tiene repo de datos (sincro.py iniciar)")
+                raise ValueError("este sistema no tiene repo de datos (sincro.py iniciar)")
             if p == ["alta"]:
                 return self.sincro.alta(cuerpo.get("inv"), cuerpo.get("secreto") or "",
                                         cuerpo.get("password"))
@@ -301,7 +301,7 @@ class Maestro:
             return self.borrar_sesion(cuerpo.get("nombre"))
         elif p == ["nube", "borrar"]:            # la del repo de datos
             if not self.sincro:
-                raise ValueError("esta raspi no tiene repo de datos")
+                raise ValueError("este sistema no tiene repo de datos")
             return self.sincro.borrar_de_nube(cuerpo.get("id"))
         elif p == ["grabar"]:
             if cuerpo.get("grabar"):
@@ -471,9 +471,9 @@ class Maestro:
             raise ValueError("se esta grabando: para la grabacion antes de borrarla")
         ruta = os.path.join(self.args.dir, nombre)
         if not os.path.isdir(ruta):
-            raise ValueError("esa sesion ya no esta en la raspi")
+            raise ValueError("esa sesion ya no esta en el sistema")
         shutil.rmtree(ruta)
-        return {"ok": True, "mensaje": "Borrada de la raspi: " + nombre}
+        return {"ok": True, "mensaje": "Borrada del sistema: " + nombre}
 
     def subidas(self):
         """Sesiones locales ya en la nube (None si no hay repo de datos)."""

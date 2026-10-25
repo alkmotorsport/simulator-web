@@ -415,7 +415,7 @@ class Sincro:
             raise ValueError("la invitacion no existe o ya se ha usado")
         i = json.loads(blob)
         if i.get("raspi") != self.raspi:
-            raise ValueError("esta invitacion es para la raspi '{}', y esta es '{}'".format(
+            raise ValueError("esta invitacion es para el sistema '{}', y este es '{}'".format(
                 i.get("raspi"), self.raspi))
         if i.get("caduca", 0) < time.time():
             raise ValueError("la invitacion ha caducado: pide otra al administrador")
@@ -451,7 +451,7 @@ class Sincro:
                 viejo = self._leer("usuarios/{}.json".format(usuario))
                 ent = entradas(json.loads(viejo)) if viejo else {}
                 if self.raspi in ent and not i.get("cambio"):
-                    raise ValueError("{} ya es usuario de esta raspi".format(usuario))
+                    raise ValueError("{} ya es usuario de este sistema".format(usuario))
                 ent[self.raspi] = entrada         # sus otras raspis se quedan igual
                 self._escribir("usuarios/{}.json".format(usuario),
                                self._json({"usuario": usuario, "raspis": ent}))

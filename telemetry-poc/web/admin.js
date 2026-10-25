@@ -29,7 +29,7 @@
   const fecha = s => s ? new Date(s).toLocaleString() : '—';
 
   $('#repo-name').textContent = CFG.repo;
-  if (!Cripto.disponible()) msg('#tok-msg', 'Abre el portal por https (la web publicada), no desde la raspi.', true);
+  if (!Cripto.disponible()) msg('#tok-msg', 'Abre el portal por https (la web publicada), no desde el sistema de telemetría.', true);
 
   $('#tok-form').addEventListener('submit', e => { e.preventDefault(); conectar($('#tok').value.trim()); });
   $('#tok-forget').addEventListener('click', () => {
@@ -108,7 +108,7 @@
       fila(uu, u.usuario, '· ' + u._raspis.map(nombreRaspi).join(', '), [
         ...u._raspis.map(r => [varias ? 'Contraseña en ' + nombreRaspi(r) : 'Cambiar contraseña', () => invitar(u.usuario, r, 7, true)]),
         ['Borrar', () => borrar(u._ruta, u._sha, 'el usuario ' + u.usuario +
-          '. Deja de poder entrar, pero si ya tenía la clave de sus raspis podría seguir leyendo lo subido hasta ahora'), 'danger'],
+          '. Deja de poder entrar, pero si ya tenía la clave de sus sistemas podría seguir leyendo lo subido hasta ahora'), 'danger'],
       ]);
     }
     if (!estado.usuarios.length) el('li', 'muted', uu, 'Aún no hay usuarios.');
@@ -131,7 +131,7 @@
       fila(ur, r.nombre || r.id, '· id ' + r.id + ' · ' + n + (n === 1 ? ' usuario' : ' usuarios') +
         (tunel ? ' · por internet: ' + r.direccion : ' · sin túnel') + (r.local ? ' · en su wifi: ' + r.local : ''), []);
     }
-    if (!estado.raspis.length) el('li', 'muted', ur, 'Ninguna raspi configurada todavía.');
+    if (!estado.raspis.length) el('li', 'muted', ur, 'Ningún sistema configurado todavía.');
   }
 
   async function borrar(ruta, sha, que) {
@@ -155,8 +155,8 @@
     // a la app: ella busca la raspi (su direccion por internet cambia en cada arranque)
     $('#inv-link').value = new URL('./', location.href).href + '#alta=' + id + '.' + secreto;
     $('#inv-out').hidden = false;
-    msg('#inv-msg', 'Link para ' + usuario + (cambio ? ' (cambio de contraseña)' : u ? ' (raspi nueva para él)' : '') +
-      '. Se abre desde cualquier sitio con la raspi encendida y con internet. Solo se muestra ahora; caduca en ' +
+    msg('#inv-msg', 'Link para ' + usuario + (cambio ? ' (cambio de contraseña)' : u ? ' (sistema nuevo para él)' : '') +
+      '. Se abre desde cualquier sitio con el sistema encendido y con internet. Solo se muestra ahora; caduca en ' +
       dias + (dias === 1 ? ' día.' : ' días.'));
     await cargar();
   }
@@ -165,7 +165,7 @@
     e.preventDefault();
     const usuario = $('#inv-user').value.trim().toLowerCase();
     if (!ID_OK.test(usuario)) return msg('#inv-msg', 'Usuario: minúsculas, números, punto, guion o guion bajo (2 a 32).', true);
-    if (!$('#inv-raspi').value) return msg('#inv-msg', 'No hay ninguna raspi configurada.', true);
+    if (!$('#inv-raspi').value) return msg('#inv-msg', 'No hay ningún sistema configurado.', true);
     $('#inv-out').hidden = true;
     try { await invitar(usuario, $('#inv-raspi').value, +$('#inv-dias').value, false); $('#inv-user').value = ''; } catch (err) { msg('#inv-msg', err.message, true); }
   });
