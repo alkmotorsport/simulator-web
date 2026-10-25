@@ -184,12 +184,65 @@
 
   // ----------------------------------------------------------------- IMU ---
 
+  /**
+   * Sesiones grabadas antes de nivelar los ejes al calibrar (meta sin 'giro'):
+   * con la caja inclinada, aceleraciones y angulos salen en los ejes de la
+   * caja y la inclinacion da picos falsos. Se recalcula como hoy en la Pi
+   * (modulos/imu.py): giro que lleva la gravedad de la calibracion a +Z y el
+   * mismo filtro complementario, sin la velocidad de rueda.
+   * Devuelve null si no hace falta (o no se puede).
+   */
+  function imuNivelada(ds) {
+    const m = ds.meta || {}, c = ds.cols;
+    if (ds.live || 'giro' in m || !Array.isArray(m.cero_deg) || !c.ax_g || !c.gz_dps) return null;
+    const r0 = m.cero_deg[0] * Math.PI / 180, p0 = m.cero_deg[1] * Math.PI / 180;
+    const x = Math.sin(p0), y = Math.cos(p0) * Math.sin(r0), z = Math.cos(p0) * Math.cos(r0);
+    const tumbada = Math.acos(Math.max(-1, Math.min(1, z))) * 180 / Math.PI;
+    if (tumbada < 20) return null;           // casi recta: lo grabado vale
+    // giro mas corto de (x, y, z) a +Z (Rodrigues), como _nivelar() en Python
+    const k = z < -0.9999 ? 0 : 1 / (1 + z);
+    const R = z < -0.9999 ? [[1, 0, 0], [0, -1, 0], [0, 0, -1]]
+      : [[1 - k * x * x, -k * x * y, -x], [-k * x * y, 1 - k * y * y, -y], [x, y, z]];
+    const n = ds.t.length, out = {};
+    for (const key of ['ax_g', 'ay_g', 'az_g', 'gx_dps', 'gy_dps', 'gz_dps', 'incl_deg', 'cabeceo_deg'])
+      out[key] = new Float64Array(n).fill(NaN);
+    const alfa = +m.alfa || 0.98, GIRO_MIN = 8 * Math.PI / 180, RAD = Math.PI / 180;
+    let incl = 0, cab = 0, fy = 0, fz = 0, tp = NaN;
+    for (let i = 0; i < n; i++) {
+      const a = [c.ax_g[i], c.ay_g[i], c.az_g[i]], g = [c.gx_dps[i], c.gy_dps[i], c.gz_dps[i]];
+      if (a.some(v => v !== v) || g.some(v => v !== v)) continue;
+      const A = R.map(f => f[0] * a[0] + f[1] * a[1] + f[2] * a[2]);
+      const G = R.map(f => f[0] * g[0] + f[1] * g[1] + f[2] * g[2]);
+      const [ax, ay, az] = A, gx = G[0] * RAD, gy = G[1] * RAD, gz = G[2] * RAD;
+      fy += 0.03 * (gy - fy); fz += 0.03 * (gz - fz);
+      const inclRef = Math.abs(fz) > GIRO_MIN
+        ? Math.max(-1.2, Math.min(1.2, Math.atan(fy / fz))) : Math.atan2(ay, az);
+      const cabRef = Math.atan2(ax, Math.hypot(ay, az));
+      const t = ds.t[i];
+      if (tp !== tp) { incl = inclRef; cab = cabRef; }
+      else if (t - tp <= 0.2) {
+        const dt = t - tp, dCab = -gy * Math.cos(incl) + gz * Math.sin(incl);
+        incl = alfa * (incl + gx * dt) + (1 - alfa) * inclRef;
+        cab = alfa * (cab + dCab * dt) + (1 - alfa) * cabRef;
+      }   // hueco de lecturas: se sigue con lo que habia
+      tp = t;
+      out.ax_g[i] = ax; out.ay_g[i] = ay; out.az_g[i] = az;
+      out.gx_dps[i] = G[0]; out.gy_dps[i] = G[1]; out.gz_dps[i] = G[2];
+      out.incl_deg[i] = incl / RAD; out.cabeceo_deg[i] = cab / RAD;
+    }
+    out.tumbada = tumbada;
+    return out;
+  }
+
   const imu = {
     id: 'imu',
     name: 'IMU · MPU6050',
     detect: h => ['ax_g', 'gz_dps'].every(c => h.includes(c)),
     options: [],
-    derive: ds => ds.cols,
+    derive(ds) {
+      if (ds.nivelada === undefined) ds.nivelada = imuNivelada(ds);   // una vez por sesion
+      return ds.nivelada || ds.cols;
+    },
     charts: () => [
       { type: 'time', key: 'incl_deg', title: 'Inclinación', unit: '°', note: '+ derecha · − izquierda', color: '--series-1', zero: true, height: 190 },
       { type: 'time', key: 'ax_g', title: 'Aceleración longitudinal', unit: 'g', note: '+ acelera · − frena', color: '--series-2', zero: true, decimals: 2, height: 160 },
@@ -209,7 +262,11 @@
       const [ylo, yhi] = minmax(finite(d.ay_g, i0, i1));
       const az = finite(d.az_g, i0, i1), azm = mean(az);
       let s = 0; for (const v of az) s += (v - azm) * (v - azm);
-      return [
+      const recalc = ds.nivelada ? [{
+        label: 'Ángulos recalculados', value: f(ds.nivelada.tumbada, 0), unit: '° caja',
+        sub: 'grabada antes de nivelar los ejes al calibrar', warn: true,
+      }] : [];
+      return recalc.concat([
         { label: 'Tasa real', value: f(tm.hz, 0), unit: 'Hz', sub: tm.n + ' muestras' },
         { label: 'Incl. máx derecha', value: f(ihi > 0 ? ihi : NaN, 1), unit: '°' },
         { label: 'Incl. máx izquierda', value: f(ilo < 0 ? -ilo : NaN, 1), unit: '°' },
@@ -217,7 +274,7 @@
         { label: 'Aceleración máx', value: f(ahi > 0 ? ahi : NaN, 2), unit: 'g' },
         { label: 'Lateral máx', value: f(Math.max(-ylo, yhi), 2), unit: 'g' },
         { label: 'Vibración vertical', value: f(az.length ? Math.sqrt(s / az.length) : NaN, 3), unit: 'g RMS' },
-      ];
+      ]);
     },
   };
 
