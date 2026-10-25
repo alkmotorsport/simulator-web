@@ -94,6 +94,11 @@ Pulsa **En vivo** en tu sistema (tiene que estar «en línea»).
 - **Sensores y salidas:** lista de lo conectado a la moto. El tick activa o
   desactiva cada sensor; **auto** quiere decir que se activa solo si se detecta
   conectado. Algunos tienen acciones, como **Calibrar** (con la moto quieta).
+  - **IMU (inclinación y cabeceo):** la caja puede ir en cualquier postura
+    (tumbada, de lado…), pero **bien sujeta**: si se mueve, los ángulos dejan
+    de valer. Pulsa **Calibrar** con la moto **recta y quieta** cada vez que
+    cambies la caja de sitio. El sistema también calibra solo al encenderse,
+    así que enciéndelo con la moto recta.
 - **Salidas del cuadro:** la app muestra lo mismo que los LED y la pantalla
   de la moto.
 

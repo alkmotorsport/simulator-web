@@ -13,12 +13,15 @@ ejes del MPU6050 son de mano derecha, X queda entonces a la DERECHA: "y,-x,z".
 Si al calibrar avisa de que Z apunta abajo, la placa esta del reves: "y,x,-z".
 
 Al arrancar (y con la accion Calibrar) mide 2 s con la moto vertical y
-quieta: quita el sesgo del giroscopio y pone a cero inclinacion y cabeceo.
+quieta: quita el sesgo del giroscopio y gira los ejes para que la gravedad
+quede en +Z. Asi da igual como vaya la caja (tumbada, del reves...): basta
+con calibrar. Se toma el giro mas corto, que acierta si la caja se ha
+inclinado sin girarla sobre si misma; si no, ajusta 'ejes'.
 
 Inclinacion: filtro complementario (giroscopio a corto plazo). La referencia
-a largo plazo sale del acelerometro, que en una curva mantenida marca ~0
-(la fuerza resultante va alineada con la moto); si hay velocidad de rueda
-(fuente_vel), se usa la de una curva coordinada: atan(v * giro / g).
+a largo plazo: si hay velocidad de rueda (fuente_vel), la de una curva
+coordinada, atan(v * giro / g); si no, en curva, el reparto del giro entre
+los ejes Z e Y de la moto, atan(gy / gz); en recta, el acelerometro.
 """
 
 import math
@@ -37,11 +40,30 @@ REG_WHOAMI = 0x75
 ESCALA_ACC = 8192.0     # LSB/g a +-4 g
 ESCALA_GYRO = 65.5      # LSB/(grado/s) a +-500 grados/s
 G = 9.81
+GIRO_MIN = math.radians(8)  # giro (rad/s) a partir del cual se usa atan(gy / gz)
 
 
 def _s16(hi, lo):
     v = (hi << 8) | lo
     return v - 65536 if v & 0x8000 else v
+
+
+def _nivelar(a):
+    """Matriz que lleva el vector a (gravedad en reposo) a +Z con el giro mas corto."""
+    n = math.sqrt(sum(x * x for x in a))
+    x, y, z = (v / n for v in a)
+    if z < -0.9999:                         # del reves: media vuelta sobre X
+        return [[1, 0, 0], [0, -1, 0], [0, 0, -1]]
+    k = 1 / (1 + z)                         # Rodrigues con eje a x Z = (y, -x, 0)
+    return [[1 - k * x * x, -k * x * y, -x],
+            [-k * x * y, 1 - k * y * y, -y],
+            [x, y, z]]
+
+
+def _girar(m, v):
+    return [m[0][0] * v[0] + m[0][1] * v[1] + m[0][2] * v[2],
+            m[1][0] * v[0] + m[1][1] * v[1] + m[1][2] * v[2],
+            m[2][0] * v[0] + m[2][1] * v[1] + m[2][2] * v[2]]
 
 
 def _mapa_ejes(txt):
@@ -117,7 +139,8 @@ class IMU(Modulo):
         super().__init__(*a, **k)
         self._recalibrar = False
         self.sesgo = [0.0, 0.0, 0.0]
-        self.cero = [0.0, 0.0]      # inclinacion y cabeceo en reposo (rad)
+        self.giro = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]   # nivela los ejes (calibrar)
+        self.cero = [0.0, 0.0]      # inclinacion y cabeceo de la caja al calibrar (rad)
         self.vel = (None, -1e9)     # (m/s, t)
 
     def pines(self):
@@ -128,6 +151,7 @@ class IMU(Modulo):
         m["direccion"] = f"0x{self.cfg['direccion']:02X}"
         m["sesgo_gyro_dps"] = [round(x, 3) for x in self.sesgo]
         m["cero_deg"] = [round(math.degrees(x), 2) for x in self.cero]
+        m["giro"] = [[round(x, 4) for x in f] for f in self.giro]
         return m
 
     def accion(self, nombre):
@@ -155,7 +179,7 @@ class IMU(Modulo):
     # ------------------------------------------------------------------------
 
     def _a_moto(self, v, mapa):
-        return [s * v[i] for i, s in mapa]
+        return _girar(self.giro, [s * v[i] for i, s in mapa])
 
     def _velocidad(self, t, kmh):
         if kmh is not None:
@@ -169,7 +193,7 @@ class IMU(Modulo):
         if c.get("fuente_vel"):
             self.escuchar(c["fuente_vel"], "kmh", self._velocidad)
         self._recalibrar = c["cero_seg"] > 0 and not self.hw.sim
-        incl = cab = 0.0
+        incl = cab = fy = fz = 0.0
         t_prev = None
         self.estado = "activo"
         proximo = pc()
@@ -177,7 +201,7 @@ class IMU(Modulo):
             if self._recalibrar:
                 self._recalibrar = False
                 self._calibrar(mpu, mapa, periodo)
-                incl, cab, t_prev = 0.0, 0.0, None
+                incl, cab, fy, fz, t_prev = 0.0, 0.0, 0.0, 0.0, None
                 proximo = pc()
                 continue
             proximo = self.esperar_periodo(proximo, periodo)
@@ -195,16 +219,25 @@ class IMU(Modulo):
             gx, gy, gz = (math.radians(x) for x in g)
 
             # referencias a largo plazo
+            fy += 0.03 * (gy - fy)                           # giro suavizado (~0,3 s)
+            fz += 0.03 * (gz - fz)
             v, tv = self.vel
             if v is not None and t - tv < 1.0 and v > 3:
                 w = math.copysign(math.hypot(gy, gz), gz)    # giro de la moto
                 incl_ref = -math.atan(v * w / G)
+            elif abs(fz) > GIRO_MIN:
+                # en curva el giro se reparte: gz = w cos(incl), gy = w sin(incl)
+                incl_ref = max(-1.2, min(1.2, math.atan(fy / fz)))
             else:
-                incl_ref = math.atan2(ay, az) - self.cero[0]
-            cab_ref = math.atan2(ax, math.hypot(ay, az)) - self.cero[1]
+                incl_ref = math.atan2(ay, az)
+            cab_ref = math.atan2(ax, math.hypot(ay, az))
 
-            if t_prev is None or t - t_prev > 0.2:
+            if t_prev is None:
                 incl, cab = incl_ref, cab_ref
+            elif t - t_prev > 0.2:
+                # hueco de lecturas: se sigue con lo que habia; reiniciar con el
+                # acelerometro en marcha (vibraciones de hasta 4 g) da saltos
+                pass
             else:
                 dt = t - t_prev
                 d_cab = -gy * math.cos(incl) + gz * math.sin(incl)
@@ -224,20 +257,23 @@ class IMU(Modulo):
                 a, g = mpu.leer()
             except (OSError, IOError):
                 continue
-            a, g = self._a_moto(a, mapa), self._a_moto(g, mapa)
+            a, g = [s * a[i] for i, s in mapa], [s * g[i] for i, s in mapa]
             sa = [x + y for x, y in zip(sa, a)]
             sg = [x + y for x, y in zip(sg, g)]
             n += 1
             self.parar.wait(periodo)
         if n >= 10:
             ax, ay, az = (x / n for x in sa)
-            self.sesgo = [x / n for x in sg]
+            self.giro = _nivelar([ax, ay, az])
+            self.sesgo = _girar(self.giro, [x / n for x in sg])
             self.cero = [math.atan2(ay, az), math.atan2(ax, math.hypot(ay, az))]
             self.aviso = None
-            if az < 0.5:
-                # en reposo la gravedad tiene que salir en +Z de la moto (~1 g)
-                self.aviso = (f"la gravedad no sale hacia arriba (az {az:+.2f} g): revisa "
-                              f"'ejes' ({self.cfg['ejes']}); con la placa del reves, \"y,x,-z\"")
+            tumbada = math.degrees(math.acos(max(-1, min(1, az / math.sqrt(ax * ax + ay * ay + az * az)))))
+            if tumbada > 45:
+                # se corrige, pero conviene saberlo: si delante/izquierda salen
+                # cambiados es que la caja tambien se ha girado sobre si misma
+                self.aviso = (f"caja inclinada {tumbada:.0f} grados respecto a 'ejes' "
+                              f"({self.cfg['ejes']}): corregido al calibrar")
             self.meta_ver += 1
             print(f"[{self.id}] calibrado: sesgo {[round(x, 2) for x in self.sesgo]} "
                   f"grados/s, cero {[round(math.degrees(x), 1) for x in self.cero]} grados")
