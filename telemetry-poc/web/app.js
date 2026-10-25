@@ -86,6 +86,7 @@
   /** Una sesion (CSV, de la Pi, de la nube o la de ejemplo): a la pestana Sesiones. */
   function abrirSesionEnVista(title, sub, sets) {
     lastFile = { title, sub, sets };
+    $('#otras').open = false;     // con una sesion abierta, lo de abrir CSV se pliega
     showTab('file');
   }
   document.querySelectorAll('[role=tab]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
