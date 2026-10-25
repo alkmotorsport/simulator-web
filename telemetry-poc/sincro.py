@@ -19,11 +19,14 @@ En la Pi (fuera del repo de codigo, solo root):
   /etc/telemetria/sincro.json     repo y nombre de esta raspi
   /etc/telemetria/clave           la clave de los datos: si se pierde, lo subido
                                   solo se recupera con la contrasena de un usuario
-  /etc/telemetria/deploy_key      clave SSH con escritura en el repo de datos
+  /etc/telemetria/token           token de GitHub (fine-grained, solo el repo de
+                                  datos, Contents: Read and write): push por HTTPS
   /var/lib/telemetria/            copia del repo y lo ya subido
+(Con un repo git@... en vez de https se usa la clave SSH /etc/telemetria/deploy_key.)
 
 Uso:
   sudo python3 sincro.py iniciar --raspi moto1 --nombre "Moto de Alberto"
+  sudo python3 sincro.py token        # poner o renovar el token (caduca)
   sudo python3 sincro.py ahora        # subir ya lo pendiente
   sudo python3 sincro.py estado
   sudo python3 sincro.py recuperar --usuario alberto   # rehace /etc/telemetria/clave
@@ -49,7 +52,7 @@ from datetime import datetime
 
 CONF_DIR = os.environ.get("TELEMETRIA_CONF", "/etc/telemetria")   # (otro, para pruebas)
 VAR_DIR = os.environ.get("TELEMETRIA_VAR", "/var/lib/telemetria")
-REPO_DEF = "git@github.com:alkmotorsport/telemetry-data.git"
+REPO_DEF = "https://github.com/alkmotorsport/telemetry-data.git"
 RAMA = "main"
 ITER = 600000                  # PBKDF2: recomendacion OWASP para SHA-256
 MAGIA = b"TLM1"                # cabecera de los .enc: version del formato
@@ -122,6 +125,7 @@ class Sincro:
         with open(os.path.join(conf_dir, "sincro.json"), encoding="utf-8") as f:
             self.cfg = json.load(f)
         self.raspi = self.cfg["raspi"]
+        self.direccion = None                    # web de la raspi (la pone telemetria.py)
         self.clave = None                        # sin ella solo vale 'recuperar'
         ruta = os.path.join(conf_dir, "clave")
         if os.path.exists(ruta):
@@ -139,14 +143,21 @@ class Sincro:
     # ------------------------------------------------------------- git ---
 
     def _git(self, *args, cwd=None, check=True):
-        clave = os.path.join(self.conf_dir, "deploy_key")
         env = dict(os.environ, GIT_TERMINAL_PROMPT="0")
-        if os.path.exists(clave):
-            env["GIT_SSH_COMMAND"] = ("ssh -i {} -o IdentitiesOnly=yes "
-                                      "-o StrictHostKeyChecking=accept-new".format(clave))
-        r = subprocess.run(["git", "-c", "user.name=raspi " + self.raspi,
-                            "-c", "user.email=raspi-{}@telemetria".format(self.raspi)]
-                           + list(args), cwd=cwd or self.repo, env=env,
+        opciones = ["-c", "user.name=raspi " + self.raspi,
+                    "-c", "user.email=raspi-{}@telemetria".format(self.raspi)]
+        if self.cfg["repo"].startswith("https://"):
+            # el token va en una cabecera de cada orden: no queda en .git/config
+            token = leer_token(self.conf_dir)
+            if token:
+                auth = b64("x-access-token:{}".format(token).encode())
+                opciones += ["-c", "http.extraheader=Authorization: Basic " + auth]
+        else:
+            clave = os.path.join(self.conf_dir, "deploy_key")
+            if os.path.exists(clave):
+                env["GIT_SSH_COMMAND"] = ("ssh -i {} -o IdentitiesOnly=yes "
+                                          "-o StrictHostKeyChecking=accept-new".format(clave))
+        r = subprocess.run(["git"] + opciones + list(args), cwd=cwd or self.repo, env=env,
                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                            universal_newlines=True, timeout=300)
         if check and r.returncode:
@@ -162,6 +173,7 @@ class Sincro:
             os.makedirs(os.path.dirname(self.repo), exist_ok=True)
             self._git("clone", "--depth", "1", self.cfg["repo"], self.repo,
                       cwd=os.path.dirname(self.repo))
+        self._git("remote", "set-url", "origin", self.cfg["repo"])   # si cambia (ssh -> https)
         r = self._git("fetch", "--depth", "1", "origin", RAMA, check=False)
         if r.returncode == 0:
             self._git("checkout", "-B", RAMA, "FETCH_HEAD")
@@ -307,8 +319,10 @@ class Sincro:
     def _raspi_json(self, base):
         rel = base + "/raspi.json"
         viejo = json.loads(self._leer(rel) or b"{}")
+        direccion = self.direccion or viejo.get("direccion") or \
+            "https://{}:{}".format(_ip_local(), self.cfg.get("puerto", 8081))
         nuevo = dict(viejo, id=self.raspi, nombre=self.cfg.get("nombre") or self.raspi,
-                     direccion="http://{}:{}".format(_ip_local(), self.cfg.get("puerto", 8081)))
+                     direccion=direccion)
         nuevo.setdefault("creada", datetime.now().isoformat(timespec="seconds"))
         if nuevo != viejo:
             self._escribir(rel, self._json(nuevo))
@@ -416,6 +430,23 @@ def _ip_local():
         s.close()
 
 
+def leer_token(conf_dir):
+    try:
+        with open(os.path.join(conf_dir, "token"), encoding="utf-8") as f:
+            return f.read().strip() or None
+    except OSError:
+        return None
+
+
+def guardar_token(conf_dir, token):
+    ruta = os.path.join(conf_dir, "token")
+    tmp = ruta + ".tmp"
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(token.strip() + "\n")
+    os.replace(tmp, ruta)
+
+
 def cargar(data_dir, activa=None, conf_dir=CONF_DIR, var_dir=VAR_DIR):
     """El sincronizador si esta raspi esta configurada; si no, None."""
     if not os.path.exists(os.path.join(conf_dir, "sincro.json")):
@@ -449,12 +480,19 @@ def _iniciar(a):
         with os.fdopen(fd, "wb") as f:
             f.write(os.urandom(32))
         print("Clave de datos nueva en " + clave)
-    dk = os.path.join(a.conf, "deploy_key")
-    if not os.path.exists(dk):
-        subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C",
-                        "telemetria-" + a.raspi, "-f", dk], check=True)
-    with open(dk + ".pub") as f:
-        pub = f.read().strip()
+    https = a.repo.startswith("https://")
+    if https and not leer_token(a.conf):
+        if not sys.stdin.isatty():
+            sys.exit("falta el token: sudo python3 sincro.py token")
+        _pedir_token(a.conf)
+    pub = None
+    if not https:
+        dk = os.path.join(a.conf, "deploy_key")
+        if not os.path.exists(dk):
+            subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C",
+                            "telemetria-" + a.raspi, "-f", dk], check=True)
+        with open(dk + ".pub") as f:
+            pub = f.read().strip()
     s = Sincro(a.dir, a.conf, a.var)
     try:
         with s.lock:
@@ -462,11 +500,40 @@ def _iniciar(a):
         print("Listo: raspi '{}' en {}".format(a.raspi, a.repo))
     except RuntimeError as e:
         print("\nNo puedo escribir en el repo ({}).".format(e))
-        print("Anade esta clave como deploy key CON escritura (Allow write access) en\n"
-              "GitHub > repo de datos > Settings > Deploy keys, y vuelve a lanzar esto:\n")
-        print("  " + pub + "\n")
+        if pub:
+            print("Anade esta clave como deploy key CON escritura (Allow write access) en\n"
+                  "GitHub > repo de datos > Settings > Deploy keys, y vuelve a lanzar esto:\n")
+            print("  " + pub + "\n")
+        else:
+            print("Revisa el token (sudo python3 sincro.py token): fine-grained, owner de la\n"
+                  "organizacion, solo el repo de datos, Contents: Read and write.")
         return 1
     print("Guarda una copia de " + clave + " fuera de la Pi.")
+
+
+def _pedir_token(conf_dir):
+    token = getpass.getpass("Token de GitHub para esta raspi (no se ve al pegarlo): ").strip()
+    if not token.startswith(("github_pat_", "ghp_")):
+        sys.exit("eso no parece un token de GitHub")
+    guardar_token(conf_dir, token)
+    print("Token guardado en " + os.path.join(conf_dir, "token") + " (solo root)")
+
+
+def _token(a):
+    os.makedirs(a.conf, mode=0o700, exist_ok=True)
+    _pedir_token(a.conf)
+    s = cargar(a.dir, conf_dir=a.conf, var_dir=a.var)
+    if s is None:
+        return
+    if not s.cfg["repo"].startswith("https://"):
+        s.cfg["repo"] = REPO_DEF if "telemetry-data" in s.cfg["repo"] else s.cfg["repo"]
+        with open(os.path.join(a.conf, "sincro.json"), "w", encoding="utf-8") as f:
+            json.dump(s.cfg, f, indent=2, ensure_ascii=False)
+        print("Repo cambiado a " + s.cfg["repo"])
+    r = s._git("ls-remote", "--heads", s.cfg["repo"], cwd=a.conf, check=False)
+    if r.returncode:
+        sys.exit("El token no da acceso al repo: " + r.stdout.strip()[-200:])
+    print("Token correcto: acceso a " + s.cfg["repo"])
 
 
 def _recuperar(a):
@@ -507,6 +574,7 @@ def main():
     pi.add_argument("--raspi", required=True, help="id corto y fijo, p. ej. moto1")
     pi.add_argument("--nombre", help="nombre visible, p. ej. 'Moto de Alberto'")
     pi.add_argument("--repo", default=REPO_DEF, help="repo de datos (SSH)")
+    sub.add_parser("token", help="poner o renovar el token de GitHub (push por https)")
     sub.add_parser("ahora", help="subir ya las sesiones pendientes")
     sub.add_parser("estado", help="que falta por subir")
     pr = sub.add_parser("recuperar", help="rehacer la clave con la contrasena de un usuario")
@@ -517,6 +585,8 @@ def main():
         return _iniciar(a)
     if a.orden == "recuperar":
         return _recuperar(a)
+    if a.orden == "token":
+        return _token(a)
     s = cargar(a.dir, conf_dir=a.conf, var_dir=a.var)
     if s is None:
         sys.exit("esta raspi no esta configurada: sudo python3 sincro.py iniciar --raspi <id>")

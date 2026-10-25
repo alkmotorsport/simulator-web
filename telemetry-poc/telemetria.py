@@ -392,6 +392,8 @@ class Maestro:
         self.live = LiveServer(a.puerto, data_dir=a.dir, https=a.https or bool(a.cert),
                                cert=a.cert, key=a.key, control=self).start()
         print(f"Web: {self.live.url()}" + ("   [SIMULADO]" if self.hw.sim else ""))
+        if self.sincro:
+            self.sincro.direccion = self.live.url().rstrip("/")   # para el link de alta
         self.detectar()
         imprimir_deteccion(self)
         self.aplicar()

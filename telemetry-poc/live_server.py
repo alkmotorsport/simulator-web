@@ -68,11 +68,15 @@ def certificado_autofirmado(cert=None, key=None):
         return cert, key
     cert = os.path.join(CERT_DIR, "telemetria.crt")
     key = os.path.join(CERT_DIR, "telemetria.key")
+    ip = ip_local()
     if os.path.exists(cert) and os.path.exists(key):
-        return cert, key
+        if _cubre_ip(cert, ip):
+            return cert, key
+        print(f"El certificado no es para la IP actual ({ip}): se hace otro "
+              "(habra que aceptarlo de nuevo en cada navegador)")
     os.makedirs(CERT_DIR, exist_ok=True)
     host = socket.gethostname().split(".")[0]
-    san = f"subjectAltName=IP:{ip_local()},IP:127.0.0.1,DNS:{host}.local,DNS:localhost"
+    san = f"subjectAltName=IP:{ip},IP:127.0.0.1,DNS:{host}.local,DNS:localhost"
     print(f"Generando certificado autofirmado en {CERT_DIR} ...")
     subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
                     "-keyout", key, "-out", cert, "-days", "3650",
@@ -80,6 +84,12 @@ def certificado_autofirmado(cert=None, key=None):
                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     os.chmod(key, 0o600)
     return cert, key
+
+
+def _cubre_ip(cert, ip):
+    r = subprocess.run(["openssl", "x509", "-in", cert, "-noout", "-text"],
+                       stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, universal_newlines=True)
+    return r.returncode != 0 or re.search(r"IP Address:" + re.escape(ip) + r"\b", r.stdout) is not None
 
 
 class _Servidor(ThreadingHTTPServer):

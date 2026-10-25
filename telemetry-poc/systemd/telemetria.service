@@ -7,6 +7,10 @@
 #   systemctl status telemetria
 #   journalctl -u telemetria -f         # ver la salida
 #
+# Web por HTTPS (https://<ip>:8081/) con certificado autofirmado (./certs): en
+# cada movil/portatil hay que abrirla una vez y aceptar el aviso. Asi la app
+# publicada (https) puede conectar en vivo con la raspi.
+#
 # Lo instala systemd/instalar.sh, que cambia @DIR@ y @PYTHON@.
 
 [Unit]
@@ -21,7 +25,7 @@ Type=simple
 # root: la tira WS2812 lo necesita
 User=root
 WorkingDirectory=@DIR@
-ExecStart=@PYTHON@ -u @DIR@/telemetria.py
+ExecStart=@PYTHON@ -u @DIR@/telemetria.py --https
 # telemetria.py convierte SIGTERM en una parada limpia (cierra CSV, LEDs, web)
 KillSignal=SIGTERM
 TimeoutStopSec=20
