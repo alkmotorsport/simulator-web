@@ -158,6 +158,8 @@
       s.el = { sec, tiles, opts };
       renderOptions(s);
     }
+    // nunca mas columnas que bloques: con pocos sensores, todo el ancho
+    box.style.columnCount = Math.max(1, box.children.length);
   }
 
   /**

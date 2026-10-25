@@ -186,8 +186,10 @@ button.danger { background: var(--status-err); border-color: var(--status-err); 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 0.8rem; border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px 3px 6px; cursor: pointer; background: var(--card); }
 .chip input { accent-color: var(--accent); margin: 0; }
+/* columnas de 500 px como minimo; app.js pone column-count = bloques visibles,
+   asi pocos sensores ocupan todo el ancho */
 #blocks { column-width: 500px; column-gap: 16px; }
-.block { break-inside: avoid; display: inline-block; width: 100%; margin-bottom: 16px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px; min-width: 0; }
+.block { break-inside: avoid; display: block; width: 100%; margin: 0 0 16px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px; min-width: 0; }
 .block .chart { border: 0; padding: 4px 0 0; }
 .block .tile { background: var(--bg); }
 .block-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 8px 12px; margin-bottom: 10px; }
