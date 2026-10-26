@@ -547,7 +547,7 @@
 
   function modoCompleto(on) {
     document.body.classList.toggle('modo-completo', on);
-    $('#completa').textContent = on ? '✕ Salir' : '⛶ Pantalla completa';
+    $('#completa').textContent = on ? '✕ Salir de pantalla completa' : '⛶ Pantalla completa';
     $('#completa').title = on ? 'Volver a ver los controles' : 'Solo los sensores, a toda la pantalla';
     const raiz = document.documentElement;
     if (on && raiz.requestFullscreen && !document.fullscreenElement) raiz.requestFullscreen().catch(() => {});

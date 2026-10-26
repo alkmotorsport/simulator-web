@@ -359,3 +359,11 @@ body.modo-completo .top { padding-bottom: 8px; }
 body.modo-completo :is(#login, #alta, #raspis, #conn-box, nav.tabs, #pane-live, #pane-file, #config,
   #chips, .range-bar, #analisis, #view > .hint, #view-sub, #settings) { display: none !important; }
 body.modo-completo .view-head { margin-bottom: 8px; }
+/* en pantalla completa, la cabecera sin sus botones (cuenta, tema...): solo
+   el de volver, en su esquina, para no confundirlo con salir de la cuenta */
+body.modo-completo .top-actions { display: none !important; }
+body.modo-completo #completa { position: fixed; top: 12px; right: 12px; z-index: 30; background: var(--card); }
+@media (max-width: 640px) {
+  body.modo-completo #completa { position: static; }
+  body.modo-completo .top p { display: none; }
+}
