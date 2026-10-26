@@ -45,6 +45,15 @@ PIE = 56             # fila de la linea secundaria
 INF = float("inf")
 
 
+def esperar_seguro(parar, seg):
+    """Espera 'seg' s con un reloj que no salta. Event.wait en Python 3.7 usa
+    la hora del sistema: si se corrige de golpe al tener internet (la Pi no
+    tiene reloj con pila), la espera acaba antes de tiempo."""
+    fin = time.monotonic() + seg
+    while not parar.is_set() and time.monotonic() < fin:
+        parar.wait(min(0.1, fin - time.monotonic()))
+
+
 # ---------------------------------------------------------------- datos ---
 
 class Datos:
@@ -739,7 +748,7 @@ class Pantalla(Modulo):
         self.estado = "activo"
         self.aviso = self._aviso_virtual
         self._mostrar(splash(L))
-        self.parar.wait(c["logo_s"])
+        esperar_seguro(self.parar, c["logo_s"])
         ult_png = 0.0
         while not self.parar.is_set():
             ahora = self.reloj()

@@ -9,6 +9,8 @@ Patron (tipo cuadro de carreras):
   valor >= cambio       toda la tira parpadea en azul (aviso)
   valor >= limite       toda la tira parpadea rapido en rojo
 patron "centro": se llena desde los dos extremos hacia el centro.
+Al arrancar, mientras la pantalla ensena el logo ('arranque_s'), prueba los
+LEDs: 3 pasadas de cada color (rojo, verde, azul) recorriendo la tira.
 La web replica la tira aunque no haya LEDs conectados.
 
 Conexion: 5 V (pin 4), GND (pin 20), datos GPIO18 (pin 12) con 330 Ohm en
@@ -20,6 +22,7 @@ import math
 import time
 
 from .base import Modulo
+from .pantalla import esperar_seguro
 
 ZONAS = ((0.5, "verde"), (0.75, "ambar"), (1.0, "rojo"))   # fraccion de la tira
 
@@ -94,6 +97,7 @@ class TiraLeds(Modulo):
         "inicio": 30.0, "cambio": 140.0, "limite": 170.0, "histeresis": 3.0,
         "patron": "lineal",        # lineal | centro
         "gpio": 18, "num": 12, "brillo": 80,
+        "arranque_s": 8.0,         # prueba de LEDs al arrancar (como el logo; 0 = no)
     }
     ACCIONES = {"probar": "Barrido de prueba"}
 
@@ -133,6 +137,7 @@ class TiraLeds(Modulo):
                       lambda t, v: ultimo.__setitem__(slice(0, 2), [v, t]))
         en_cambio = False
         self.estado = "activo"
+        self._arranque()
         while not self.parar.wait(0.02):
             ahora = time.monotonic()
             if self._probar:
@@ -145,6 +150,18 @@ class TiraLeds(Modulo):
             else:
                 cols, en_cambio = colores(c, valor, en_cambio, ahora)
             self._mostrar(cols, valor)
+
+    def _arranque(self):
+        """3 pasadas de cada color: un LED encendido que recorre la tira."""
+        n, dur = int(self.cfg["num"]), float(self.cfg["arranque_s"])
+        pasos = [(col, i) for col in ("rojo", "verde", "azul") for _ in range(3) for i in range(n + 1)]
+        dt = dur / len(pasos) if dur > 0 else 0
+        for col, i in pasos if dt else []:
+            if self.parar.is_set():
+                return
+            self._mostrar([col if j == i else "off" for j in range(n)], None)   # i == n: hueco
+            esperar_seguro(self.parar, dt)
+        self._mostrar(["off"] * n, None)
 
     def _barrido(self):
         c = self.cfg
