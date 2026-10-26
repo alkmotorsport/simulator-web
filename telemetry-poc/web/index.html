@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Telemetría">
-<link rel="stylesheet" href="style.css?v=20261026i">
+<link rel="stylesheet" href="style.css?v=20261026j">
 </head>
 <body>
 
@@ -176,6 +176,8 @@
       <h2 id="view-title"></h2>
       <p id="view-sub"></p>
     </div>
+    <div class="view-acc">
+    <button id="completa" type="button" class="ghost small" hidden title="Solo los sensores, a toda la pantalla">⛶ Pantalla completa</button>
     <details id="settings" class="menu">
       <summary>⚙ Ajustes</summary>
       <div class="menu-body">
@@ -193,6 +195,7 @@
         <p id="set-msg" class="msg" hidden></p>
       </div>
     </details>
+    </div>
   </div>
   <div id="chips" class="chips" aria-label="Sensores visibles"></div>
   <div class="range-bar">
@@ -228,16 +231,16 @@
   </p>
 </section>
 
-<script src="plot.js?v=20261026i"></script>
-<script src="sensors.js?v=20261026i"></script>
-<script src="analisis.js?v=20261026i"></script>
-<script src="luces.js?v=20261026i"></script>
-<script src="moto.js?v=20261026i"></script>
-<script src="app.js?v=20261026i"></script>
-<script src="config.js?v=20261026i"></script>
-<script src="cripto.js?v=20261026i"></script>
-<script src="repo.js?v=20261026i"></script>
-<script src="cuenta.js?v=20261026i"></script>
+<script src="plot.js?v=20261026j"></script>
+<script src="sensors.js?v=20261026j"></script>
+<script src="analisis.js?v=20261026j"></script>
+<script src="luces.js?v=20261026j"></script>
+<script src="moto.js?v=20261026j"></script>
+<script src="app.js?v=20261026j"></script>
+<script src="config.js?v=20261026j"></script>
+<script src="cripto.js?v=20261026j"></script>
+<script src="repo.js?v=20261026j"></script>
+<script src="cuenta.js?v=20261026j"></script>
 <script>
   // app instalable (PWA); solo en https: la web de la Pi (http) no lo necesita
   if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(() => {});

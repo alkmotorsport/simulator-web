@@ -351,3 +351,11 @@ label.btn:hover { border-color: var(--steel); }
 .cfg-card h2 { margin: 0; font-size: 1rem; }
 .cfg-card .cfg-tabs { margin: 0; }
 .cfg-card .cfg-panel { flex-basis: 100%; margin: 4px 0 0; background: var(--bg); }
+
+/* Pantalla completa (en vivo): cabecera y sensores, nada mas */
+.view-acc { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; justify-content: flex-end; }
+body.modo-completo { padding: 8px 12px; }
+body.modo-completo .top { padding-bottom: 8px; }
+body.modo-completo :is(#login, #alta, #raspis, #conn-box, nav.tabs, #pane-live, #pane-file, #config,
+  #chips, .range-bar, #analisis, #view > .hint, #view-sub, #settings) { display: none !important; }
+body.modo-completo .view-head { margin-bottom: 8px; }

@@ -541,6 +541,25 @@
     if (cfgAbierta === 'moto') abrirMoto();       // otra vista: su ficha
   }
 
+  // ------------------------------------------------- pantalla completa ---
+  // Solo la cabecera y los bloques de sensores (en vivo), y el navegador a
+  // pantalla completa donde lo deja (en el iPhone, solo lo de la pagina).
+
+  function modoCompleto(on) {
+    document.body.classList.toggle('modo-completo', on);
+    $('#completa').textContent = on ? '✕ Salir' : '⛶ Pantalla completa';
+    $('#completa').title = on ? 'Volver a ver los controles' : 'Solo los sensores, a toda la pantalla';
+    const raiz = document.documentElement;
+    if (on && raiz.requestFullscreen && !document.fullscreenElement) raiz.requestFullscreen().catch(() => {});
+    if (!on && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    window.scrollTo(0, 0);
+  }
+  $('#completa').addEventListener('click', () => modoCompleto(!document.body.classList.contains('modo-completo')));
+  // salir con Esc o con el gesto del sistema tambien quita el modo
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement && document.body.classList.contains('modo-completo')) modoCompleto(false);
+  });
+
   // ------------------------------------------------- pestanas de ajustes ---
   // Sensores · Pantalla y luces · Moto · Parametros de la sesion: plegables,
   // todas cerradas al empezar; pulsar la abierta la cierra. Las dos primeras
@@ -591,6 +610,8 @@
   /** Que pestanas se ven: las del sistema solo en vivo y con control. */
   function pintarCfgTabs() {
     const vivo = view.live && !!live.estado;
+    $('#completa').hidden = !vivo;
+    if (!vivo && document.body.classList.contains('modo-completo')) modoCompleto(false);
     document.querySelectorAll('.cfg-tabs .solo-vivo').forEach(b => { b.hidden = !vivo || !live.control; });
     const abierta = document.querySelector('.cfg-tabs [data-cfg="' + cfgAbierta + '"]');
     if (cfgAbierta && (!abierta || abierta.hidden)) abrirCfg(null);

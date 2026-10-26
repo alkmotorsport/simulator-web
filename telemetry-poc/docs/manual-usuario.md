@@ -107,6 +107,9 @@ Pulsa **En vivo** en tu sistema (tiene que estar «en línea»).
     en la página RESUMEN (apartado 7).
   - **Moto:** la ficha de tu moto (apartado 8).
   - **Parámetros de la sesión:** los ajustes técnicos de cada sensor.
+- **⛶ Pantalla completa** (junto a **⚙ Ajustes**): deja solo la cabecera y
+  los bloques de sensores, y pone el navegador a pantalla completa (en el
+  iPhone, solo lo de la página). **✕ Salir** (o Esc) lo devuelve todo.
 - **Pantalla y luces de la moto:** salen como **bloques** más de la vista en
   vivo, con lo mismo que se ve en la moto en ese momento. Se mueven con **⠿**
   y se ocultan con su casilla, como los sensores.
