@@ -356,15 +356,20 @@ class Maestro:
         """Para el cuadro de la web: configuracion, catalogo y plantillas."""
         pantalla, tira = self.modulos.get("pantalla"), self.modulos.get("tira")
         cfg = pantalla.cfg.get("luces") if pantalla is not None else None
+        cfg = dict(cfg) if cfg is not None else luces_mod.por_defecto()
+        cfg.setdefault("resumen", list(luces_mod.RESUMEN_DEFECTO))     # guardadas antes de existir
         return {
-            "config": cfg if cfg is not None else luces_mod.por_defecto(),
+            "config": cfg,
             "catalogo": [{"id": k, "nombre": n, "unidad": u, "pagina": p,
                           "si_no": k in luces_mod.SI_NO, "evento": k in luces_mod.EVENTOS}
                          for k, (n, u, p) in luces_mod.CATALOGO.items()],
             "paginas": [{"id": p[0], "titulo": p[1]} for p in PAGINAS],
             "colores": luces_mod.COLORES, "efectos": luces_mod.EFECTOS,
+            "resumen_opciones": [{"id": k, "nombre": n, "rotulo": r}
+                                 for k, (r, _, n) in luces_mod.RESUMEN.items()],
             "plantillas": {k: {"nombre": v["nombre"],
-                               "config": {"paginas": v["paginas"], "alertas": v["alertas"]}}
+                               "config": {"paginas": v["paginas"], "alertas": v["alertas"],
+                                          "resumen": v["resumen"]}}
                            for k, v in luces_mod.PLANTILLAS.items()},
             "leds": int(tira.cfg["num"]) if tira is not None else 0,
             "tira": bool(tira is not None and tira.corriendo()),

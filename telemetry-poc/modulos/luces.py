@@ -25,6 +25,9 @@ Configuracion (telemetria.json, modulos.pantalla.luces; la web la edita):
                 "pagina": "bujia", "seg": 3, "espera_s": 30, "hist": 5}, ...]}
 
 Cada luz sale como (color, efecto); la tira calcula el parpadeo a su ritmo.
+
+"resumen": los 6 datos de la pagina RESUMEN de la pantalla (RESUMEN; "" =
+casilla vacia), en orden: fila de arriba y fila de abajo.
 """
 
 import copy
@@ -54,6 +57,24 @@ CATALOGO = {
     "sensores_mal": ("Sensores con fallo", "", "sistema"),
 }
 EVENTOS = {"tope", "vuelta_nueva", "mejor_vuelta"}   # valen 1 un momento
+
+# pagina RESUMEN: dato -> (rotulo en la pantalla, decimales, nombre en la web)
+RESUMEN = {
+    "kmh": ("VEL", 0, "Velocidad"),
+    "incl_abs": ("INCL", 0, "Inclinación"),
+    "g_comb": ("G", 2, "G combinada"),
+    "frenada": ("FRENO", 2, "Frenada (g)"),
+    "aceleracion": ("ACEL", 2, "Aceleración (g)"),
+    "comp_mm": ("SUSP", 0, "Suspensión (mm)"),
+    "comp_pct": ("SUSP%", 0, "Suspensión (% recorrido)"),
+    "t_bujia": ("BUJIA", 0, "Temperatura bujía"),
+    "t_aceite": ("ACEITE", 0, "Temperatura aceite"),
+    "t_ir": ("DISCO", 0, "Temperatura disco"),
+    "vuelta": ("VUELTA", 0, "Número de vuelta"),
+    "t_mejor": ("MEJOR", 0, "Mejor vuelta (s)"),
+    "delta": ("DELTA", 1, "Diferencia con la mejor (s)"),
+}
+RESUMEN_DEFECTO = ["kmh", "incl_abs", "g_comb", "comp_mm", "t_bujia", "t_aceite"]
 SI_NO = EVENTOS | {"sensores_mal"}                    # en la web: "cuando ocurre"
 
 
@@ -83,6 +104,9 @@ def valores(D, ahora, cfg, sensores_mal=0):
     v["vuelta_nueva"] = 1.0 if reciente else 0.0
     v["mejor_vuelta"] = 1.0 if reciente and (D.get("delta") or 0) < 0 else 0.0
     v["sensores_mal"] = float(sensores_mal)
+    v["comp_mm"] = D.get("comp_mm") if hay("comp_mm") else None
+    v["vuelta"] = D.get("vuelta")
+    v["t_mejor"] = D.get("t_mejor")
     return v
 
 
@@ -146,12 +170,15 @@ PLANTILLAS = {
     "solo_alertas": {"nombre": "Solo alertas (luces apagadas en marcha normal)", "paginas": {}, "alertas": None},
     "apagadas": {"nombre": "Todo apagado", "paginas": {}, "alertas": []},
 }
+for _p in PLANTILLAS.values():
+    _p["resumen"] = list(RESUMEN_DEFECTO)
 PLANTILLAS["solo_alertas"]["alertas"] = PLANTILLAS["recomendada"]["alertas"]
 
 
 def por_defecto():
     p = PLANTILLAS["recomendada"]
-    return {"paginas": copy.deepcopy(p["paginas"]), "alertas": copy.deepcopy(p["alertas"])}
+    return {"paginas": copy.deepcopy(p["paginas"]), "alertas": copy.deepcopy(p["alertas"]),
+            "resumen": list(RESUMEN_DEFECTO)}
 
 
 # ------------------------------------------------------------ validacion ---
@@ -174,7 +201,12 @@ def validar(cfg, paginas_validas):
             raise ValueError(f"{donde}: falta el valor")
         return {"op": n.get("op", ">"), "valor": valor, "color": n["color"], "efecto": n.get("efecto", "fijo")}
 
-    out = {"paginas": {}, "alertas": []}
+    resumen = cfg.get("resumen")
+    if resumen is None:
+        resumen = RESUMEN_DEFECTO
+    if not isinstance(resumen, list) or len(resumen) > 6 or any(r not in RESUMEN and r != "" for r in resumen):
+        raise ValueError("resumen: hasta 6 datos de la lista")
+    out = {"paginas": {}, "alertas": [], "resumen": (list(resumen) + [""] * 6)[:6]}
     for pid, p in (cfg.get("paginas") or {}).items():
         if pid not in paginas_validas:
             raise ValueError(f"pagina desconocida: {pid}")

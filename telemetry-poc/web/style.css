@@ -342,3 +342,7 @@ label.btn:hover { border-color: var(--steel); }
 .moto-valor { color: var(--text); font-size: 0.92rem; }
 .moto-der { margin: 10px 0; padding-left: 18px; font-size: 0.85rem; }
 #cfg-moto > div > .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.resumen-rejilla { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 10px; border-radius: 10px; background: #000; }
+.resumen-celda { color: #bbb; }
+.resumen-celda select { width: 100%; }
+@media (max-width: 520px) { .resumen-rejilla { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

@@ -173,8 +173,9 @@ en la wifi.
 ### Ajustes de los módulos (`telemetria.json`)
 
 Cada sistema guarda sus ajustes en `telemetry-poc/telemetria.json`, bajo
-`"modulos"`. El tick de **Sensores y salidas** y el cuadro **Luces y alertas**
-de la app ya lo escriben; a mano solo hace falta para lo de esta tabla.
+`"modulos"`, y la ficha de la moto bajo `"moto"`. Las pestañas **Sensores**,
+**Pantalla y luces** y **Moto** de la app ya lo escriben; a mano solo hace
+falta para lo de esta tabla.
 Después de editarlo: `sudo systemctl restart telemetria` (comprueba antes en la
 app que no esté grabando).
 
@@ -184,7 +185,9 @@ app que no esté grabando).
 | `temp_bujia`, `temp_aceite` | `"ce"`: `0` o `1` | En qué pin de selección va cada sonda: CE0 = pin 24, CE1 = pin 26 (SO pin 21 y SCK pin 23 son comunes). Si una sonda sale con el nombre de la otra, intercambia los `ce` en vez de los cables |
 | `tira` | `"num"`, `"brillo"` (0–255), `"arranque_s"` | Número de luces WS2812, su brillo y lo que dura la prueba de arranque (0 = sin prueba) |
 | `pantalla` | `"logo_s"`, `"rotar_s"` | Segundos del logo al arrancar (8) y, si es > 0, cada cuántos segundos cambia sola de página (por defecto, no) |
-| `pantalla` | `"luces"` | Luces y alertas: se editan desde la app (**Luces y alertas**); sin este ajuste se usa la plantilla recomendada |
+| `pantalla` | `"luces"` | Luces, alertas y datos de la página RESUMEN: se editan desde la app (pestaña **Pantalla y luces**); sin este ajuste se usa la plantilla recomendada |
+| `rueda_tras` | `"perimetro_m"` | Perímetro de la rueda trasera. Lo pone la pestaña **Moto** al guardar la ficha |
+| `pantalla` | `"recorrido_mm"` | Recorrido útil de la suspensión trasera (para el % y el tope). Lo pone la pestaña **Moto** |
 | `boton` | `"larga_s"` | Lo que hay que mantener pulsado para marcar vuelta (1 s); la pulsación corta pasa de página |
 | `suspension` | `"activo"` | Si no arranca aunque esté conectado, revisa que no esté a `false` |
 
@@ -284,4 +287,4 @@ scripts, para que los navegadores no sigan usando la versión anterior.
 | El portal o la app muestran algo antiguo | Recarga con Cmd+Shift+R (en el móvil, cerrar y abrir la app) |
 | Un sensor conectado no aparece en la app | Se detecta al arrancar: reinicia la telemetría. Si sale «-» en `journalctl -u telemetria`, mira el motivo en esa línea (cableado o `"activo": false`) |
 | La pantalla enseña «ERROR EN PÁGINA» | `journalctl -u telemetria \| grep pantalla` dice qué página y por qué |
-| Las luces no se encienden | `dtparam=audio=off` en `/boot/config.txt` (y reiniciar), el cable de datos al **DIN** del primer LED (no al DOUT), 5 V y GND comunes con la Pi, la tira activada y `"num"` con el número de luces. **Probar** en **Luces y alertas** las enciende |
+| Las luces no se encienden | `dtparam=audio=off` en `/boot/config.txt` (y reiniciar), el cable de datos al **DIN** del primer LED (no al DOUT), 5 V y GND comunes con la Pi, la tira activada y `"num"` con el número de luces. **Probar** en la pestaña **Pantalla y luces** las enciende |

@@ -339,19 +339,22 @@ def pag_ruedas(L, D, ahora, c):
         L.invertir(0, CUERPO, W - 1, CUERPO + 30)
 
 
+def _resumen(c):
+    """Los 6 datos de la pagina RESUMEN (se eligen en la web, con las luces)."""
+    r = (c.get("luces") or {}).get("resumen") or luces_mod.RESUMEN_DEFECTO
+    return (list(r) + [""] * 6)[:6]
+
+
 def pag_resumen(L, D, ahora, c):
-    celdas = [("VEL", "kmh", 0), ("INCL", "incl", 0), ("G", "_g", 2),
-              ("SUSP", "comp_mm", 0), ("BUJIA", "t_bujia", 0), ("ACEITE", "t_aceite", 0)]
-    for i, (rot, k, d) in enumerate(celdas):
+    v = luces_mod.valores(D, ahora, c)
+    for i, k in enumerate(_resumen(c)):
         x, y = (i % 3) * 43, CUERPO + (i // 3) * 27
-        if k == "_g":
-            v = math.hypot(D.get("ax_f", 0), D.get("lat", 0)) if D.hay("ax_f", ahora) else None
-        else:
-            v = D.get(k) if D.hay(k, ahora) else None
-            if k == "incl" and v is not None:
-                v = abs(v)
+        if not k:
+            continue
+        rot, d, _ = luces_mod.RESUMEN[k]
+        x_ = v.get(k)
         L.texto(x + 1, y + 1, rot, L.px)
-        L.texto(x + 39, y + 10, "--" if v is None else f"{v:.{d}f}", L.n[22], "d")
+        L.texto(x + 39, y + 10, "--" if x_ is None else f"{x_:.{d}f}", L.n[22], "d")
     L.punteada(0, CUERPO + 26, W - 1, CUERPO + 26, 2)
     for x in (42, 85):
         L.punteada(x, CUERPO, x, H - 1, 2)
@@ -388,7 +391,7 @@ PAGINAS = [
     ("disco", "TEMP DISCO", _alguna("t_ir"), _pag_temp("t_ir")),
     ("vuelta", "VUELTA", lambda D, a: "vuelta" in D.v, pag_vuelta),
     ("ruedas", "DESLIZAMIENTO", lambda D, a: D.hay("kmh_del", a) and D.hay("kmh_tras", a), pag_ruedas),
-    ("resumen", "RESUMEN", lambda D, a: sum(D.hay(k, a) for k in ("kmh", "incl", "ax", "comp_mm", "t_bujia", "t_aceite")) >= 2, pag_resumen),
+    ("resumen", "RESUMEN", lambda D, a: sum(D.hay(k, a) for k in ("kmh", "incl", "ax_f", "comp_mm", "t_bujia", "t_aceite", "t_ir")) >= 2, pag_resumen),
     ("sistema", "SISTEMA", lambda D, a: True, pag_sistema),
 ]
 

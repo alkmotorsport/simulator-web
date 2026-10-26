@@ -23,7 +23,7 @@ Pide al administrador:
      cada uno. Usa la misma contraseña en todos.
 3. **La dirección del sistema en su wifi** (por ejemplo
    `https://192.168.1.50:8081`). Solo hace falta si vas a usarlo en sitios
-   sin cobertura de internet (ver el apartado 10).
+   sin cobertura de internet (ver el apartado 11).
 
 Tu contraseña la eliges tú al activar la cuenta. **Nadie más la conoce, ni
 siquiera el administrador.**
@@ -91,20 +91,25 @@ Pulsa **En vivo** en tu sistema (tiene que estar «en línea»).
 - **● Grabar / ■ Parar grabación:** el sistema arranca **sin grabar**; solo se
   graba una sesión cuando pulsas **Grabar**. Al parar, la sesión se sube sola a
   la nube (si no hay internet, en cuanto lo haya).
-- **Sensores y salidas:** lista de lo conectado a la moto. El tick activa o
-  desactiva cada sensor; **auto** quiere decir que se activa solo si se detecta
-  conectado. Algunos tienen acciones, como **Calibrar** (con la moto quieta).
-  - **IMU (inclinación y cabeceo):** la caja puede ir en cualquier postura
-    (tumbada, de lado…), pero **bien sujeta**: si se mueve, los ángulos dejan
-    de valer. Pulsa **Calibrar** con la moto **recta y quieta** cada vez que
-    cambies la caja de sitio. El sistema también calibra solo al encenderse,
-    así que enciéndelo con la moto recta.
-  - **Luces y alertas** (en la fila de la tira de luces): qué hacen las luces
-    y las alertas; ver el apartado 7.
-- **Salidas del cuadro:** la app muestra en directo lo mismo que la pantalla
-  y las luces de la moto.
+- **Pestañas** (bajo la lista de sensores visibles): están **cerradas** para
+  no ocupar sitio; pulsa una para abrirla y otra vez para cerrarla.
+  - **Sensores:** lista de lo conectado a la moto. El tick activa o desactiva
+    cada sensor; **auto** quiere decir que se activa solo si se detecta
+    conectado. Algunos tienen acciones, como **Calibrar** (con la moto quieta).
+    - **IMU (inclinación y cabeceo):** la caja puede ir en cualquier postura
+      (tumbada, de lado…), pero **bien sujeta**: si se mueve, los ángulos dejan
+      de valer. Pulsa **Calibrar** con la moto **recta y quieta** cada vez que
+      cambies la caja de sitio. El sistema también calibra solo al encenderse,
+      así que enciéndelo con la moto recta.
+  - **Pantalla y luces:** qué hacen las luces, las alertas y qué datos salen
+    en la página RESUMEN (apartado 7).
+  - **Moto:** la ficha de tu moto (apartado 8).
+  - **Parámetros de la sesión:** los ajustes técnicos de cada sensor.
+- **Pantalla y luces de la moto:** salen como **bloques** más de la vista en
+  vivo, con lo mismo que se ve en la moto en ese momento. Se mueven con **⠿**
+  y se ocultan con su casilla, como los sensores.
 - **Bloque de la IMU:** el **diagrama g-g** sale el primero (ver el
-  apartado 8); debajo, inclinación, aceleraciones, cabeceo y **vibración
+  apartado 9); debajo, inclinación, aceleraciones, cabeceo y **vibración
   vertical**.
 
 ## 6. La pantalla y el botón del cuadro
@@ -160,10 +165,9 @@ parpadeo lento, parpadeo rápido y destello.
 
 ### Cambiar las luces y las alertas
 
-En **En vivo → Sensores y salidas**, en la fila de la tira de luces, pulsa
-**Luces y alertas**:
+En **En vivo**, abre la pestaña **Pantalla y luces**:
 
-- **Páginas:** para cada página de la pantalla, el **dato**, el **modo**
+- **Luces por página:** para cada página de la pantalla, el **dato**, el **modo**
   (barra o estado), el color **sin nivel** (normalmente apagadas) y los
   **niveles** (valor, color y efecto). En modo estado manda el primer nivel que
   se cumple, de arriba abajo. Quita el tick de una página para dejar sus
@@ -175,13 +179,38 @@ En **En vivo → Sensores y salidas**, en la fila de la tira de luces, pulsa
   justo en el umbral. Con **↑ ↓** cambias la prioridad.
 - **Plantillas:** **Recomendada**, **Solo alertas** (luces apagadas en marcha
   normal) o **Todo apagado**, como punto de partida.
+- **Página RESUMEN:** qué dato va en cada una de sus 6 casillas (velocidad,
+  inclinación, G, frenada, aceleración, suspensión en mm o en %,
+  temperaturas, número de vuelta, mejor vuelta o diferencia con la mejor), o
+  dejarla vacía.
 - **Probar** enciende las luces de la moto un momento con ese color y efecto.
 - **Guardar** lo aplica al momento en la moto, sin reiniciar.
 
 Los valores de la plantilla recomendada son **de partida**: ajusta las
 temperaturas y los límites a tu moto después de tus primeras sesiones.
 
-## 8. Sesiones
+## 8. La ficha de tu moto
+
+En **En vivo**, pestaña **Moto**: peso en seco, piloto, depósito, batalla,
+altura del centro de masas, recorrido de la suspensión trasera, llantas y
+perímetro de la rueda trasera, neumáticos, frenos (tambor o disco), carrocería,
+motor y notas. **Todo es opcional** y debajo se ve lo que se deduce (masa en
+marcha, límite de stoppie, inclinación máxima teórica…).
+
+- Al **Guardar**, el **perímetro de la rueda** corrige ya la velocidad y la
+  distancia del sensor de rueda, y el **recorrido de la suspensión**, el % y el
+  tope de la pantalla, las luces y las alertas.
+- Cada sesión **guarda una copia** de la ficha al empezar a grabar: si cambias
+  algo (otro neumático, otra suspensión), las sesiones antiguas se siguen
+  analizando con la moto que eran. En **Sesiones**, la pestaña **Moto** enseña
+  la ficha con la que se grabó (sin poder cambiarla).
+- **Analizar trazas** usa esa ficha (masa, batalla, agarre del neumático,
+  frenos de tambor o de disco, potencia, velocidad máxima…) y dice qué datos
+  faltan; lo que falte lo toma de la moto de ejemplo de la formación.
+- El **perímetro** se mide fácil: marca el suelo y la rueda, empuja la moto
+  una vuelta de rueda y mide la distancia.
+
+## 9. Sesiones
 
 Pulsa **Sesiones** en tu sistema.
 
@@ -239,7 +268,7 @@ Pulsa **Sesiones** en tu sistema.
 - Al final de la página puedes abrir **CSV del ordenador** o la **sesión de
   ejemplo**.
 
-## 9. Encender y apagar el sistema
+## 10. Encender y apagar el sistema
 
 - **Encender:** basta con dar corriente. Durante unos **8 segundos** la
   pantalla enseña el **logo** y las luces hacen una **prueba tipo semáforo**
@@ -251,7 +280,7 @@ Pulsa **Sesiones** en tu sistema.
   corriente mientras graba, la sesión puede quedar **cortada** (se guarda lo
   grabado hasta ese momento).
 
-## 10. Sin cobertura de internet (circuito)
+## 11. Sin cobertura de internet (circuito)
 
 Si el sistema no tiene internet, la app no lo encuentra («apagado o sin
 internet»). Puedes usarlo igualmente **junto a la moto**:
@@ -265,12 +294,12 @@ internet»). Puedes usarlo igualmente **junto a la moto**:
 
 Lo que grabes se subirá a la nube en cuanto el sistema tenga internet.
 
-## 11. Contraseña olvidada
+## 12. Contraseña olvidada
 
 Pide al administrador un **link de cambio de contraseña**. Se usa igual que el
 de alta (apartado 2).
 
-## 12. Privacidad y seguridad
+## 13. Privacidad y seguridad
 
 - Tus sesiones viajan y se guardan **cifradas**. Solo las ven los usuarios de
   tu sistema de telemetría.
@@ -280,17 +309,18 @@ de alta (apartado 2).
 - No compartas tu contraseña. Si crees que alguien la conoce, pide un cambio
   de contraseña.
 
-## 13. Problemas frecuentes
+## 14. Problemas frecuentes
 
 | Qué pasa | Qué hacer |
 | --- | --- |
 | «Usuario o contraseña incorrectos» | Revisa mayúsculas y minúsculas. Si no activaste la cuenta, hazlo primero (apartado 2) |
 | Mi sistema sale «apagado o sin internet» | ¿Está encendido y con internet? Tras encenderlo tarda 1 o 2 minutos. Pulsa **Actualizar** |
-| El vivo va a saltos | Por internet llegan unas 4 actualizaciones por segundo; con poca cobertura, menos. Junto a la moto, usa su wifi (apartado 10) |
+| El vivo va a saltos | Por internet llegan unas 4 actualizaciones por segundo; con poca cobertura, menos. Junto a la moto, usa su wifi (apartado 11) |
 | No veo una sesión que grabé | Se sube al pulsar **Parar grabación** y cuando el sistema tiene internet. Mira en **Sesiones guardadas en el sistema** si pone «sin subir» |
 | La app muestra algo antiguo | Cierra y vuelve a abrir la app, o recarga la página |
 | La web del sistema pide «Entra con un usuario de …» | Es normal: pulsa **Entrar** con tu usuario |
 | La pantalla ha cambiado sola de página | Ha saltado una alerta (apartado 7). Si es grave, una pulsación corta la reconoce y vuelves a tu página |
 | Hay un «!» en la cabecera de la pantalla | Una alerta grave reconocida sigue activa: mira su dato. Volverá a saltar a los 2 minutos si sigue así |
-| Las luces no se encienden | Activa la tira en **Sensores y salidas**. En una página sin luces configuradas (o con el dato por debajo del primer nivel) es normal que estén apagadas. Pulsa **Probar** en **Luces y alertas** para comprobarlas |
+| Las luces no se encienden | Activa la tira en la pestaña **Sensores**. En una página sin luces configuradas (o con el dato por debajo del primer nivel) es normal que estén apagadas. Pulsa **Probar** en la pestaña **Pantalla y luces** para comprobarlas |
+| La velocidad no cuadra con el velocímetro | Mide el perímetro de la rueda trasera y ponlo en la pestaña **Moto** |
 | La inclinación da valores imposibles | Pulsa **Calibrar** con la moto recta y quieta, y revisa que la caja vaya bien sujeta |

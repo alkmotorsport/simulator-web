@@ -100,13 +100,14 @@
     const m = el('p', 'msg luces-msg', caja); m.hidden = true;
 
     const tabs = el('div', 'tabs', caja);
-    for (const [id, txt] of [['paginas', 'Páginas'], ['alertas', 'Alertas']]) {
+    for (const [id, txt] of [['paginas', 'Luces por página'], ['alertas', 'Alertas'], ['resumen', 'Página RESUMEN']]) {
       const b = el('button', '', tabs, txt);
       b.type = 'button'; b.setAttribute('aria-selected', pestana === id);
       b.addEventListener('click', () => { pestana = id; pintar(); });
     }
     if (pestana === 'paginas') pintarPaginas(el('div', 'luces-lista', caja));
-    else pintarAlertas(el('div', 'luces-lista', caja));
+    else if (pestana === 'alertas') pintarAlertas(el('div', 'luces-lista', caja));
+    else pintarResumen(el('div', 'luces-lista', caja));
   }
 
   const dato = id => info.catalogo.find(d => d.id === id) || { nombre: id, unidad: '' };
@@ -202,6 +203,20 @@
       const d = info.catalogo[0];
       cfg.alertas.push({ nombre: '', dato: d.id, op: '>', valor: 0, tipo: 'momentanea', color: 'rojo', efecto: 'destello', pagina: d.pagina, seg: 3, espera_s: 30, hist: 0 });
       pintar();
+    });
+  }
+
+  /** Los 6 datos de la pagina RESUMEN, colocados como en la pantalla (3 x 2). */
+  function pintarResumen(box) {
+    el('p', 'hint', box, 'Elige qué dato va en cada casilla de la página RESUMEN de la pantalla. '
+      + 'Si un dato no tiene sensor en marcha, sale «--».');
+    if (!Array.isArray(cfg.resumen)) cfg.resumen = ['', '', '', '', '', ''];
+    while (cfg.resumen.length < 6) cfg.resumen.push('');
+    const rejilla = el('div', 'resumen-rejilla', box);
+    const ops = [['', '(vacía)']].concat(info.resumen_opciones.map(o => [o.id, o.nombre + ' · ' + o.rotulo]));
+    cfg.resumen.forEach((k, i) => {
+      const celda = el('label', 'field resumen-celda', rejilla, (i < 3 ? 'Arriba ' : 'Abajo ') + (i % 3 + 1));
+      celda.appendChild(select(ops, k, v => { cfg.resumen[i] = v; }));
     });
   }
 
