@@ -472,10 +472,15 @@
     charts: () => [],
     histograms: () => ({}),
     stats(ds, d, i0, i1) {
-      const laps = finite(d.t_vuelta_s, i0, i1), [best] = minmax(laps);
-      const v = finite(d.vuelta, i0, i1);
+      // solo hay filas al pulsar: lo acumulado hasta el final de lo visible
+      // (en vivo, hasta ahora), no solo lo que cae dentro de la ventana
+      const laps = finite(d.t_vuelta_s, 0, i1), [best] = minmax(laps);
+      const v = finite(d.vuelta, 0, i1);
+      let cortas = 0;
+      for (let i = 0; i < i1; i++) if (d.pulsaciones[i] === 1) cortas++;
       return [
         { label: 'Vueltas', value: v.length ? String(v[v.length - 1]) : '0' },
+        { label: 'Pulsaciones', value: String(cortas), sub: 'cortas (cambio de página)' },
         { label: 'Mejor vuelta', value: f(best, 2), unit: 's' },
         { label: 'Última vuelta', value: f(laps[laps.length - 1], 2), unit: 's' },
         { label: 'Media', value: f(mean(laps), 2), unit: 's', sub: laps.length + ' completas' },
