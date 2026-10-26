@@ -1149,7 +1149,8 @@
   function renderOutputs() {
     const box = $('#outputs');
     if (!live.estado) { box.hidden = true; return; }
-    const mods = live.estado.modulos.filter(m => m.corriendo && live.vivos[m.id]);
+    // el pulsador es una entrada: sus vueltas ya salen en su bloque de datos
+    const mods = live.estado.modulos.filter(m => m.corriendo && live.vivos[m.id] && m.tipo !== 'boton');
     box.hidden = !mods.length;
     const key = mods.map(m => m.id).join(',');
     if (box.dataset.key !== key) {
@@ -1175,8 +1176,6 @@
         card.querySelector('p').textContent = v.valor == null ? 'sin datos de la fuente' : v.valor + ' ' + v.unidad;
       } else if (m.tipo === 'pantalla') {
         if (v.png) card.querySelector('img').src = 'data:image/png;base64,' + v.png;
-      } else if (m.tipo === 'boton') {
-        card.querySelector('p').textContent = 'Vuelta ' + v.vuelta + (v.t_vuelta_s ? ' · última ' + v.t_vuelta_s.toFixed(2) + ' s' : '') + ' · página ' + v.pagina;
       } else card.querySelector('p').textContent = JSON.stringify(v);
     }
   }
