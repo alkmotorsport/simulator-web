@@ -91,8 +91,10 @@ Pulsa **En vivo** en tu sistema (tiene que estar «en línea»).
 - **● Grabar / ■ Parar grabación:** el sistema arranca **sin grabar**; solo se
   graba una sesión cuando pulsas **Grabar**. Al parar, la sesión se sube sola a
   la nube (si no hay internet, en cuanto lo haya).
-- **Pestañas** (bajo la lista de sensores visibles): están **cerradas** para
-  no ocupar sitio; pulsa una para abrirla y otra vez para cerrarla.
+- **Configuración** (la caja bajo los botones de Conectar y Grabar): sus
+  pestañas están **cerradas** para no ocupar sitio; pulsa una para abrirla y
+  otra vez para cerrarla. En **Sesiones** salen solo **Moto** y **Parámetros
+  de la sesión**.
   - **Sensores:** lista de lo conectado a la moto. El tick activa o desactiva
     cada sensor; **auto** quiere decir que se activa solo si se detecta
     conectado. Algunos tienen acciones, como **Calibrar** (con la moto quieta).
