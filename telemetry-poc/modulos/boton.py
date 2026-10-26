@@ -1,11 +1,12 @@
 """
 Pulsador de vuelta y cambio de pagina.
 
-  1 pulsacion  = pagina siguiente
-  2 seguidas   = pagina anterior
-  3 seguidas   = vuelta
+  pulsacion corta           = pagina siguiente (al soltar)
+  pulsacion larga (>= 1 s)  = vuelta (al cumplirse el segundo, sin soltar)
 
 CSV (solo cuando hay pulsaciones): t_s, pulsaciones, vuelta, t_vuelta_s
+  pulsaciones 1 = corta, 3 = larga (vuelta; el 3 es por compatibilidad con
+              las sesiones de antes, cuando la vuelta eran 3 pulsaciones)
   vuelta      numero de vuelta tras la pulsacion (0 = antes de la primera)
   t_vuelta_s  duracion de la vuelta que acaba de cerrarse
 
@@ -22,7 +23,7 @@ class Boton(Modulo):
     NOMBRE = "Pulsador de vuelta"
     COLS = ["t_s", "pulsaciones", "vuelta", "t_vuelta_s"]
     DETECTABLE = False
-    DEFECTOS = {"gpio": 17, "ventana_s": 0.6, "rebote_ms": 20}
+    DEFECTOS = {"gpio": 17, "larga_s": 1.0, "rebote_ms": 20}
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
@@ -40,18 +41,26 @@ class Boton(Modulo):
         pi.set_mode(g, pigpio.INPUT)
         pi.set_pull_up_down(g, pigpio.PUD_UP)
         pi.set_glitch_filter(g, int(self.cfg["rebote_ms"] * 1000))
-        pulsos = []
-        self._cb = pi.callback(g, pigpio.FALLING_EDGE,
-                               lambda *_: pulsos.append(self.reloj()))
+        bordes = []                     # (nivel, t): 0 = pulsado, 1 = suelto
+        self._cb = pi.callback(g, pigpio.EITHER_EDGE,
+                               lambda _g, nivel, _t: bordes.append((nivel, self.reloj())))
         self.estado = "activo"
-        while not self.parar.wait(0.05):
-            if pulsos and self.reloj() - pulsos[-1] > self.cfg["ventana_s"]:
-                n = len(pulsos)
-                del pulsos[:n]
-                self._pulsacion(self.reloj(), n)
+        pulsado, larga = None, False    # cuando se pulso y si ya conto como larga
+        while not self.parar.wait(0.02):
+            while bordes:
+                nivel, t = bordes.pop(0)
+                if nivel == 0 and pulsado is None:
+                    pulsado, larga = t, False
+                elif nivel == 1 and pulsado is not None:
+                    if not larga:
+                        self._pulsacion(t, 1)
+                    pulsado = None
+            if pulsado is not None and not larga and self.reloj() - pulsado >= self.cfg["larga_s"]:
+                larga = True
+                self._pulsacion(self.reloj(), 3)
 
     def simular(self):
-        # una vuelta cada sim.VUELTA_S: 3 pulsaciones en la linea de meta
+        # una vuelta cada sim.VUELTA_S: pulsacion larga en la linea de meta
         self.estado = "activo"
         vista = sim.pista(self.reloj())["vuelta"]
         while not self.parar.wait(0.1):
@@ -73,8 +82,6 @@ class Boton(Modulo):
                 t_vuelta = round(t - self.t_vuelta, 3)
             self.t_vuelta = t
             self.vuelta += 1
-        elif n == 2:
-            self.pagina -= 1
         else:
             self.pagina += 1
         self.publicar(t, [n, self.vuelta, t_vuelta])

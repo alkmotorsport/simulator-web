@@ -3,8 +3,9 @@ Pantalla OLED del cuadro: Waveshare 2,42" SSD1309 de 128x64 por SPI1.
 
 Una pagina por dato, con un valor grande y una linea secundaria, en estilo de
 cuadro de competicion. Solo salen las paginas de los sensores que estan
-funcionando (plug and play). El pulsador cambia de pagina (1 = siguiente,
-2 = anterior); si no se usa, rotan solas cada 'rotar_s'. La web muestra una
+funcionando (plug and play). Cada pulsacion corta del pulsador pasa a la
+pagina siguiente; si no, se queda fija (o rota sola cada 'rotar_s', si se
+pone en telemetria.json). La web muestra una
 copia en vivo de lo que se ve en la pantalla.
 
 Demo de la pantalla sola, con datos simulados y una pagina cada 2 s:
@@ -390,7 +391,7 @@ DEFECTOS = {
     "contraste": 255,
     "virtual": True,          # sin pantalla fisica, seguir y verla solo en la web
     "fps": 8.0,
-    "rotar_s": 5.0,           # cambia de pagina sola si no se usa el pulsador (0 = no)
+    "rotar_s": 0.0,           # > 0: cambia de pagina sola cada tantos s sin usar el pulsador
     "recorrido_mm": 100.0,    # recorrido util de la suspension (escala y % de uso)
     "tope_frac": 0.9,         # por encima de esto cuenta como tope
     "vel_max": 200.0, "vel_aviso": 180.0,
