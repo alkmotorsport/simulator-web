@@ -10,7 +10,7 @@ Patron (tipo cuadro de carreras):
   valor >= limite       toda la tira parpadea rapido en rojo
 patron "centro": se llena desde los dos extremos hacia el centro.
 Al arrancar, mientras la pantalla ensena el logo ('arranque_s'), prueba los
-LEDs: 3 pasadas de cada color (rojo, verde, azul) recorriendo la tira.
+LEDs como un semaforo: 3 pasadas de rojo, de ambar y de verde recorriendo la tira.
 La web replica la tira aunque no haya LEDs conectados.
 
 Conexion: 5 V (pin 4), GND (pin 20), datos GPIO18 (pin 12) con 330 Ohm en
@@ -152,9 +152,9 @@ class TiraLeds(Modulo):
             self._mostrar(cols, valor)
 
     def _arranque(self):
-        """3 pasadas de cada color: un LED encendido que recorre la tira."""
+        """Semaforo: 3 pasadas de cada color, un LED encendido que recorre la tira."""
         n, dur = int(self.cfg["num"]), float(self.cfg["arranque_s"])
-        pasos = [(col, i) for col in ("rojo", "verde", "azul") for _ in range(3) for i in range(n + 1)]
+        pasos = [(col, i) for col in ("rojo", "ambar", "verde") for _ in range(3) for i in range(n + 1)]
         dt = dur / len(pasos) if dur > 0 else 0
         for col, i in pasos if dt else []:
             if self.parar.is_set():
