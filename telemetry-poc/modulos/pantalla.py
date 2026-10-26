@@ -392,6 +392,7 @@ DEFECTOS = {
     "virtual": True,          # sin pantalla fisica, seguir y verla solo en la web
     "fps": 8.0,
     "rotar_s": 0.0,           # > 0: cambia de pagina sola cada tantos s sin usar el pulsador
+    "logo_s": 8.0,            # logo al arrancar, mientras arrancan y calibran los sensores
     "recorrido_mm": 100.0,    # recorrido util de la suspension (escala y % de uso)
     "tope_frac": 0.9,         # por encima de esto cuenta como tope
     "vel_max": 200.0, "vel_aviso": 180.0,
@@ -738,7 +739,7 @@ class Pantalla(Modulo):
         self.estado = "activo"
         self.aviso = self._aviso_virtual
         self._mostrar(splash(L))
-        self.parar.wait(1.5)
+        self.parar.wait(c["logo_s"])
         ult_png = 0.0
         while not self.parar.is_set():
             ahora = self.reloj()
