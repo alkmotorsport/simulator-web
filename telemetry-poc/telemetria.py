@@ -42,6 +42,8 @@ from datetime import datetime
 
 import modulos
 import sincro
+from modulos import luces as luces_mod
+from modulos.pantalla import PAGINAS
 from acceso import Acceso
 from live_server import LiveServer
 from tunel import Tunel
@@ -305,6 +307,17 @@ class Maestro:
             if p[1] == "editar":
                 return self.sincro.editar_en_nube(cuerpo.get("id"), cuerpo.get("titulo"), cuerpo.get("nota"))
             return self.sincro.borrar_de_nube(cuerpo.get("id"))
+        elif p == ["luces"]:                     # configuracion de luces y alertas
+            return self.guardar_luces(cuerpo.get("config"))
+        elif p == ["luces", "probar"]:
+            color, efecto = cuerpo.get("color"), cuerpo.get("efecto", "fijo")
+            if color not in luces_mod.COLORES or efecto not in luces_mod.EFECTOS:
+                raise ValueError("color o efecto no valido")
+            tira = self.modulos.get("tira")
+            if tira is None or not tira.corriendo():
+                raise ValueError("la tira de luces no esta en marcha")
+            tira.probar(color, efecto)
+            return {"ok": True}
         elif p == ["grabar"]:
             if cuerpo.get("grabar"):
                 self.grabador.iniciar()
@@ -322,6 +335,36 @@ class Maestro:
         else:
             raise ValueError(f"ruta desconocida: {ruta}")
         self.publicar_estado()
+        return {"ok": True}
+
+    # ------------------------------------------------- luces y alertas ---
+
+    def luces(self):
+        """Para el cuadro de la web: configuracion, catalogo y plantillas."""
+        pantalla, tira = self.modulos.get("pantalla"), self.modulos.get("tira")
+        cfg = pantalla.cfg.get("luces") if pantalla is not None else None
+        return {
+            "config": cfg if cfg is not None else luces_mod.por_defecto(),
+            "catalogo": [{"id": k, "nombre": n, "unidad": u, "pagina": p}
+                         for k, (n, u, p) in luces_mod.CATALOGO.items()],
+            "paginas": [{"id": p[0], "titulo": p[1]} for p in PAGINAS],
+            "colores": luces_mod.COLORES, "efectos": luces_mod.EFECTOS,
+            "plantillas": {k: {"nombre": v["nombre"],
+                               "config": {"paginas": v["paginas"], "alertas": v["alertas"]}}
+                           for k, v in luces_mod.PLANTILLAS.items()},
+            "leds": int(tira.cfg["num"]) if tira is not None else 0,
+            "tira": bool(tira is not None and tira.corriendo()),
+            "pantalla": bool(pantalla is not None and pantalla.corriendo()),
+        }
+
+    def guardar_luces(self, cfg):
+        cfg = luces_mod.validar(cfg, [p[0] for p in PAGINAS])
+        with self.lock:
+            self.cfg["modulos"].setdefault("pantalla", {})["luces"] = cfg
+            guardar_config(self.ruta_cfg, self.cfg)
+            pantalla = self.modulos.get("pantalla")
+            if pantalla is not None:
+                pantalla.set_luces(cfg)
         return {"ok": True}
 
     def estado(self):

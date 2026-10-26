@@ -5,7 +5,8 @@ Una pagina por dato, con un valor grande y una linea secundaria, en estilo de
 cuadro de competicion. Solo salen las paginas de los sensores que estan
 funcionando (plug and play). Cada pulsacion corta del pulsador pasa a la
 pagina siguiente; si no, se queda fija (o rota sola cada 'rotar_s', si se
-pone en telemetria.json). La web muestra una
+pone en telemetria.json). Las luces (tira WS2812) siguen a la pagina y las
+alertas mandan sobre todo: ver luces.py. La web muestra una
 copia en vivo de lo que se ve en la pantalla.
 
 Demo de la pantalla sola, con datos simulados y una pagina cada 2 s:
@@ -34,6 +35,7 @@ import time
 from collections import deque
 
 from .base import Modulo, pc
+from . import luces as luces_mod
 from . import sim
 
 AQUI = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -61,7 +63,8 @@ class Datos:
 
     def __init__(self):
         self.v, self.t, self.max, self.min = {}, {}, {}, {}
-        self.gg = deque(maxlen=40)          # rastro del diagrama g-g
+        self.gg = deque(maxlen=40)          # rastro del diagrama g-g (lateral, longitudinal)
+        self.t_gg = -INF
         self.topes = 0
         self.en_tope = False
 
@@ -261,7 +264,8 @@ def pag_inclinacion(L, D, ahora, c):
 
 
 def pag_g(L, D, ahora, c):
-    ax, ay = D.get("ax", 0.0), D.get("ay", 0.0)
+    # lateral = tan(inclinacion): en curva la caja mide ~0 lateral
+    ax, ay = D.get("ax_f", 0.0), D.get("lat", 0.0)
     cx, cy, r = 27, 36, 26
     gmax = c["g_escala"]
     L.d.ellipse((cx - r, cy - r, cx + r, cy + r), outline=1)
@@ -271,7 +275,7 @@ def pag_g(L, D, ahora, c):
     L.punteada(cx - r, cy, cx + r, cy)
     L.punteada(cx, cy - r, cx, cy + r)
     xy = lambda lat, lon: (cx + r * max(-1, min(1, lat / gmax)), cy - r * max(-1, min(1, lon / gmax)))
-    for lat, lon in D.gg:
+    for lat, lon in list(D.gg):          # copia: la IMU lo va llenando mientras
         L.d.point(xy(lat, lon), fill=1)
     x, y = xy(ay, ax)
     L.d.ellipse((x - 3, y - 3, x + 3, y + 3), fill=1)
@@ -279,8 +283,8 @@ def pag_g(L, D, ahora, c):
     # total y maximos
     L.texto(60, CUERPO + 1, "G", L.px)
     L.texto(W - 1, CUERPO + 1, f"{math.hypot(ax, ay):.2f}", L.n[30], "d")
-    filas = (("FRENO", -(D.min.get("ax") or 0)), ("ACEL", D.max.get("ax") or 0),
-             ("LAT", max(abs(D.min.get("ay") or 0), D.max.get("ay") or 0)))
+    filas = (("FRENO", -(D.min.get("ax_f") or 0)), ("ACEL", D.max.get("ax_f") or 0),
+             ("LAT", max(abs(D.min.get("lat") or 0), D.max.get("lat") or 0)))
     for i, (k, v) in enumerate(filas):
         y = CUERPO + 26 + i * 9
         L.texto(60, y, k, L.px)
@@ -341,7 +345,7 @@ def pag_resumen(L, D, ahora, c):
     for i, (rot, k, d) in enumerate(celdas):
         x, y = (i % 3) * 43, CUERPO + (i // 3) * 27
         if k == "_g":
-            v = math.hypot(D.get("ax", 0), D.get("ay", 0)) if D.hay("ax", ahora) else None
+            v = math.hypot(D.get("ax_f", 0), D.get("lat", 0)) if D.hay("ax_f", ahora) else None
         else:
             v = D.get(k) if D.hay(k, ahora) else None
             if k == "incl" and v is not None:
@@ -378,7 +382,7 @@ PAGINAS = [
     ("vel", "VELOCIDAD", _alguna("kmh"), pag_velocidad),
     ("susp", "SUSPENSION", _alguna("comp_mm"), pag_suspension),
     ("incl", "INCLINACION", _alguna("incl"), pag_inclinacion),
-    ("g", "FUERZAS G", lambda D, a: D.hay("ax", a) and D.hay("ay", a), pag_g),
+    ("g", "FUERZAS G", lambda D, a: D.hay("ax_f", a) and D.hay("lat", a), pag_g),
     ("bujia", "TEMP BUJIA", _alguna("t_bujia"), _pag_temp("t_bujia")),
     ("aceite", "TEMP ACEITE", _alguna("t_aceite"), _pag_temp("t_aceite")),
     ("disco", "TEMP DISCO", _alguna("t_ir"), _pag_temp("t_ir")),
@@ -410,6 +414,7 @@ DEFECTOS = {
     "rango_t_bujia": [0, 300, 250],     # min, max de la barra y alarma (C)
     "rango_t_aceite": [0, 150, 120],
     "rango_t_ir": [0, 500, 400],
+    "luces": None,            # luces y alertas (luces.py); None = plantilla recomendada
 }
 
 
@@ -433,11 +438,17 @@ def splash(L, ahora=0.0):
     return L.im
 
 
-def dibujar(L, D, pagina, ahora, cfg, n_paginas=None, indice=None):
+def dibujar(L, D, pagina, ahora, cfg, n_paginas=None, indice=None, rec=False, marca=False):
+    """rec: punto de grabando en la cabecera; marca: '!' de alerta reconocida."""
     pid, titulo, _, fn = pagina
     L.nuevo()
-    derecha = f"{indice + 1}/{n_paginas}" if n_paginas else ""
+    derecha = (f"{indice + 1}/{n_paginas}" if n_paginas else "")
+    if marca:
+        derecha = "! " + derecha
     L.cabecera(titulo, derecha)
+    if rec and _parpadeo(ahora, 1):
+        x = W - 9 - (L.ancho(derecha, L.px) + 3 if derecha else 0)
+        L.d.ellipse((x, 2, x + 4, 6), fill=0)
     try:
         fn(L, D, ahora, cfg)
     except Exception as e:      # una pagina rota no debe tumbar la pantalla
@@ -503,8 +514,10 @@ def alimentar_sim(D, t, vueltas):
     D.poner("kmh_tras", p["kmh"] * (1 + 0.08 * max(0.0, p["acel_g"])) + random.gauss(0, 0.3), t)
     D.poner("incl", p["incl_deg"] + random.gauss(0, 0.4), t)
     D.poner("ax", p["acel_g"] + random.gauss(0, 0.02), t)
+    D.poner("ax_f", D.get("ax"), t)
     D.poner("ay", lat + random.gauss(0, 0.02), t)
-    D.gg.append((D.get("ay"), D.get("ax")))
+    D.poner("lat", lat, t)
+    D.gg.append((D.get("lat"), D.get("ax_f")))
     comp = 30 + 25 * p["acel_g"] + 8 * min(1.0, abs(lat)) + sim.baches(t) * 1.4
     poner_comp(D, comp, t, DEFECTOS)
     D.poner("t_bujia", 150 + 40 * p["kmh"] / 160 + 70 * math.sin(t / 9) ** 8, t)
@@ -633,6 +646,10 @@ class Pantalla(Modulo):
         self.t_cambio = 0.0
         self.t_manual = -1e9     # ultima vez que se cambio de pagina a mano
         self._aviso_virtual = None
+        self._pulsado = 0        # pulsaciones cortas pendientes (las atiende el bucle)
+        self._luces_nuevas = None
+        self.motor = None
+        self.alerta = None       # nombre de la alerta que se ve ahora
 
     def pines(self):
         c = self.cfg
@@ -646,10 +663,18 @@ class Pantalla(Modulo):
         m["direccion"] = f"0x{int(self.cfg['direccion']):02X}"
         return m
 
+    def set_luces(self, cfg):
+        """Configuracion nueva desde la web (ya validada); se aplica al momento."""
+        self.cfg["luces"] = cfg
+        self._luces_nuevas = cfg
+
     def accion(self, nombre):
         if nombre not in ("siguiente", "anterior"):
             return super().accion(nombre)
-        self._mover += 1 if nombre == "siguiente" else -1
+        if nombre == "siguiente":
+            self._pulsado += 1          # como una pulsacion corta: reconoce alertas
+        else:
+            self._mover -= 1
         self.t_manual = self.reloj()
         return "cambiando de pagina"
 
@@ -704,12 +729,24 @@ class Pantalla(Modulo):
             D.poner(clave, v, t)
             if clave == "kmh_tras" or not D.hay("kmh_tras", t):
                 D.poner("kmh", v, t)
+        elif clave == "ax":
+            # media de ~0,5 s: la vibracion del motor no cuenta como frenada
+            prev, tp = D.get("ax_f"), D.t.get("ax_f")
+            k = 1.0 if prev is None or not 0 < t - tp < 1 else min(1.0, (t - tp) / 0.5)
+            D.poner("ax", v, t)
+            D.poner("ax_f", v if prev is None else prev + k * (v - prev), t)
+            if D.hay("lat", t, 0.5) and (not D.gg or t - D.t_gg >= 0.1):   # rastro a 10 Hz
+                D.gg.append((D.get("lat"), D.get("ax_f")))
+                D.t_gg = t
+        elif clave == "incl":
+            D.poner("incl", v, t)
+            if abs(v) < 70:
+                D.poner("lat", math.tan(math.radians(v)), t)
         elif clave == "ay":
             D.poner("ay", v, t)
-            D.gg.append((v, D.get("ax", 0.0)))
         elif clave == "puls":
-            if v in (1, 2):
-                self._mover += 1 if v == 1 else -1
+            if v == 1:
+                self._pulsado += 1
                 self.t_manual = t
         elif clave == "vuelta":
             if v != D.get("vuelta"):
@@ -745,6 +782,7 @@ class Pantalla(Modulo):
             if fuente in self.bus.modulos:
                 self.escuchar(fuente, col, lambda t, v, k=clave: self._dato(k, t, v))
         L = Lienzo()
+        self.motor = luces_mod.Motor(self._luces_iniciales())
         self.estado = "activo"
         self.aviso = self._aviso_virtual
         self._mostrar(splash(L))
@@ -759,6 +797,18 @@ class Pantalla(Modulo):
             D.v["_rec"] = getattr(getattr(self.bus, "grabador", None), "sesion", None) is not None
             disp = [p for p in PAGINAS if p[2](D, ahora)]
             ids = [p[0] for p in disp]
+            if self._luces_nuevas is not None:
+                self.motor.cargar(self._luces_nuevas)
+                self._luces_nuevas = None
+            # alertas: mandan sobre la pagina elegida (que no se pierde)
+            v = luces_mod.valores(D, ahora, c, self._sensores_mal())
+            manda, marca = self.motor.actualizar(v, ahora)
+            while self._pulsado:
+                self._pulsado -= 1
+                if not self.motor.reconocer(ahora):       # sin alerta: pagina siguiente
+                    self._mover += 1
+                else:
+                    manda, marca = self.motor.actualizar(v, ahora)
             if c["rotar_s"] > 0 and ahora - self.t_manual > 30 and \
                     ahora - self.t_cambio >= c["rotar_s"]:
                 self._mover += 1
@@ -768,7 +818,14 @@ class Pantalla(Modulo):
                 self._mover = 0
                 self.t_cambio = ahora
             self._pid = ids[i]
-            im = dibujar(L, D, disp[i], ahora, c, len(disp), i)
+            ver = i
+            if manda is not None and manda[1] and manda[0]["pagina"] in ids:
+                ver = ids.index(manda[0]["pagina"])
+            self.alerta = manda[0]["nombre"] if manda is not None else None
+            tira = self.bus.modulos.get("tira")
+            if tira is not None and tira.corriendo():
+                tira.externo(self.motor.luces(ids[ver], v, int(tira.cfg["num"]), manda))
+            im = dibujar(L, D, disp[ver], ahora, c, len(disp), ver, rec=D.v["_rec"], marca=marca)
             self._mostrar(im)
             # copia para la web, ~2 por segundo
             if ahora - ult_png >= 0.5:
@@ -776,8 +833,22 @@ class Pantalla(Modulo):
                 buf = io.BytesIO()
                 im.save(buf, "PNG")
                 self.vivo({"png": base64.b64encode(buf.getvalue()).decode(),
-                           "pagina": self._pid})
+                           "pagina": ids[ver], "alerta": self.alerta})
             self.parar.wait(1.0 / c["fps"])
+
+    def _luces_iniciales(self):
+        cfg = self.cfg.get("luces")
+        if cfg is None:
+            return luces_mod.por_defecto()
+        try:
+            return luces_mod.validar(cfg, [p[0] for p in PAGINAS])
+        except ValueError as e:
+            print(f"[pantalla] luces en telemetria.json no validas ({e}): uso la plantilla recomendada")
+            return luces_mod.por_defecto()
+
+    def _sensores_mal(self):
+        return sum(1 for m in self.bus.modulos.values()
+                   if m.CLASE == "sensor" and m.estado == "error")
 
     def _mostrar(self, im):
         if self.dev is not None:

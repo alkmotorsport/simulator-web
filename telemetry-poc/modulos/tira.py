@@ -9,6 +9,8 @@ Patron (tipo cuadro de carreras):
   valor >= cambio       toda la tira parpadea en azul (aviso)
   valor >= limite       toda la tira parpadea rapido en rojo
 patron "centro": se llena desde los dos extremos hacia el centro.
+Con la pantalla en marcha, las luces las decide ella (luces.py: siguen a la
+pagina que se ve y a las alertas); sin pantalla, la barra de arriba.
 Al arrancar, mientras la pantalla ensena el logo ('arranque_s'), prueba los
 LEDs como un semaforo: 3 pasadas de rojo, de ambar y de verde recorriendo la tira.
 La web replica la tira aunque no haya LEDs conectados.
@@ -22,6 +24,7 @@ import math
 import time
 
 from .base import Modulo
+from .luces import encendida
 from .pantalla import esperar_seguro
 
 ZONAS = ((0.5, "verde"), (0.75, "ambar"), (1.0, "rojo"))   # fraccion de la tira
@@ -30,7 +33,8 @@ ZONAS = ((0.5, "verde"), (0.75, "ambar"), (1.0, "rojo"))   # fraccion de la tira
 class Tira:
     """Tira WS2812 (rpi_ws281x; necesita sudo)."""
     RGB = {"off": (0, 0, 0), "verde": (0, 255, 0), "ambar": (255, 120, 0),
-           "rojo": (255, 0, 0), "azul": (0, 60, 255)}
+           "rojo": (255, 0, 0), "azul": (0, 60, 255), "morado": (170, 0, 255),
+           "blanco": (255, 255, 255)}
 
     def __init__(self, n, pin, brillo):
         try:
@@ -105,9 +109,19 @@ class TiraLeds(Modulo):
         super().__init__(*a, **k)
         self.tira = None
         self._probar = False
+        self._externo = None     # ([(color, efecto)], t): lo que manda la pantalla
+        self._prueba = None      # ((color, efecto), hasta): boton Probar de la web
 
     def pines(self):
         return f"datos GPIO{self.cfg['gpio']} (pin 12) · {self.cfg['num']} LEDs"
+
+    def externo(self, luces):
+        """Luces que decide la pantalla: lista de (color, efecto)."""
+        self._externo = (list(luces), time.monotonic())
+
+    def probar(self, color, efecto, seg=2.5):
+        """Todas las luces de un color y efecto un momento (boton Probar)."""
+        self._prueba = ((color, efecto), time.monotonic() + seg)
 
     def accion(self, nombre):
         if nombre != "probar":
@@ -144,6 +158,16 @@ class TiraLeds(Modulo):
                 self._probar = False
                 self._barrido()
                 continue
+            n = int(c["num"])
+            if self._prueba is not None and ahora < self._prueba[1]:
+                col, ef = self._prueba[0]
+                self._mostrar([col if encendida(ef, ahora) else "off"] * n, None, "prueba")
+                continue
+            if self._externo is not None and ahora - self._externo[1] < 1.0:
+                luces = (self._externo[0] + [("off", "fijo")] * n)[:n]
+                self._mostrar([col if encendida(ef, ahora) else "off" for col, ef in luces], None,
+                              "según la página y las alertas de la pantalla")
+                continue
             valor, t = ultimo
             if valor is None or self.reloj() - t > 1.0:
                 cols, valor = ["off"] * int(c["num"]), None
@@ -174,7 +198,7 @@ class TiraLeds(Modulo):
             self._mostrar(cols, valor)
             self.parar.wait(0.02)
 
-    def _mostrar(self, cols, valor):
+    def _mostrar(self, cols, valor, texto=None):
         if self.tira is not None:
             try:
                 self.tira.poner(cols)
@@ -182,4 +206,4 @@ class TiraLeds(Modulo):
                 self.aviso = f"WS2812: {e}"
                 self.tira = None
         self.vivo({"leds": cols, "valor": None if valor is None else round(valor, 1),
-                   "unidad": self.cfg["unidad"]})
+                   "unidad": self.cfg["unidad"], "texto": texto})

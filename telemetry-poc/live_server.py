@@ -18,6 +18,9 @@ Servidor web + tiempo real para la telemetria. Solo libreria estandar.
                     modulo/<id>/accion {"accion": "calibrar"},
                     sesion/borrar {"nombre"}, nube/borrar {"id"} (borrar sesiones),
                     nube/editar {"id", "titulo", "nota"} (nombre y descripcion),
+                    luces {"config"} (luces y alertas: modulos/luces.py; GET /api/luces
+                    la devuelve con el catalogo y las plantillas),
+                    luces/probar {"color", "efecto"},
                     detectar, auto, grabar {"grabar": true|false},
                     alta/consultar {"inv"}, alta {"inv", "secreto", "password"}
                     (alta de un usuario invitado: ver sincro.py)
@@ -229,6 +232,8 @@ class LiveServer:
                     return srv._json(self, estado)
                 if ruta == "/api/ajustes":
                     return srv._leer_ajustes(self)
+                if ruta == "/api/luces" and srv.control is not None:
+                    return srv._json(self, srv.control.luces())
                 if ruta in ("/api/sesiones", "/api/files"):
                     return srv._lista(self)
                 if ruta.startswith("/files/"):
