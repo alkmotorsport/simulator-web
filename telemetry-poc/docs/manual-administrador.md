@@ -83,7 +83,9 @@ que no se vayan a usar.
 ## 4. Uso diario de un sistema
 
 - **Encender:** basta con dar corriente. La telemetría arranca sola, en vivo y
-  **sin grabar**; en 1 o 2 minutos sale «en línea» en la app.
+  **sin grabar**; en 1 o 2 minutos sale «en línea» en la app. Los primeros
+  8 s la pantalla enseña el logo y las luces hacen la prueba tipo semáforo
+  mientras arrancan los sensores y se calibra la IMU: la moto, recta y quieta.
 - **Grabar:** desde la app, **● Grabar** y **■ Parar grabación**. Al parar, la
   sesión se sube sola.
 - **Apagar:** con `sudo poweroff` (por SSH), no desenchufándolo: así, si estaba
@@ -136,6 +138,15 @@ en la wifi.
 
    (`cloudflared-linux-arm64` si lleva un sistema operativo de 64 bits.) El
    resto del hardware (I2C, SPI, LED) está explicado en `requirements.txt`.
+   En `/boot/config.txt` (y reiniciar):
+
+   ```
+   dtparam=audio=off                 # las luces WS2812 usan el PWM del audio (GPIO18)
+   dtoverlay=spi1-1cs,cs0_pin=12     # pantalla por SPI1
+   ```
+
+   Y `sudo raspi-config nonint do_i2c 0` y `do_spi 0` (IMU, sondas de
+   temperatura).
 2. Instala el código y el servicio:
 
    ```sh
@@ -158,6 +169,29 @@ en la wifi.
 5. Guarda la **copia de su clave de datos** (apartado 8) y reinicia la
    telemetría (`sudo systemctl restart telemetria`). En 1 o 2 minutos aparece en
    el portal con su dirección por internet. Ya puedes invitar a sus usuarios.
+
+### Ajustes de los módulos (`telemetria.json`)
+
+Cada sistema guarda sus ajustes en `telemetry-poc/telemetria.json`, bajo
+`"modulos"`. El tick de **Sensores y salidas** y el cuadro **Luces y alertas**
+de la app ya lo escriben; a mano solo hace falta para lo de esta tabla.
+Después de editarlo: `sudo systemctl restart telemetria` (comprueba antes en la
+app que no esté grabando).
+
+| Módulo | Ajuste | Para qué |
+| --- | --- | --- |
+| cualquiera | `"activo"`: `"auto"`, `true` o `false` | `auto` arranca si se detecta; los que no se pueden detectar (botón, pantalla, luces) van a `true` |
+| `temp_bujia`, `temp_aceite` | `"ce"`: `0` o `1` | En qué pin de selección va cada sonda: CE0 = pin 24, CE1 = pin 26 (SO pin 21 y SCK pin 23 son comunes). Si una sonda sale con el nombre de la otra, intercambia los `ce` en vez de los cables |
+| `tira` | `"num"`, `"brillo"` (0–255), `"arranque_s"` | Número de luces WS2812, su brillo y lo que dura la prueba de arranque (0 = sin prueba) |
+| `pantalla` | `"logo_s"`, `"rotar_s"` | Segundos del logo al arrancar (8) y, si es > 0, cada cuántos segundos cambia sola de página (por defecto, no) |
+| `pantalla` | `"luces"` | Luces y alertas: se editan desde la app (**Luces y alertas**); sin este ajuste se usa la plantilla recomendada |
+| `boton` | `"larga_s"` | Lo que hay que mantener pulsado para marcar vuelta (1 s); la pulsación corta pasa de página |
+| `suspension` | `"activo"` | Si no arranca aunque esté conectado, revisa que no esté a `false` |
+
+El antiguo módulo de **2 LED RGB** («alertas») ya no existe: las luces y
+alertas las hace la tira WS2812, y los GPIO 5, 6, 16 y 26 quedan libres. Si
+algún `telemetria.json` aún tiene la entrada `"alertas"`, se ignora (con un
+aviso); se puede borrar.
 
 ## 7. Credenciales
 
@@ -248,3 +282,6 @@ scripts, para que los navegadores no sigan usando la versión anterior.
 | La web del sistema no responde en su wifi | ¿Está en marcha (`systemctl status telemetria`)? ¿Ha cambiado de IP (portal → *Sistemas de telemetría*)? |
 | El navegador avisa otra vez del certificado | El sistema cambió de IP y generó un certificado nuevo: hay que aceptarlo de nuevo |
 | El portal o la app muestran algo antiguo | Recarga con Cmd+Shift+R (en el móvil, cerrar y abrir la app) |
+| Un sensor conectado no aparece en la app | Se detecta al arrancar: reinicia la telemetría. Si sale «-» en `journalctl -u telemetria`, mira el motivo en esa línea (cableado o `"activo": false`) |
+| La pantalla enseña «ERROR EN PÁGINA» | `journalctl -u telemetria \| grep pantalla` dice qué página y por qué |
+| Las luces no se encienden | `dtparam=audio=off` en `/boot/config.txt` (y reiniciar), el cable de datos al **DIN** del primer LED (no al DOUT), 5 V y GND comunes con la Pi, la tira activada y `"num"` con el número de luces. **Probar** en **Luces y alertas** las enciende |

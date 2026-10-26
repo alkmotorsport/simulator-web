@@ -23,7 +23,7 @@ Pide al administrador:
      cada uno. Usa la misma contraseña en todos.
 3. **La dirección del sistema en su wifi** (por ejemplo
    `https://192.168.1.50:8081`). Solo hace falta si vas a usarlo en sitios
-   sin cobertura de internet (ver el apartado 8).
+   sin cobertura de internet (ver el apartado 10).
 
 Tu contraseña la eliges tú al activar la cuenta. **Nadie más la conoce, ni
 siquiera el administrador.**
@@ -99,10 +99,89 @@ Pulsa **En vivo** en tu sistema (tiene que estar «en línea»).
     de valer. Pulsa **Calibrar** con la moto **recta y quieta** cada vez que
     cambies la caja de sitio. El sistema también calibra solo al encenderse,
     así que enciéndelo con la moto recta.
-- **Salidas del cuadro:** la app muestra lo mismo que los LED y la pantalla
-  de la moto.
+  - **Luces y alertas** (en la fila de la tira de luces): qué hacen las luces
+    y las alertas; ver el apartado 7.
+- **Salidas del cuadro:** la app muestra en directo lo mismo que la pantalla
+  y las luces de la moto.
+- **Bloque de la IMU:** el **diagrama g-g** sale el primero (ver el
+  apartado 8); debajo, inclinación, aceleraciones, cabeceo y **vibración
+  vertical**.
 
-## 6. Sesiones
+## 6. La pantalla y el botón del cuadro
+
+La pantalla muestra **una página por dato**, en grande. Solo salen las páginas
+de los sensores que están funcionando: velocidad, suspensión, inclinación,
+fuerzas G, temperaturas (bujía, aceite, disco), vuelta, deslizamiento entre
+ruedas, resumen y sistema.
+
+- **Pulsación corta:** página siguiente. La pantalla **no cambia sola**: se
+  queda en la que elijas.
+- **Pulsación larga** (mantén 1 segundo): **marca vuelta** (en la línea de
+  meta). La página **VUELTA** enseña el tiempo de la vuelta y la diferencia
+  con tu mejor vuelta.
+- **Cabecera:** el nombre de la página y su número (por ejemplo `3/7`). Un
+  **punto parpadeando** quiere decir que está **grabando**; un **«!»**, que
+  hay una alerta grave reconocida que sigue activa (apartado 7).
+- **Si salta una alerta**, la pantalla cambia sola a la página de ese dato
+  (apartado 7). Con una pulsación corta la reconoces y vuelves a tu página.
+- **FUERZAS G:** el círculo de fricción con el punto actual y su rastro. La
+  aceleración lateral sale de la inclinación (la caja mide casi 0 en curva,
+  porque la moto se tumba).
+
+## 7. Luces y alertas
+
+Las 3 luces del cuadro son una **extensión de la pantalla**: muestran el dato
+de la página que estás viendo. Si cambias de página, las luces cambian con
+ella.
+
+- **Modo barra:** una luz por nivel, que se van encendiendo como un
+  indicador (por ejemplo, en INCLINACIÓN: verde a partir de 20°, ámbar a
+  partir de 30° y rojo a partir de 40°).
+- **Modo estado:** las 3 del mismo color según el valor (por ejemplo, en
+  TEMP BUJÍA: azul en frío, verde en rango, ámbar si sube, rojo parpadeando
+  si es crítica).
+
+**Las alertas mandan sobre todo:** estés en la página que estés, la pantalla
+salta a la del dato y las 3 luces avisan.
+
+- **Momentánea** (tope de suspensión, vuelta marcada, mejor vuelta en
+  morado): dura unos segundos y vuelve sola a tu página. Si se repite enseguida
+  (por ejemplo, topes seguidos en asfalto malo), no vuelve a cambiar la
+  pantalla durante un rato: solo destellan las luces.
+- **Grave** (bujía, aceite o disco muy calientes, sensor con fallo): se queda
+  mientras dure. Con una **pulsación corta** la reconoces: vuelves a tu
+  página con un **«!»** en la cabecera. Si sigue activa, vuelve a saltar a los
+  2 minutos. Cuando el valor vuelve a lo normal, se quita sola.
+- Si saltan varias a la vez, manda la grave y, entre iguales, la que esté más
+  arriba en la lista.
+
+**Colores:** rojo, ámbar, verde, azul, morado y blanco. **Efectos:** fijo,
+parpadeo lento, parpadeo rápido y destello.
+
+### Cambiar las luces y las alertas
+
+En **En vivo → Sensores y salidas**, en la fila de la tira de luces, pulsa
+**Luces y alertas**:
+
+- **Páginas:** para cada página de la pantalla, el **dato**, el **modo**
+  (barra o estado), el color **sin nivel** (normalmente apagadas) y los
+  **niveles** (valor, color y efecto). En modo estado manda el primer nivel que
+  se cumple, de arriba abajo. Quita el tick de una página para dejar sus
+  luces apagadas.
+- **Alertas:** nombre, dato, condición, tipo (**momentánea** o **grave**), la
+  página que enseña, el color y el efecto. En las momentáneas, cuánto dura y
+  cuánto espera antes de repetir; en las graves, cada cuánto recuerda. El
+  **margen al soltar** evita que una alerta se encienda y apague sin parar
+  justo en el umbral. Con **↑ ↓** cambias la prioridad.
+- **Plantillas:** **Recomendada**, **Solo alertas** (luces apagadas en marcha
+  normal) o **Todo apagado**, como punto de partida.
+- **Probar** enciende las luces de la moto un momento con ese color y efecto.
+- **Guardar** lo aplica al momento en la moto, sin reiniciar.
+
+Los valores de la plantilla recomendada son **de partida**: ajusta las
+temperaturas y los límites a tu moto después de tus primeras sesiones.
+
+## 8. Sesiones
 
 Pulsa **Sesiones** en tu sistema.
 
@@ -125,6 +204,20 @@ Pulsa **Sesiones** en tu sistema.
   - Con las **casillas** de arriba ocultas o muestras sensores; con **⠿**
     arrastras un bloque para cambiar el orden. **⚙ Ajustes** guarda ese orden
     y las opciones.
+  - **Bloque de la IMU:**
+    - **Diagrama g-g** (círculo de fricción): aceleración lateral en
+      horizontal y longitudinal en vertical; más oscuro = más tiempo ahí. Los
+      círculos van cada 0,25 g (un neumático de calle da hasta ≈ 1 g). Al
+      pasar el dedo o el ratón dice el % de tiempo de cada zona.
+    - La **aceleración lateral** sale de la inclinación (tan θ) y la
+      **longitudinal** va promediada en 0,5 s, para que la vibración del motor
+      no parezca frenadas.
+    - **Vibración vertical:** cuánto vibra la caja en cada momento (motor,
+      asfalto y golpes). Si es alta todo el rato, revisa cómo va sujeta.
+    - **Ángulos recalculados:** las sesiones grabadas antes de la mejora de la
+      calibración, con la caja inclinada, se corrigen solas al abrirlas.
+    - **Caja movida:** si la caja cambió de postura (se cogió, se soltó o la
+      moto se cayó), los datos desde ese momento no se usan y se avisa.
 - **Analizar trazas** (arriba, junto a la barra de tiempo): explica lo que se
   ve en el tramo visible (o en toda la sesión) con la teoría de la
   [formación](https://motorsport.amorgante.es): inclinación y radio de las
@@ -146,15 +239,19 @@ Pulsa **Sesiones** en tu sistema.
 - Al final de la página puedes abrir **CSV del ordenador** o la **sesión de
   ejemplo**.
 
-## 7. Encender y apagar el sistema
+## 9. Encender y apagar el sistema
 
-- **Encender:** basta con dar corriente. En 1 o 2 minutos sale «en línea»
-  en la app (si tiene internet).
+- **Encender:** basta con dar corriente. Durante unos **8 segundos** la
+  pantalla enseña el **logo** y las luces hacen una **prueba tipo semáforo**
+  (pasadas en rojo, ámbar y verde): en ese tiempo arrancan los sensores y la
+  IMU se calibra, así que deja la moto **recta y quieta** hasta que salga la
+  primera página. En 1 o 2 minutos sale «en línea» en la app (si tiene
+  internet).
 - **Apagar:** pide al administrador cómo hacerlo en tu moto. Si se corta la
   corriente mientras graba, la sesión puede quedar **cortada** (se guarda lo
   grabado hasta ese momento).
 
-## 8. Sin cobertura de internet (circuito)
+## 10. Sin cobertura de internet (circuito)
 
 Si el sistema no tiene internet, la app no lo encuentra («apagado o sin
 internet»). Puedes usarlo igualmente **junto a la moto**:
@@ -168,12 +265,12 @@ internet»). Puedes usarlo igualmente **junto a la moto**:
 
 Lo que grabes se subirá a la nube en cuanto el sistema tenga internet.
 
-## 9. Contraseña olvidada
+## 11. Contraseña olvidada
 
 Pide al administrador un **link de cambio de contraseña**. Se usa igual que el
 de alta (apartado 2).
 
-## 10. Privacidad y seguridad
+## 12. Privacidad y seguridad
 
 - Tus sesiones viajan y se guardan **cifradas**. Solo las ven los usuarios de
   tu sistema de telemetría.
@@ -183,13 +280,17 @@ de alta (apartado 2).
 - No compartas tu contraseña. Si crees que alguien la conoce, pide un cambio
   de contraseña.
 
-## 11. Problemas frecuentes
+## 13. Problemas frecuentes
 
 | Qué pasa | Qué hacer |
 | --- | --- |
 | «Usuario o contraseña incorrectos» | Revisa mayúsculas y minúsculas. Si no activaste la cuenta, hazlo primero (apartado 2) |
 | Mi sistema sale «apagado o sin internet» | ¿Está encendido y con internet? Tras encenderlo tarda 1 o 2 minutos. Pulsa **Actualizar** |
-| El vivo va a saltos | Por internet llegan unas 4 actualizaciones por segundo; con poca cobertura, menos. Junto a la moto, usa su wifi (apartado 8) |
+| El vivo va a saltos | Por internet llegan unas 4 actualizaciones por segundo; con poca cobertura, menos. Junto a la moto, usa su wifi (apartado 10) |
 | No veo una sesión que grabé | Se sube al pulsar **Parar grabación** y cuando el sistema tiene internet. Mira en **Sesiones guardadas en el sistema** si pone «sin subir» |
 | La app muestra algo antiguo | Cierra y vuelve a abrir la app, o recarga la página |
 | La web del sistema pide «Entra con un usuario de …» | Es normal: pulsa **Entrar** con tu usuario |
+| La pantalla ha cambiado sola de página | Ha saltado una alerta (apartado 7). Si es grave, una pulsación corta la reconoce y vuelves a tu página |
+| Hay un «!» en la cabecera de la pantalla | Una alerta grave reconocida sigue activa: mira su dato. Volverá a saltar a los 2 minutos si sigue así |
+| Las luces no se encienden | Activa la tira en **Sensores y salidas**. En una página sin luces configuradas (o con el dato por debajo del primer nivel) es normal que estén apagadas. Pulsa **Probar** en **Luces y alertas** para comprobarlas |
+| La inclinación da valores imposibles | Pulsa **Calibrar** con la moto recta y quieta, y revisa que la caja vaya bien sujeta |
