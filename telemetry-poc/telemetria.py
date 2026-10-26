@@ -43,6 +43,7 @@ from datetime import datetime
 import modulos
 import sincro
 from modulos import luces as luces_mod
+from modulos import moto as moto_mod
 from modulos.pantalla import PAGINAS
 from acceso import Acceso
 from live_server import LiveServer
@@ -94,7 +95,9 @@ class Grabador:
             os.makedirs(ruta, exist_ok=True)
             self.sesion = {"nombre": nombre, "ruta": ruta, "t0": self.m.reloj(),
                            "inicio": datetime.now().isoformat(timespec="seconds"),
-                           "ficheros": {}}
+                           "ficheros": {},
+                           # la moto de ese momento: se analiza con ella aunque luego cambie
+                           "moto": dict(self.m.cfg.get("moto") or {})}
             self._json()
         print(f"\nGrabando en {ruta}")
 
@@ -164,6 +167,8 @@ class Grabador:
                 mods[m.id] = {"tipo": m.TIPO, "nombre": m.nombre, "meta": m.meta()}
         datos = {"sesion": s["nombre"], "inicio": s["inicio"], "fin": s.get("fin"),
                  "simulada": self.m.hw.sim, "modulos": mods}
+        if s.get("moto"):
+            datos["moto"] = s["moto"]
         tmp = os.path.join(s["ruta"], "sesion.json.tmp")
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(datos, f, indent=2, ensure_ascii=False)
@@ -309,6 +314,14 @@ class Maestro:
             return self.sincro.borrar_de_nube(cuerpo.get("id"))
         elif p == ["luces"]:                     # configuracion de luces y alertas
             return self.guardar_luces(cuerpo.get("config"))
+        elif p == ["moto"]:                      # ficha de la moto
+            ficha = moto_mod.validar(cuerpo.get("moto"))
+            with self.lock:
+                self.cfg["moto"] = ficha
+                cambios = moto_mod.aplicar(ficha, self.modulos, self.cfg["modulos"])
+                guardar_config(self.ruta_cfg, self.cfg)
+            self.publicar_estado()
+            return {"ok": True, "aplicado": cambios}
         elif p == ["luces", "probar"]:
             color, efecto = cuerpo.get("color"), cuerpo.get("efecto", "fijo")
             if color not in luces_mod.COLORES or efecto not in luces_mod.EFECTOS:
@@ -384,6 +397,7 @@ class Maestro:
         s = self.grabador.sesion
         return {
             "sim": self.hw.sim, "t": round(self.reloj(), 2), "modulos": mods,
+            "moto": self.cfg.get("moto") or {},
             "sesion": None if s is None else {
                 "nombre": s["nombre"], "inicio": s["inicio"],
                 "duracion_s": round(self.reloj() - s["t0"], 1),

@@ -216,7 +216,7 @@ button.danger { background: var(--status-err); border-color: var(--status-err); 
 .led-sw.rojo { --c: var(--status-err); }
 .led-sw.azul { --c: var(--series-1); }
 .sel-color { display: inline-flex; align-items: center; gap: 6px; }
-.luces-cfg { margin: 14px 0 6px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+.luces-cfg { padding: 0; }
 .luces-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: space-between; }
 .luces-head h3 { margin: 0; font-size: 1rem; }
 .luces-cfg > p.muted { margin: 8px 0; font-size: 0.82rem; }
@@ -313,3 +313,32 @@ label.btn:hover { border-color: var(--steel); }
   body { padding: 12px; }
   .tile b { font-size: 1.15rem; }
 }
+
+/* Pestanas plegables de ajustes (Sensores, Pantalla y luces, Moto, Parametros) */
+.cfg-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
+.cfg-tabs button { background: none; color: var(--sub); border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; font-size: 0.84rem; font-weight: 500; }
+.cfg-tabs button::after { content: " ▾"; font-size: 0.75em; }
+.cfg-tabs button[aria-expanded="true"] { color: var(--text); border-color: var(--accent); background: var(--card); }
+.cfg-tabs button[aria-expanded="true"]::after { content: " ▴"; }
+.cfg-panel { margin: 8px 0 4px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+.cfg-panel .sub-head { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.cfg-panel .sub-head .muted { flex: 1 1 320px; font-size: 0.8rem; }
+#cfg-params h4 { margin: 10px 0 4px; font-size: 0.85rem; }
+#cfg-params h4:first-child { margin-top: 0; }
+/* pantalla y luces como bloques de la vista en vivo */
+.tiles:empty { display: none; }
+.out-body img.oled { display: block; width: 384px; max-width: 100%; aspect-ratio: 2; image-rendering: pixelated; background: #000; border-radius: 6px; border: 6px solid #000; box-shadow: 0 0 0 1px var(--border); }
+.out-body .strip i { width: 26px; height: 26px; }
+.out-body p { margin: 8px 0 0; font-size: 0.82rem; }
+
+/* Ficha de la moto: rejilla compacta, varios campos por fila */
+.moto-form { display: grid; gap: 10px; margin-top: 8px; }
+.moto-grupo { margin: 0; padding: 6px 10px 10px; border: 1px solid var(--border); border-radius: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); gap: 8px 12px; align-items: start; }
+.moto-grupo legend { padding: 0 4px; font-weight: 600; font-size: 0.85rem; color: var(--heading); }
+.moto-grupo .field.grow { grid-column: 1 / -1; }
+.moto-grupo .field input, .moto-grupo .field select { width: 100%; box-sizing: border-box; }
+.moto-grupo small.ayuda { font-size: 0.7rem; line-height: 1.3; }
+.moto-form textarea { width: 100%; box-sizing: border-box; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font: inherit; resize: vertical; }
+.moto-valor { color: var(--text); font-size: 0.92rem; }
+.moto-der { margin: 10px 0; padding-left: 18px; font-size: 0.85rem; }
+#cfg-moto > div > .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }

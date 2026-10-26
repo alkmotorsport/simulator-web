@@ -21,6 +21,7 @@ Servidor web + tiempo real para la telemetria. Solo libreria estandar.
                     luces {"config"} (luces y alertas: modulos/luces.py; GET /api/luces
                     la devuelve con el catalogo y las plantillas),
                     luces/probar {"color", "efecto"},
+                    moto {"moto"} (ficha de la moto: modulos/moto.py; va en /api/estado),
                     detectar, auto, grabar {"grabar": true|false},
                     alta/consultar {"inv"}, alta {"inv", "secreto", "password"}
                     (alta de un usuario invitado: ver sincro.py)

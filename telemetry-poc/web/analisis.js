@@ -9,6 +9,9 @@
  *     rango  [t0, t1] visible o null (toda la sesion)
  *     nivel  'aviso' | 'info' | 'ok';  t = instante para «Ver» (o null)
  *
+ * La moto: la ficha de la sesion (pestana Moto: peso, batalla, neumaticos,
+ * frenos...); lo que falte sale de la moto de ejemplo de la web y se dice.
+ *
  * Primero cada sensor por separado y despues las correlaciones entre ellos
  * (IMU con rueda, suspension, disco de freno...). Sin datos de un sensor, sus
  * reglas no salen.
@@ -19,7 +22,7 @@
   const G = 9.81;
   const WEB = 'https://motorsport.amorgante.es/#';
   // valores por defecto de la web (la moto de cada simulacion)
-  const REF = {
+  const WEB_REF = {
     m: 220, h: 0.60, L: 1.40,                       // 2.3 transferencia de carga
     mu: { calle: 1.0, deportivo: 1.2, competicion: 1.5 },   // margen de agarre
     disco: { m: 1.5, cp: 460, limite: 500 },        // 6.2 acero en calle
@@ -27,9 +30,39 @@
     ks: 35000, ms: 75, kt: 150000, mu_ns: 18,       // 3.6 masa suspendida
     ondulado: 5,                                     // resonancia: ondulado de 5 m
   };
-  const STOPPIE_G = REF.L / (2 * REF.h);             // a = g·L/(2h)
-  const FS = Math.sqrt(REF.ks / REF.ms) / (2 * Math.PI);
-  const FU = Math.sqrt((REF.ks + REF.kt) / REF.mu_ns) / (2 * Math.PI);
+  const FS = Math.sqrt(WEB_REF.ks / WEB_REF.ms) / (2 * Math.PI);
+  const FU = Math.sqrt((WEB_REF.ks + WEB_REF.kt) / WEB_REF.mu_ns) / (2 * Math.PI);
+  const NEUMATICO = { calle: 'de calle', deportivo: 'deportivo', competicion: 'de competición' };
+  // C_D y A por carroceria (los casos de la web: naked y MotoGP carenada)
+  const AERO = { naked: [0.65, 0.55], semicarenada: [0.65, 0.48], carenada: [0.70, 0.44] };
+
+  // la moto de este analisis (configurar): REF con lo de la ficha encima
+  let REF = WEB_REF, STOPPIE_G = WEB_REF.L / (2 * WEB_REF.h), MOTO = {};
+
+  function configurar(moto) {
+    const f = MOTO = moto || {};
+    REF = Object.assign({}, WEB_REF);
+    if (f.peso_seco_kg) REF.m = f.peso_seco_kg + (f.piloto_kg || 75) + (f.deposito_l ? f.deposito_l / 2 * 0.74 : 0);
+    if (f.batalla_m) REF.L = f.batalla_m;
+    if (f.altura_cm_m) REF.h = f.altura_cm_m;
+    REF.neum = f.neumaticos || 'calle';
+    REF.muMoto = WEB_REF.mu[REF.neum];
+    if (AERO[f.carroceria]) [REF.cd, REF.area] = AERO[f.carroceria];
+    REF.tambor = f.freno_del_tipo === 'tambor';
+    if (f.freno_del_tipo === 'disco') {
+      const carbono = f.freno_del_material === 'carbono';
+      REF.disco = { m: f.freno_del_disco_kg || WEB_REF.disco.m, n: f.freno_del_discos || 2,
+                    cp: carbono ? 1200 : 460, limite: carbono ? 1000 : 500, material: carbono ? 'carbono' : 'acero' };
+    } else REF.disco = Object.assign({ n: 2, material: 'acero' }, WEB_REF.disco);
+    STOPPIE_G = REF.L / (2 * REF.h);
+  }
+  /** «con tu moto (…)» o «con la moto de ejemplo de la web (…)» para m, h y L. */
+  function conMoto() {
+    const d = [['m', MOTO.peso_seco_kg, n0(REF.m) + ' kg'], ['h', MOTO.altura_cm_m, n2(REF.h) + ' m'], ['L', MOTO.batalla_m, n2(REF.L) + ' m']];
+    const propios = d.filter(x => x[1]).map(x => x[0] + ' ' + x[2]), web = d.filter(x => !x[1]).map(x => x[0] + ' ' + x[2]);
+    if (!propios.length) return 'con la moto de ejemplo de la web (' + web.join(', ') + ')';
+    return 'con tu moto (' + propios.join(', ') + ')' + (web.length ? ' y, de la web, ' + web.join(', ') : '');
+  }
   const THETA = mu => Math.atan(mu) * 180 / Math.PI;
 
   // ------------------------------------------------------------ utilidades ---
@@ -183,8 +216,8 @@
       const nivel = th > THETA(REF.mu.competicion) ? 'aviso' : 'info';
       if (th > THETA(REF.mu.competicion))
         txt += 'Es más de lo que da incluso un neumático de competición (μ 1,5 → ' + n0(THETA(1.5)) + '°): lo más probable es un error de medida (caja suelta o mal calibrada).';
-      else txt += 'Con un neumático de calle (μ ≈ 1,0) el máximo teórico es atan μ = ' + n0(THETA(1)) + '°: ' +
-        (th < THETA(1) ? 'te quedaban ' + n0(THETA(1) - th) + '° de margen.' : 'estás en el límite de un neumático de calle; deportivo (μ 1,2) llega a ' + n0(THETA(1.2)) + '°.');
+      else txt += 'Con un neumático ' + NEUMATICO[REF.neum] + ' (μ ≈ ' + n1(REF.muMoto) + ') el máximo teórico es atan μ = ' + n0(THETA(REF.muMoto)) + '°: ' +
+        (th < THETA(REF.muMoto) ? 'te quedaban ' + n0(THETA(REF.muMoto) - th) + '° de margen.' : 'estás en el límite de tu neumático.');
       add(nivel, 'En curva', 'Inclinación máxima a la ' + lado + ': ' + n1(th) + '°', txt, 'lean', e.t);
     }
 
@@ -208,9 +241,9 @@
       if (!(g <= gc.v)) { gc.v = g; gc.t = t[i]; }
     }
     if (gc.v === gc.v) {
-      const u = gc.v / REF.mu.calle;
-      add(u > 0.9 ? 'aviso' : 'info', 'En curva', 'Agarre usado: ' + n0(100 * u) + ' % de un neumático de calle',
-        'En el círculo de fricción, la aceleración total es √(a_lat² + a_long²) y no puede pasar de μ·g. Tu máximo fue ' + n2(gc.v) + ' g; con μ ≈ 1,0 (calle) el límite es 1 g' +
+      const u = gc.v / REF.muMoto;
+      add(u > 0.9 ? 'aviso' : 'info', 'En curva', 'Agarre usado: ' + n0(100 * u) + ' % de un neumático ' + NEUMATICO[REF.neum],
+        'En el círculo de fricción, la aceleración total es √(a_lat² + a_long²) y no puede pasar de μ·g. Tu máximo fue ' + n2(gc.v) + ' g; con μ ≈ ' + n1(REF.muMoto) + ' (' + NEUMATICO[REF.neum].replace('de ', '') + ') el límite es ' + n1(REF.muMoto) + ' g' +
         (u > 1 ? ': lo pasa. O el neumático da más (deportivo μ 1,2, competición 1,5) o el pico es un golpe o ruido; míralo con «Ver». '
           : u > 0.9 ? ': estuviste muy cerca. ' : '. ') + 'Pasaste el ' + n1(n ? 100 * sobre / n : NaN) + ' % del tiempo por encima de 0,5 g. En el diagrama g-g se ve cuánto del círculo usas.', 'grip', gc.t);
     }
@@ -223,10 +256,10 @@
         const e = extremo(t, d.ax_f, x.i0, x.i1, -1);
         if (!peor || e.v < peor.a) peor = { a: e.v, t: e.t, th: Math.abs(en(t, d.incl_deg, e.t)) };
       }
-      const u = Math.tan(peor.th * Math.PI / 180) / REF.mu.calle;
-      const disp = u < 1 ? REF.mu.calle * Math.sqrt(1 - u * u) : 0;
+      const u = Math.tan(peor.th * Math.PI / 180) / REF.muMoto;
+      const disp = u < 1 ? REF.muMoto * Math.sqrt(1 - u * u) : 0;
       add('info', 'En curva', 'Frenas ya tumbado ' + tb.length + ' veces',
-        'Frenar dentro de la curva gasta del mismo agarre que el giro: a_long,máx = μ·g·√(1 − u²), con u = a_lat/(μ·g). En la más fuerte frenabas a ' + n2(-peor.a) + ' g con ' + n0(peor.th) + '° de inclinación; con μ ≈ 1,0 ahí quedaban ' + n2(disp) + ' g de frenada posible.', 'grip', peor.t);
+        'Frenar dentro de la curva gasta del mismo agarre que el giro: a_long,máx = μ·g·√(1 − u²), con u = a_lat/(μ·g). En la más fuerte frenabas a ' + n2(-peor.a) + ' g con ' + n0(peor.th) + '° de inclinación; con μ ≈ ' + n1(REF.muMoto) + ' ahí quedaban ' + n2(disp) + ' g de frenada posible.', 'grip', peor.t);
     }
   }
 
@@ -241,7 +274,7 @@
       if (fmax.v < -0.1) {
         const a = -fmax.v, pct = 50 + 100 * REF.h / REF.L * a, dW = REF.h / REF.L * REF.m * a * G;
         add(a > STOPPIE_G * 0.85 ? 'aviso' : 'info', 'Frenada', 'Frenada máxima: ' + n2(a) + ' g' + (fr.length ? ' (' + fr.length + ' frenadas de más de 0,2 g)' : ''),
-          'Al frenar, la inercia pasa carga a la rueda delantera: ΔW = (h/L)·m·|a| = ' + n0(dW) + ' N con la moto de la web (m ' + REF.m + ' kg, h ' + n2(REF.h) + ' m, L ' + n2(REF.L) + ' m). ' +
+          'Al frenar, la inercia pasa carga a la rueda delantera: ΔW = (h/L)·m·|a| = ' + n0(dW) + ' N ' + conMoto() + '. ' +
           (a >= STOPPIE_G ? 'Supera el límite de stoppie del modelo, g·L/2h = ' + n2(STOPPIE_G) + ' g: con esta geometría la trasera se habría levantado. O la moto real tiene el centro de masas más bajo o la batalla más larga, o el pico es ruido. '
             : 'La delantera llevaba ≈ ' + n0(pct) + ' % del peso. La trasera se levanta (stoppie) hacia g·L/2h = ' + n2(STOPPIE_G) + ' g. ') + 'Referencias: emergencia en calle 1,2–1,3 g; MotoGP ~1,5 g.', 'load', fmax.t);
       }
@@ -259,7 +292,9 @@
     if (vmax.v > 5) {
       const v = vmax.v / 3.6, F = 0.5 * REF.rho * v * v * REF.cd * REF.area, P = F * v / 735.5;
       add('info', 'Velocidad', 'Velocidad máxima: ' + n0(vmax.v) + ' km/h',
-        'A esa velocidad el aire empuja con F_D = ½·ρ·v²·C_D·A ≈ ' + n0(F) + ' N y vencerlo pide P = F_D·v ≈ ' + n0(P) + ' CV (naked de la web: C_D ' + n2(REF.cd) + ', A ' + n2(REF.area) + ' m²). La potencia crece con v³.', 'aero', vmax.t);
+        'A esa velocidad el aire empuja con F_D = ½·ρ·v²·C_D·A ≈ ' + n0(F) + ' N y vencerlo pide P = F_D·v ≈ ' + n0(P) + ' CV (' + (MOTO.carroceria ? MOTO.carroceria : 'naked de la web') + ': C_D ' + n2(REF.cd) + ', A ' + n2(REF.area) + ' m²).' +
+        (MOTO.potencia_cv ? ' Tu motor da ' + n1(MOTO.potencia_cv) + ' CV: ' + (P > MOTO.potencia_cv * 0.9 ? 'ibas casi al límite de lo que puede empujar.' : 'el aire se llevaba el ' + n0(100 * P / MOTO.potencia_cv) + ' %.') : '') +
+        (MOTO.vmax_kmh ? ' Velocidad máxima de la ficha: ' + n0(MOTO.vmax_kmh) + ' km/h' + (vmax.v > MOTO.vmax_kmh * 1.1 ? ' (la medida la supera: revisa el perímetro de rueda en la ficha).' : '.') : '') + ' La potencia crece con v³.', 'aero', vmax.t);
     }
     // frenadas segun la rueda: la de mas energia
     const v = Float64Array.from(kmh, x => x / 3.6), dv = new Float64Array(v.length).fill(NaN);
@@ -276,8 +311,11 @@
       if (!mayor || E > mayor.E) mayor = { E, v1, v2, t0: x.t0, t1: x.t1, a: (v1 - v2) / Math.max(0.1, x.t1 - x.t0 + 0.5) / G };
     }
     if (mayor) {
-      const dT = mayor.E / (2 * REF.disco.m * REF.disco.cp);
-      let txt = 'De ' + n0(mayor.v1 * 3.6) + ' a ' + n0(mayor.v2 * 3.6) + ' km/h (' + n2(mayor.a) + ' g de media). Energía E = ½·m·(v₁² − v₂²) ≈ ' + n0(mayor.E / 1000) + ' kJ; si toda fuera a los dos discos delanteros de acero de la web (1,5 kg, cp 460), subirían ΔT = E/(2·m·cp) ≈ ' + n0(dT) + ' °C (cota superior: no cuenta el aire ni el freno trasero).';
+      const dT = mayor.E / (REF.disco.n * REF.disco.m * REF.disco.cp);
+      let txt = 'De ' + n0(mayor.v1 * 3.6) + ' a ' + n0(mayor.v2 * 3.6) + ' km/h (' + n2(mayor.a) + ' g de media). Energía E = ½·m·(v₁² − v₂²) ≈ ' + n0(mayor.E / 1000) + ' kJ (m ≈ ' + n0(REF.m) + ' kg). ' +
+        (REF.tambor
+          ? 'Con freno de tambor' + (MOTO.freno_del_mm ? ' de ' + n0(MOTO.freno_del_mm) + ' mm' : '') + ', ese calor se queda en el tambor, que lo evacua peor que un disco: en frenadas seguidas pierde eficacia antes (fading). El modelo del disco de la web no aplica.'
+          : 'Si toda fuera a ' + (REF.disco.n === 1 ? 'el disco delantero' : 'los ' + REF.disco.n + ' discos delanteros') + ' de ' + REF.disco.material + ' (' + n1(REF.disco.m) + ' kg, cp ' + REF.disco.cp + '), subirían ΔT = E/(n·m·cp) ≈ ' + n0(dT) + ' °C (cota superior: no cuenta el aire ni el freno trasero).');
       const ir = S.disco;
       if (ir) {
         const T0 = en(ir.ds.t, ir.derived.obj_c, mayor.t0, 2);
@@ -359,7 +397,7 @@
       if (e.v === e.v) {
         const lim = REF.disco.limite, u = e.v / lim;
         add(u > 0.8 ? 'aviso' : 'info', 'Frenos', 'Disco de freno: máximo ' + n0(e.v) + ' °C',
-          'El límite orientativo de un disco de acero en la web es ' + lim + ' °C (a partir de ahí empieza el fading). ' +
+          'El límite orientativo de un disco de ' + REF.disco.material + ' en la web es ' + lim + ' °C (a partir de ahí empieza el fading). ' +
           (u > 0.8 ? 'Estás cerca: en frenadas repetidas el calor se acumula si no da tiempo a enfriar (T_sig = T_amb + (T_pico − T_amb)·e^(−t/τ)).' : 'Vas con margen (' + n0(100 * u) + ' % del límite).'), u > 0.8 ? 'rep' : 'brake', e.t);
       }
     }
@@ -406,10 +444,27 @@
   }
 
   const ORDEN_NIVEL = { aviso: 0, info: 1, ok: 2 };
-  const TEMAS = ['Datos', 'En curva', 'Frenada', 'Velocidad', 'Correlación', 'Suspensión', 'Frenos', 'Temperaturas', 'Vueltas'];
+  const TEMAS = ['Moto', 'Datos', 'En curva', 'Frenada', 'Velocidad', 'Correlación', 'Suspensión', 'Frenos', 'Temperaturas', 'Vueltas'];
 
-  function analizar(sets, rango) {
+  function ficha(add) {
+    const f = MOTO;
+    if (!Object.keys(f).length) {
+      add('info', 'Moto', 'Sin ficha de la moto: se usa la moto de ejemplo de la formación',
+        'Peso, batalla, neumáticos y frenos son los de la web (220 kg, 1,40 m, neumático de calle, discos de acero). Rellena la pestaña Moto en vivo y las sesiones que grabes después se analizarán con tu moto.', null, null);
+      return;
+    }
+    const faltan = [['peso_seco_kg', 'peso'], ['batalla_m', 'batalla'], ['altura_cm_m', 'altura del centro de masas'], ['neumaticos', 'neumáticos'], ['perimetro_tras_m', 'perímetro de rueda'], ['susp_tras_mm', 'recorrido de suspensión']]
+      .filter(([k]) => f[k] == null).map(([, t]) => t);
+    add('ok', 'Moto', 'Analizado con: ' + (f.nombre || 'tu moto'),
+      'Masa en marcha ≈ ' + n0(REF.m) + ' kg' + (f.peso_seco_kg ? ' (' + n0(f.peso_seco_kg) + ' en seco + ' + n0(f.piloto_kg || 75) + ' piloto' + (f.deposito_l ? ' + medio depósito' : '') + ')' : '') +
+      '; neumático ' + NEUMATICO[REF.neum] + ' (μ ≈ ' + n1(REF.muMoto) + '); freno delantero ' + (REF.tambor ? 'de tambor' : 'de disco') +
+      (faltan.length ? '. Sin dato (se usa el de la web o no se calcula): ' + faltan.join(', ') + '.' : '.'), null, null);
+  }
+
+  function analizar(sets, rango, moto) {
+    configurar(moto);
     const S = agrupar(sets), { lista, add } = nuevo();
+    ficha(add);
     for (const regla of [calidad, curva, frenada, suspension, temperaturas, vueltas]) {
       try { regla(S, rango, add); } catch (e) { console.error('analisis', regla.name, e); }
     }

@@ -3,9 +3,10 @@
  * luces WS2812 en cada pagina de la pantalla y las alertas, y lo guarda en el
  * sistema (POST /api/luces; el formato esta en modulos/luces.py).
  *
- *   LucesCfg.abrir(caja, { leer, enviar })
+ *   LucesCfg.abrir(caja, { leer, enviar, cerrar })
  *     leer()                 -> promesa con lo de GET /api/luces
  *     enviar(ruta, cuerpo)   -> POST a la raspi (lanza Error con su mensaje)
+ *     cerrar()               -> boton Cerrar (pliega la pestana)
  */
 (function (global) {
   'use strict';
@@ -51,7 +52,6 @@
 
   async function abrir(contenedor, ayudantes) {
     caja = contenedor; io = ayudantes;
-    caja.hidden = false;
     caja.innerHTML = '';
     el('p', 'muted', caja, 'Cargando…');
     try {
@@ -93,7 +93,7 @@
       catch (e) { msg('No se pudo guardar: ' + e.message, true); }
       guardar.disabled = false;
     });
-    el('button', 'ghost small', acc, 'Cerrar').addEventListener('click', () => { caja.hidden = true; caja.innerHTML = ''; });
+    el('button', 'ghost small', acc, 'Cerrar').addEventListener('click', () => (io.cerrar ? io.cerrar() : (caja.hidden = true)));
     el('p', 'muted', caja, 'Las luces muestran el dato de la página que se ve en la pantalla. Las alertas mandan sobre todo: '
       + 'la pantalla salta a su página y todas las luces avisan. Una alerta grave se reconoce con una pulsación corta.'
       + (info.tira ? '' : ' La tira de luces no está en marcha: actívala para verlas en la moto.'));

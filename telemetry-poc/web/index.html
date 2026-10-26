@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Telemetría">
-<link rel="stylesheet" href="style.css?v=20261026e">
+<link rel="stylesheet" href="style.css?v=20261026g">
 </head>
 <body>
 
@@ -113,24 +113,6 @@
   </div>
   <p id="live-status" class="status">Desconectado</p>
 
-  <details id="panel" class="fold" hidden>
-    <summary><b>Sensores y salidas</b> <span id="panel-sum" class="muted"></span></summary>
-    <div class="sub-head">
-      <span></span>
-      <div class="bar">
-        <button id="detect" class="ghost small">Autodetectar</button>
-        <button id="all-auto" class="ghost small" title="Quita lo forzado a mano y deja que decida la autodetección">Todo automático</button>
-      </div>
-    </div>
-    <ul id="mods" class="mods"></ul>
-    <div id="luces-cfg" class="luces-cfg" hidden></div>
-    <p class="hint">
-      El tick arranca o para el módulo en el sistema (y lo recuerda en <code>telemetria.json</code>).
-      <b>auto</b> = arranca solo si se detecta conectado. Lo que no está activo ni se ejecuta ni se graba.
-    </p>
-  </details>
-
-  <div id="outputs" class="outputs" hidden></div>
 </section>
 
 <section id="pane-file" class="card" hidden>
@@ -189,10 +171,27 @@
     </details>
   </div>
   <div id="chips" class="chips" aria-label="Sensores visibles"></div>
-  <details id="meta" hidden>
-    <summary>Parámetros de la sesión</summary>
-    <div id="meta-list"></div>
-  </details>
+  <!-- pestanas plegables: todas cerradas al empezar; pulsar otra vez la cierra -->
+  <div class="cfg-tabs" role="tablist" aria-label="Configuración">
+    <button type="button" data-cfg="sensores" class="solo-vivo" aria-expanded="false">Sensores <span id="panel-sum" class="muted"></span></button>
+    <button type="button" data-cfg="luces" class="solo-vivo" aria-expanded="false">Pantalla y luces</button>
+    <button type="button" data-cfg="moto" aria-expanded="false">Moto</button>
+    <button type="button" data-cfg="params" aria-expanded="false">Parámetros de la sesión</button>
+  </div>
+  <div id="cfg-sensores" class="cfg-panel" hidden>
+    <div class="sub-head">
+      <span class="muted">El tick arranca o para el módulo en el sistema (y lo recuerda en <code>telemetria.json</code>).
+        <b>auto</b> = arranca solo si se detecta conectado. Lo que no está activo ni se ejecuta ni se graba.</span>
+      <div class="bar">
+        <button id="detect" class="ghost small">Autodetectar</button>
+        <button id="all-auto" class="ghost small" title="Quita lo forzado a mano y deja que decida la autodetección">Todo automático</button>
+      </div>
+    </div>
+    <ul id="mods" class="mods"></ul>
+  </div>
+  <div id="cfg-luces" class="cfg-panel" hidden><div id="luces-cfg" class="luces-cfg"></div></div>
+  <div id="cfg-moto" class="cfg-panel" hidden><div id="moto-cfg"></div></div>
+  <div id="cfg-params" class="cfg-panel" hidden><div id="meta-list"></div></div>
   <div class="range-bar">
     <div class="range-top">
       <span id="range-label"></span>
@@ -226,15 +225,16 @@
   </p>
 </section>
 
-<script src="plot.js?v=20261026e"></script>
-<script src="sensors.js?v=20261026e"></script>
-<script src="analisis.js?v=20261026e"></script>
-<script src="luces.js?v=20261026e"></script>
-<script src="app.js?v=20261026e"></script>
-<script src="config.js?v=20261026e"></script>
-<script src="cripto.js?v=20261026e"></script>
-<script src="repo.js?v=20261026e"></script>
-<script src="cuenta.js?v=20261026e"></script>
+<script src="plot.js?v=20261026g"></script>
+<script src="sensors.js?v=20261026g"></script>
+<script src="analisis.js?v=20261026g"></script>
+<script src="luces.js?v=20261026g"></script>
+<script src="moto.js?v=20261026g"></script>
+<script src="app.js?v=20261026g"></script>
+<script src="config.js?v=20261026g"></script>
+<script src="cripto.js?v=20261026g"></script>
+<script src="repo.js?v=20261026g"></script>
+<script src="cuenta.js?v=20261026g"></script>
 <script>
   // app instalable (PWA); solo en https: la web de la Pi (http) no lo necesita
   if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(() => {});

@@ -13,7 +13,7 @@
   const $ = s => document.querySelector(s);
   const LIVE_KEEP_S = 300;  // segundos de cada sensor que se guardan en vivo
   // orden de los bloques en la vista (por tipo de sensor)
-  const ORDEN = ['suspension', 'rueda', 'imu', 'termopar', 'infrarrojos', 'boton', 'generic'];
+  const ORDEN = ['salida', 'suspension', 'rueda', 'imu', 'termopar', 'infrarrojos', 'boton', 'generic'];
 
   function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
   function el(tag, cls, parent, text) {
@@ -32,7 +32,7 @@
   let lastFile = null;     // ultima sesion abierta: {title, sub, sets}
   let analizado = null;    // tramo de Analizar trazas: [t0, t1] o 'todo'
   const live = {
-    es: null, estado: null, sets: {}, ctx: {}, vivos: {}, rows: {}, key: '',
+    es: null, estado: null, sets: {}, salidas: {}, ctx: {}, vivos: {}, rows: {}, key: '',
     paused: false, dirty: false, lastDraw: 0, lastSession: null, control: true,
   };
 
@@ -85,8 +85,8 @@
   }
 
   /** Una sesion (CSV, de la Pi, de la nube o la de ejemplo): a la pestana Sesiones. */
-  function abrirSesionEnVista(title, sub, sets) {
-    lastFile = { title, sub, sets };
+  function abrirSesionEnVista(title, sub, sets, moto) {
+    lastFile = { title, sub, sets, moto: moto || null };
     $('#otras').open = false;     // con una sesion abierta, lo de abrir CSV se pliega
     showTab('file');
   }
@@ -176,6 +176,13 @@
       if (s.def.name !== s.ds.name) el('p', 'muted', tit, s.def.name);
       const opts = el('div', 'bar', head);
       const tiles = el('div', 'tiles', sec);
+      if (s.def.id === 'salida') {          // pantalla o luces: lo pinta renderOutputs
+        const out = el('div', 'out-body', sec);
+        if (s.ds.salida === 'tira') { el('div', 'strip', out); el('p', 'muted', out); }
+        else { const i = el('img', 'oled', out); i.alt = 'Pantalla del cuadro'; }
+        s.el = { sec, tiles, opts, out };
+        continue;
+      }
       // el diagrama g-g va el primero, antes de las graficas de tiempo
       const gBox = el('div', 'charts', sec), tBox = el('div', 'charts', sec), hBox = el('div', 'charts hist', sec);
       for (const c0 of s.def.charts(s.ds)) {
@@ -472,7 +479,7 @@
 
   function analizar() {
     const tramo = tramoActual();
-    const lista = Analisis.analizar(view.sets.filter(s => s.derived), tramo === 'todo' ? null : tramo);
+    const lista = Analisis.analizar(view.sets.filter(s => s.derived && s.def.id !== 'salida'), tramo === 'todo' ? null : tramo, motoActual());
     analizado = tramo;
     $('#analisis-tramo').textContent = tramo === 'todo' ? '· toda la sesión' : '· tramo ' + tramo[0].toFixed(1) + ' – ' + tramo[1].toFixed(1) + ' s';
     const box = $('#analisis-lista');
@@ -527,8 +534,70 @@
         el('dd', '', dl, Array.isArray(v) ? v.join(' · ') : v === null ? '—' : String(v));
       }
     }
-    $('#meta').hidden = !n;
+    const tabParams = document.querySelector('[data-cfg="params"]');
+    tabParams.hidden = !n;
+    if (!n && cfgAbierta === 'params') abrirCfg(null);
+    pintarCfgTabs();
+    if (cfgAbierta === 'moto') abrirMoto();       // otra vista: su ficha
   }
+
+  // ------------------------------------------------- pestanas de ajustes ---
+  // Sensores · Pantalla y luces · Moto · Parametros de la sesion: plegables,
+  // todas cerradas al empezar; pulsar la abierta la cierra. Las dos primeras
+  // solo en vivo (hablan con el sistema).
+
+  let cfgAbierta = null;
+
+  function abrirCfg(id) {
+    cfgAbierta = id;
+    document.querySelectorAll('.cfg-tabs button').forEach(b => b.setAttribute('aria-expanded', b.dataset.cfg === id));
+    document.querySelectorAll('.cfg-panel').forEach(p => { p.hidden = p.id !== 'cfg-' + id; });
+    if (id === 'luces') {
+      LucesCfg.abrir($('#luces-cfg'), {
+        leer: async () => {
+          const r = await piFetch('/api/luces');
+          if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'HTTP ' + r.status);
+          return r.json();
+        },
+        enviar: api,
+        cerrar: () => abrirCfg(null),
+      });
+    } else if (id === 'moto') {
+      abrirMoto();
+    }
+  }
+
+  /** Ficha de la moto de lo que se ve: la del sistema en vivo o la de la sesion. */
+  function motoActual() {
+    if (view.live) return (live.estado && live.estado.moto) || null;
+    return (view.fichero && view.fichero.moto) || null;
+  }
+
+  function abrirMoto() {
+    const caja = $('#moto-cfg');
+    if (view.live && live.estado && live.control) {
+      MotoCfg.abrir(caja, live.estado.moto, {
+        guardar: async f => {
+          const r = await api('/api/moto', { moto: f });
+          live.estado.moto = f;
+          return r;
+        },
+      });
+    } else {
+      MotoCfg.abrir(caja, motoActual());
+    }
+  }
+
+  /** Que pestanas se ven: las del sistema solo en vivo y con control. */
+  function pintarCfgTabs() {
+    const vivo = view.live && !!live.estado;
+    document.querySelectorAll('.cfg-tabs .solo-vivo').forEach(b => { b.hidden = !vivo || !live.control; });
+    const abierta = document.querySelector('.cfg-tabs [data-cfg="' + cfgAbierta + '"]');
+    if (cfgAbierta && (!abierta || abierta.hidden)) abrirCfg(null);
+  }
+
+  document.querySelectorAll('.cfg-tabs button').forEach(b => b.addEventListener('click', () =>
+    abrirCfg(cfgAbierta === b.dataset.cfg ? null : b.dataset.cfg)));
 
   // ----------------------------------------------------------------- CSV ---
 
@@ -602,7 +671,7 @@
     const sub = sets.length + (sets.length === 1 ? ' sensor' : ' sensores') +
       (sj && sj.inicio ? ' · ' + sj.inicio.replace('T', ' ') : '') + (sj && sj.simulada ? ' · simulada' : '') +
       (nota ? ' — ' + nota : '');
-    abrirSesionEnVista(title, sub, sets);
+    abrirSesionEnVista(title, sub, sets, sj && sj.moto);
     fileMsg(avisos.length ? 'Sin datos: ' + avisos.join('; ') : '');
   }
 
@@ -855,7 +924,7 @@
     if (mixed) { setStatus(mixed, 'err'); piLink($('#live-status'), base); return; }
     store('tele-server', $('#server').value.trim());
     disconnect();
-    live.sets = {}; live.vivos = {}; live.key = ''; live.control = true;
+    live.sets = {}; live.salidas = {}; live.vivos = {}; live.key = ''; live.control = true;
     const con = live.es = { close() { con.cerrada = true; } };   // ya cuenta como conectado
     setStatus('Conectando…');
     $('#connect').textContent = 'Desconectar';
@@ -922,8 +991,7 @@
     $('#connect').textContent = 'Conectar';
     $('#pause').disabled = true;
     $('#rec').disabled = true;
-    $('#panel').hidden = true;
-    $('#outputs').hidden = true;
+    pintarCfgTabs();
     $('#open-full').disabled = !live.lastSession;
     setStatus('Desconectado');
     if (live.paused) togglePause();
@@ -942,6 +1010,11 @@
     m.cols.slice(1).forEach(c => { cols[c] = []; });
     live.sets[id] = { id, name: m.nombre, sensor: m.tipo, t: [], cols, meta: m.meta, ctx: live.ctx, live: true, lastT: -Infinity };
     return live.sets[id];
+  }
+
+  function ensureSalida(m) {
+    if (!live.salidas[m.id]) live.salidas[m.id] = { id: m.id, name: m.nombre, sensor: 'salida', salida: m.tipo, t: [], cols: {}, meta: {}, ctx: live.ctx, live: true, lastT: -Infinity };
+    return live.salidas[m.id];
   }
 
   function onEstado(e) {
@@ -967,8 +1040,11 @@
   function showLive() {
     if (!live.estado) return;
     const ids = live.estado.modulos.filter(m => m.corriendo && m.cols.length).map(m => m.id);
-    const sets = ids.map(ensureSet).filter(Boolean);
-    const key = ids.join(',');
+    const datos = ids.map(ensureSet).filter(Boolean);
+    // pantalla y luces: bloques sin datos que replican el cuadro
+    const salidas = live.estado.modulos.filter(m => m.corriendo && m.clase === 'salida').map(ensureSalida);
+    const sets = datos.concat(salidas);
+    const key = ids.concat(salidas.map(s => s.id)).join(',');
     if (key === live.key && view.live) {
       // solo cambian metas (p. ej. umbrales): se repinta con el siguiente frame
       live.dirty = true;
@@ -977,9 +1053,10 @@
     live.key = key;
     buildView(sets, { isLive: true, zoomable: live.paused });
     view.fichero = null;
-    showHeader('En vivo', sets.length ? sets.length + (sets.length === 1 ? ' sensor activo' : ' sensores activos')
-      : 'Ningún sensor en marcha: actívalos en la lista de arriba', sets.map(s => [s.name, s.meta]));
+    showHeader('En vivo', datos.length ? datos.length + (datos.length === 1 ? ' sensor activo' : ' sensores activos')
+      : 'Ningún sensor en marcha: actívalos en la pestaña Sensores', datos.map(s => [s.name, s.meta]));
     $('#view').hidden = false;
+    renderOutputs();
     live.dirty = true;
   }
 
@@ -1046,10 +1123,10 @@
   }
 
   function renderPanel(e) {
-    $('#panel').hidden = false;
+    pintarCfgTabs();
     const marcha = e.modulos.filter(m => m.corriendo).length;
     const errores = e.modulos.filter(m => m.estado === 'error').length;
-    $('#panel-sum').textContent = '· ' + marcha + ' de ' + e.modulos.length + ' en marcha' +
+    $('#panel-sum').textContent = '· ' + marcha + '/' + e.modulos.length +
       (errores ? ' · ' + errores + (errores === 1 ? ' con error' : ' con errores') : '');
     const ul = $('#mods');
     const order = ['sensor', 'salida'];
@@ -1113,20 +1190,6 @@
         const b = el('button', 'ghost small', row.acts, a.texto);
         b.addEventListener('click', () => control('/api/modulo/' + encodeURIComponent(m.id) + '/accion', { accion: a.id }, m.nombre));
       }
-      if (m.tipo === 'tira' && live.control) {
-        el('button', 'small', row.acts, 'Luces y alertas').addEventListener('click', () => {
-          const caja = $('#luces-cfg');
-          LucesCfg.abrir(caja, {
-            leer: async () => {
-              const r = await piFetch('/api/luces');
-              if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'HTTP ' + r.status);
-              return r.json();
-            },
-            enviar: api,
-          });
-          caja.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-      }
     }
   }
 
@@ -1147,36 +1210,21 @@
 
   // ------------------------------------------- salidas (LEDs) en vivo ---
 
-  /** Replica en la web lo que muestran los LEDs del cuadro. */
+  /** Replica en sus bloques de la vista en vivo la pantalla y las luces del cuadro. */
   function renderOutputs() {
-    const box = $('#outputs');
-    if (!live.estado) { box.hidden = true; return; }
-    // el pulsador es una entrada: sus vueltas ya salen en su bloque de datos
-    const mods = live.estado.modulos.filter(m => m.corriendo && live.vivos[m.id] && m.tipo !== 'boton');
-    box.hidden = !mods.length;
-    const key = mods.map(m => m.id).join(',');
-    if (box.dataset.key !== key) {
-      box.dataset.key = key;
-      box.innerHTML = '';
-      for (const m of mods) {
-        const card = el('div', 'out', box);
-        card.dataset.id = m.id;
-        el('h4', '', card, m.nombre);
-        if (m.tipo === 'tira') { el('div', 'strip', card); el('p', 'muted', card); }
-        else if (m.tipo === 'pantalla') { const i = el('img', 'oled', card); i.alt = 'Pantalla del cuadro'; }
-        else el('p', 'big', card);
-      }
-    }
-    for (const m of mods) {
-      const card = box.querySelector('[data-id="' + m.id + '"]'), v = live.vivos[m.id];
-      if (m.tipo === 'tira') {
-        const strip = card.querySelector('.strip');
+    if (!live.estado || !view.live) return;
+    for (const s of view.sets) {
+      if (s.def.id !== 'salida' || !s.el) continue;
+      const v = live.vivos[s.ds.id];
+      if (!v) continue;
+      if (s.ds.salida === 'tira') {
+        const strip = s.el.out.querySelector('.strip');
         if (strip.children.length !== v.leds.length) { strip.innerHTML = ''; v.leds.forEach(() => el('i', '', strip)); }
         v.leds.forEach((c, i) => { strip.children[i].className = c; });
-        card.querySelector('p').textContent = v.valor == null ? 'sin datos de la fuente' : v.valor + ' ' + v.unidad;
-      } else if (m.tipo === 'pantalla') {
-        if (v.png) card.querySelector('img').src = 'data:image/png;base64,' + v.png;
-      } else card.querySelector('p').textContent = JSON.stringify(v);
+        s.el.out.querySelector('p').textContent = v.texto || (v.valor == null ? 'sin datos de la fuente' : v.valor + ' ' + v.unidad);
+      } else if (v.png) {
+        s.el.out.querySelector('img').src = 'data:image/png;base64,' + v.png;
+      }
     }
   }
 

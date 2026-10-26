@@ -516,7 +516,22 @@
     },
   };
 
-  const SENSORS = [suspension, imu, rueda, termopar, infrarrojos, boton, generic];
+  // ------------------------------------------------- salidas (en vivo) ---
+  // Pantalla y luces del cuadro como bloques de la vista en vivo (app.js pinta
+  // su contenido): sin cifras ni graficas, pero se mueven y ocultan como los demas.
+
+  const salida = {
+    id: 'salida',
+    name: 'Salida del cuadro',
+    detect: () => false,
+    options: [],
+    derive: () => ({}),
+    charts: () => [],
+    histograms: () => ({}),
+    stats: () => [],
+  };
+
+  const SENSORS = [suspension, imu, rueda, termopar, infrarrojos, boton, salida, generic];
 
   function byId(id) { return SENSORS.find(s => s.id === id); }
   function detect(header) { return SENSORS.find(s => s.detect(header)); }
