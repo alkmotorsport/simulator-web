@@ -1131,20 +1131,6 @@
 
   // ------------------------------------------- salidas (LEDs) en vivo ---
 
-  function lamp(box, title, small) {
-    const l = el('div', 'lamp', box);
-    el('i', '', l);
-    const s = el('span', '', l);
-    el('b', '', s, title);
-    el('small', '', s, small);
-    el('em', '', s);
-    return l;
-  }
-  function setLamp(l, color, txt, blink) {
-    l.className = 'lamp ' + color + (blink ? ' blink' : '');
-    l.querySelector('em').textContent = txt;
-  }
-
   /** Replica en la web lo que muestran los LEDs del cuadro. */
   function renderOutputs() {
     const box = $('#outputs');
@@ -1160,16 +1146,14 @@
         const card = el('div', 'out', box);
         card.dataset.id = m.id;
         el('h4', '', card, m.nombre);
-        if (m.tipo === 'alertas_rgb') { const s = el('div', 'semaforo', card); lamp(s, 'Compresión', 'luz A'); lamp(s, 'Oscilación', 'luz B'); }
-        else if (m.tipo === 'tira') { el('div', 'strip', card); el('p', 'muted', card); }
+        if (m.tipo === 'tira') { el('div', 'strip', card); el('p', 'muted', card); }
         else if (m.tipo === 'pantalla') { const i = el('img', 'oled', card); i.alt = 'Pantalla del cuadro'; }
         else el('p', 'big', card);
       }
     }
     for (const m of mods) {
       const card = box.querySelector('[data-id="' + m.id + '"]'), v = live.vivos[m.id];
-      if (m.tipo === 'alertas_rgb') renderSemaforo(card.querySelectorAll('.lamp'), v);
-      else if (m.tipo === 'tira') {
+      if (m.tipo === 'tira') {
         const strip = card.querySelector('.strip');
         if (strip.children.length !== v.leds.length) { strip.innerHTML = ''; v.leds.forEach(() => el('i', '', strip)); }
         v.leds.forEach((c, i) => { strip.children[i].className = c; });
@@ -1178,26 +1162,6 @@
         if (v.png) card.querySelector('img').src = 'data:image/png;base64,' + v.png;
       } else card.querySelector('p').textContent = JSON.stringify(v);
     }
-  }
-
-  function renderSemaforo([lc, lo], e) {
-    if (e.modo === 'calibrando') {
-      setLamp(lc, 'azul', 'Calibrando · moto quieta'); setLamp(lo, 'azul', 'Calibrando · moto quieta'); return;
-    }
-    if (e.modo === 'sin_fuente') {
-      setLamp(lc, '', 'Sin datos de suspensión'); setLamp(lo, '', 'Sin datos de suspensión'); return;
-    }
-    if (e.modo === 'prueba') {
-      setLamp(lc, e.color_comp, 'Prueba de colores'); setLamp(lo, e.color_osc, 'Prueba de colores'); return;
-    }
-    if (!e.sensor_ok) {
-      setLamp(lc, 'azul', 'Sensor sin eco', true); setLamp(lo, 'azul', 'Sensor sin eco', true); return;
-    }
-    const nc = ['Normal', 'Alta', 'Muy alta · cerca del tope'][e.nivel_comp];
-    setLamp(lc, e.color_comp, nc + (e.comp != null ? ' · ' + e.comp.toFixed(0) + ' mm' : ''), e.nivel_comp === 2);
-    setLamp(lo, e.color_osc, e.nivel_osc
-      ? (e.nivel_osc === 2 ? 'Fuerte' : 'Moderada') + ' · ±' + e.osc_amp.toFixed(1) + ' mm a ' + e.osc_hz.toFixed(0) + ' Hz'
-      : 'Estable', e.nivel_osc === 2);
   }
 
   $('#open-full').addEventListener('click', async () => {

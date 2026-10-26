@@ -118,7 +118,7 @@
 
   // ---------------------------------------------------------- suspension ---
 
-  /** Umbrales de las alertas RGB que vigilan este sensor (o del meta.txt antiguo). */
+  /** Umbrales de compresion de sesiones antiguas (modulo de 2 LEDs RGB, ya retirado, o meta.txt). */
   function umbrales(ds) {
     const out = [];
     let meta = ds.meta;

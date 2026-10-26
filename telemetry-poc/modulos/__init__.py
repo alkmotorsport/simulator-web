@@ -15,7 +15,6 @@ Un id que no este en el catalogo crea un modulo nuevo del 'tipo' indicado.
 
 from collections import OrderedDict
 
-from .alertas_rgb import AlertasRGB
 from .base import Hardware, Modulo
 from .boton import Boton
 from .imu import IMU
@@ -27,7 +26,7 @@ from .termopar import Termopar
 from .tira import TiraLeds
 
 TIPOS = {c.TIPO: c for c in (Suspension, IMU, Infrarrojos, Termopar, Rueda,
-                             Boton, AlertasRGB, TiraLeds, Pantalla)}
+                             Boton, TiraLeds, Pantalla)}
 
 CATALOGO = [
     ("suspension", Suspension, {}),
@@ -40,7 +39,6 @@ CATALOGO = [
                                "sim_base": 70.0, "sim_rango": 25.0, "sim_tau": 200.0}),
     ("ir", Infrarrojos, {}),
     ("boton", Boton, {}),
-    ("alertas", AlertasRGB, {}),
     ("tira", TiraLeds, {}),
     ("pantalla", Pantalla, {}),
 ]

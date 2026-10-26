@@ -21,11 +21,11 @@ import time
 
 # GPIO (BCM) del proyecto y para que se usan
 PROYECTO = {
-    4: "libre", 5: "luz A rojo", 6: "luz A verde", 12: "pantalla CS",
-    13: "pantalla RST", 16: "luz B rojo", 17: "boton", 18: "WS2812",
+    4: "libre", 5: "libre", 6: "libre", 12: "pantalla CS",
+    13: "pantalla RST", 16: "libre", 17: "boton", 18: "WS2812",
     20: "pantalla DIN", 21: "pantalla CLK", 22: "Hall delantero",
     23: "ultrasonidos TRIG", 24: "ultrasonidos ECHO", 25: "pantalla DC",
-    26: "luz B verde", 27: "Hall trasero",
+    26: "libre", 27: "Hall trasero",
 }
 
 
