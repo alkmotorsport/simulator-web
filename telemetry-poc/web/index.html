@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Telemetría">
-<link rel="stylesheet" href="style.css?v=20261026c">
+<link rel="stylesheet" href="style.css?v=20261026e">
 </head>
 <body>
 
@@ -123,6 +123,7 @@
       </div>
     </div>
     <ul id="mods" class="mods"></ul>
+    <div id="luces-cfg" class="luces-cfg" hidden></div>
     <p class="hint">
       El tick arranca o para el módulo en el sistema (y lo recuerda en <code>telemetria.json</code>).
       <b>auto</b> = arranca solo si se detecta conectado. Lo que no está activo ni se ejecuta ni se graba.
@@ -225,14 +226,15 @@
   </p>
 </section>
 
-<script src="plot.js?v=20261026c"></script>
-<script src="sensors.js?v=20261026c"></script>
-<script src="analisis.js?v=20261026c"></script>
-<script src="app.js?v=20261026c"></script>
-<script src="config.js?v=20261026c"></script>
-<script src="cripto.js?v=20261026c"></script>
-<script src="repo.js?v=20261026c"></script>
-<script src="cuenta.js?v=20261026c"></script>
+<script src="plot.js?v=20261026e"></script>
+<script src="sensors.js?v=20261026e"></script>
+<script src="analisis.js?v=20261026e"></script>
+<script src="luces.js?v=20261026e"></script>
+<script src="app.js?v=20261026e"></script>
+<script src="config.js?v=20261026e"></script>
+<script src="cripto.js?v=20261026e"></script>
+<script src="repo.js?v=20261026e"></script>
+<script src="cuenta.js?v=20261026e"></script>
 <script>
   // app instalable (PWA); solo en https: la web de la Pi (http) no lo necesita
   if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(() => {});

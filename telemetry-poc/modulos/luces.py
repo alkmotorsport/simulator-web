@@ -54,6 +54,7 @@ CATALOGO = {
     "sensores_mal": ("Sensores con fallo", "", "sistema"),
 }
 EVENTOS = {"tope", "vuelta_nueva", "mejor_vuelta"}   # valen 1 un momento
+SI_NO = EVENTOS | {"sensores_mal"}                    # en la web: "cuando ocurre"
 
 
 def valores(D, ahora, cfg, sensores_mal=0):

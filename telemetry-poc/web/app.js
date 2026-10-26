@@ -176,14 +176,16 @@
       if (s.def.name !== s.ds.name) el('p', 'muted', tit, s.def.name);
       const opts = el('div', 'bar', head);
       const tiles = el('div', 'tiles', sec);
-      const tBox = el('div', 'charts', sec), hBox = el('div', 'charts hist', sec);
+      // el diagrama g-g va el primero, antes de las graficas de tiempo
+      const gBox = el('div', 'charts', sec), tBox = el('div', 'charts', sec), hBox = el('div', 'charts hist', sec);
       for (const c0 of s.def.charts(s.ds)) {
         const c = Object.assign({}, c0, { height: Math.round((c0.height || 200) * 0.75) });   // compacto: mas sensores a la vista
         if (c.type === 'time') s.charts[c.key] = view.group.add(new Plot.TimeChart(tBox, c));
-        else s.hists[c.key] = new (c.type === 'gg' ? Plot.GG : Plot.Histogram)(hBox, c);
+        else s.hists[c.key] = new (c.type === 'gg' ? Plot.GG : Plot.Histogram)(c.type === 'gg' ? gBox : hBox, c);
       }
       tBox.hidden = !Object.keys(s.charts).length;
-      hBox.hidden = !Object.keys(s.hists).length;
+      gBox.hidden = !s.def.charts(s.ds).some(c => c.type === 'gg');
+      hBox.hidden = !s.def.charts(s.ds).some(c => c.type === 'hist');
       s.el = { sec, tiles, opts };
       renderOptions(s);
     }
@@ -1110,6 +1112,20 @@
       if (m.corriendo) for (const a of m.acciones) {
         const b = el('button', 'ghost small', row.acts, a.texto);
         b.addEventListener('click', () => control('/api/modulo/' + encodeURIComponent(m.id) + '/accion', { accion: a.id }, m.nombre));
+      }
+      if (m.tipo === 'tira' && live.control) {
+        el('button', 'small', row.acts, 'Luces y alertas').addEventListener('click', () => {
+          const caja = $('#luces-cfg');
+          LucesCfg.abrir(caja, {
+            leer: async () => {
+              const r = await piFetch('/api/luces');
+              if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'HTTP ' + r.status);
+              return r.json();
+            },
+            enviar: api,
+          });
+          caja.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
       }
     }
   }

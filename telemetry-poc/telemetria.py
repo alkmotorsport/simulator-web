@@ -345,7 +345,8 @@ class Maestro:
         cfg = pantalla.cfg.get("luces") if pantalla is not None else None
         return {
             "config": cfg if cfg is not None else luces_mod.por_defecto(),
-            "catalogo": [{"id": k, "nombre": n, "unidad": u, "pagina": p}
+            "catalogo": [{"id": k, "nombre": n, "unidad": u, "pagina": p,
+                          "si_no": k in luces_mod.SI_NO, "evento": k in luces_mod.EVENTOS}
                          for k, (n, u, p) in luces_mod.CATALOGO.items()],
             "paginas": [{"id": p[0], "titulo": p[1]} for p in PAGINAS],
             "colores": luces_mod.COLORES, "efectos": luces_mod.EFECTOS,

@@ -206,6 +206,31 @@ button.danger { background: var(--status-err); border-color: var(--status-err); 
 .strip i.ambar { --c: var(--status-warning); box-shadow: 0 0 8px var(--c); }
 .strip i.rojo { --c: var(--status-err); box-shadow: 0 0 8px var(--c); }
 .strip i.azul { --c: var(--series-1); box-shadow: 0 0 8px var(--c); }
+.strip i.morado, .led-sw.morado { --c: #a64dff; box-shadow: 0 0 8px var(--c); }
+.strip i.blanco, .led-sw.blanco { --c: #f2f2f2; box-shadow: 0 0 8px #bbb; }
+
+/* Luces y alertas */
+.led-sw { --c: var(--border); display: inline-block; flex: none; width: 14px; height: 14px; border-radius: 50%; background: var(--c); border: 1px solid var(--border); }
+.led-sw.verde { --c: var(--status-ok); }
+.led-sw.ambar { --c: var(--status-warning); }
+.led-sw.rojo { --c: var(--status-err); }
+.led-sw.azul { --c: var(--series-1); }
+.sel-color { display: inline-flex; align-items: center; gap: 6px; }
+.luces-cfg { margin: 14px 0 6px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+.luces-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: space-between; }
+.luces-head h3 { margin: 0; font-size: 1rem; }
+.luces-cfg > p.muted { margin: 8px 0; font-size: 0.82rem; }
+.luces-lista { display: grid; gap: 10px; }
+.luces-item { border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: var(--bg); display: grid; gap: 8px; }
+.luces-item-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: space-between; font-weight: 600; font-size: 0.9rem; }
+.luces-item-head input.nombre { flex: 1 1 180px; font-weight: 600; }
+.luces-item .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.nivel { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; padding-top: 6px; border-top: 1px dashed var(--border); }
+.nivel-tit { flex-basis: 100%; font-size: 0.78rem; color: var(--sub); }
+.nivel-acc { display: flex; gap: 6px; }
+.field input.num, input.num { width: 6.5em; }
+.luces-lista .hint { margin: 0; }
+.nivel .cuando { color: var(--text); font-size: 0.88rem; padding: 6px 0; }
 
 /* vista: un bloque por sensor */
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }

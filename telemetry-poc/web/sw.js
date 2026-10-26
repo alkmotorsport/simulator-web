@@ -4,7 +4,7 @@
  * nada del repo de datos ni de la raspi.
  */
 const CACHE = 'telemetria-v2';
-const BASE = ['./', 'index.html', 'style.css', 'plot.js', 'sensors.js', 'analisis.js', 'app.js', 'config.js',
+const BASE = ['./', 'index.html', 'style.css', 'plot.js', 'sensors.js', 'analisis.js', 'luces.js', 'app.js', 'config.js',
   'cripto.js', 'repo.js', 'cuenta.js', 'logo.jpg', 'icon-192.png', 'icon-512.png', 'manifest.webmanifest'];
 
 self.addEventListener('install', e => {
