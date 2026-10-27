@@ -66,15 +66,24 @@ class Hardware:
                 raise RuntimeError("I2C desactivado (sudo raspi-config nonint do_i2c 0)")
         return self._i2c
 
-    def i2c_presente(self, addr):
-        """True si algun dispositivo responde en esa direccion I2C."""
+    def i2c_presente(self, addr, reg=None, intentos=3):
+        """True si algun dispositivo responde en esa direccion I2C (o, con
+        'reg', al leer ese registro: la MPU6050 a veces solo contesta asi).
+        Varios intentos: con cables largos el bus falla a veces (un NACK
+        suelto no quiere decir que no este)."""
         bus = self.i2c()
-        with self.lock_i2c:
-            try:
-                bus.read_byte(addr)
-                return True
-            except (OSError, IOError):
-                return False
+        for i in range(intentos):
+            with self.lock_i2c:
+                try:
+                    if reg is not None:
+                        bus.read_byte_data(addr, reg)
+                    else:   # alternando: algunos (MLX90614) solo contestan a leer un registro
+                        bus.read_byte(addr) if i % 2 else bus.read_byte_data(addr, 0)
+                    return True
+                except (OSError, IOError):
+                    pass
+            time.sleep(0.02)
+        return False
 
     def cerrar(self):
         if self._pi is not None:

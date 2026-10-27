@@ -162,7 +162,7 @@ class IMU(Modulo):
 
     def detectar(self):
         addr = self.cfg["direccion"]
-        if not self.hw.i2c_presente(addr):
+        if not self.hw.i2c_presente(addr, reg=REG_WHOAMI):
             return ("no", f"nada en I2C 0x{addr:02X}")
         with self.hw.lock_i2c:
             quien = self.hw.i2c().read_byte_data(addr, REG_WHOAMI)
