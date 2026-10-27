@@ -657,7 +657,11 @@ def _pedir_token(conf_dir):
 def _token(a):
     os.makedirs(a.conf, mode=0o700, exist_ok=True)
     _pedir_token(a.conf)
-    s = cargar(a.dir, conf_dir=a.conf, var_dir=a.var)
+    try:
+        s = cargar(a.dir, conf_dir=a.conf, var_dir=a.var)
+    except RuntimeError as e:          # sin clave todavia (sistema nuevo o recuperado)
+        print("Token guardado. Falta la clave de datos: " + str(e).split(": ", 1)[-1])
+        return
     if s is None:
         return
     if not s.cfg["repo"].startswith("https://"):
