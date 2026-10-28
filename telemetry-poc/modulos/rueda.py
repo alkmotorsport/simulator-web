@@ -14,6 +14,12 @@ El A3144 baja la senal a 0 V al pasar el iman (flanco de bajada).
 
 Autodeteccion: con el pull-down interno activado un momento, la senal en
 reposo solo se lee alta si el modulo esta alimentado y conectado.
+
+Sensor A3144 suelto (3 patas, sin placa): "conexion": "directo". Pata 1 a
+5 V, pata 2 a GND y pata 3 (salida) directa al GPIO, sin resistencias: la
+salida es de colector abierto (solo lleva la senal a GND, nunca da 5 V) y el
+pull-up interno de la Pi la sube a 3,3 V. Asi no se puede autodetectar
+(sin iman se lee alto aunque el sensor no este): se activa a mano.
 """
 
 import collections
@@ -24,11 +30,12 @@ from . import sim
 
 
 class _HallPigpio:
-    def __init__(self, pi, gpio):
+    def __init__(self, pi, gpio, directo=False):
         import pigpio
         self.pigpio, self.pi = pigpio, pi
         pi.set_mode(gpio, pigpio.INPUT)
-        pi.set_pull_up_down(gpio, pigpio.PUD_OFF)   # nivel fijado por el divisor
+        # modulo: nivel fijado por el divisor; directo: colector abierto + pull-up
+        pi.set_pull_up_down(gpio, pigpio.PUD_UP if directo else pigpio.PUD_OFF)
         pi.set_glitch_filter(gpio, 100)              # ignora pulsos < 100 us
         self.gpio = gpio
         self.ticks = collections.deque(maxlen=2)
@@ -89,6 +96,7 @@ class Rueda(Modulo):
     COLS = ["t_s", "pulsos", "periodo_ms", "rpm", "kmh", "dist_m"]
     DEFECTOS = {
         "gpio": 27,
+        "conexion": "modulo",    # modulo (KY-003 + divisor) | directo (A3144 suelto)
         "imanes": 1,             # imanes por vuelta de rueda
         "perimetro_m": 1.95,     # calibrar: distancia recorrida en una vuelta
         "hz": 20.0,
@@ -103,7 +111,10 @@ class Rueda(Modulo):
     def pines(self):
         fis = {27: 13, 22: 15}.get(self.cfg["gpio"])
         return f"GPIO{self.cfg['gpio']}" + (f" (pin {fis})" if fis else "") + \
-            " · divisor 10k + 22k"
+            (" · directo, pull-up interno" if self._directo() else " · divisor 10k + 22k")
+
+    def _directo(self):
+        return self.cfg.get("conexion") == "directo"
 
     def meta(self):
         return {k: v for k, v in super().meta().items() if not k.startswith("sim_")}
@@ -111,6 +122,8 @@ class Rueda(Modulo):
     def detectar(self):
         import pigpio
         pi, g = self.hw.pi(), self.cfg["gpio"]
+        if self._directo():
+            return ("manual", "sensor directo: sin autodeteccion (pasa un iman para probarlo)")
         pi.set_mode(g, pigpio.INPUT)
         pi.set_pull_up_down(g, pigpio.PUD_DOWN)
         try:
@@ -126,7 +139,7 @@ class Rueda(Modulo):
         return ("no", f"GPIO{g} inestable: revisa el cableado")
 
     def bucle(self):
-        self._medir(_HallPigpio(self.hw.pi(), self.cfg["gpio"]))
+        self._medir(_HallPigpio(self.hw.pi(), self.cfg["gpio"], self._directo()))
 
     def simular(self):
         self._medir(_HallSim(self))
