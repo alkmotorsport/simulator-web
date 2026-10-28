@@ -441,6 +441,16 @@ def splash(L, ahora=0.0):
     return L.im
 
 
+def aviso(L, titulo, lineas):
+    """Pantalla de aviso a toda pantalla (apagar, guardando...)."""
+    L.nuevo()
+    L.cabecera(titulo)
+    y0 = 9 + (55 - 12 * len(lineas)) // 2
+    for i, txt in enumerate(lineas):
+        L.texto(W // 2, y0 + 12 * i + 2, txt, L.pxb, "c")
+    return L.im
+
+
 def dibujar(L, D, pagina, ahora, cfg, n_paginas=None, indice=None, rec=False, marca=False):
     """rec: punto de grabando en la cabecera; marca: '!' de alerta reconocida."""
     pid, titulo, _, fn = pagina
@@ -653,6 +663,7 @@ class Pantalla(Modulo):
         self._luces_nuevas = None
         self.motor = None
         self.alerta = None       # nombre de la alerta que se ve ahora
+        self.mensaje = None      # (titulo, lineas): aviso que tapa las paginas (al apagar)
 
     def pines(self):
         c = self.cfg
@@ -665,6 +676,10 @@ class Pantalla(Modulo):
         m = super().meta()
         m["direccion"] = f"0x{int(self.cfg['direccion']):02X}"
         return m
+
+    def avisar(self, titulo, lineas):
+        """Aviso fijo en pantalla (y luces en ambar) hasta que se pare el modulo."""
+        self.mensaje = (titulo, list(lineas))
 
     def set_luces(self, cfg):
         """Configuracion nueva desde la web (ya validada); se aplica al momento."""
@@ -713,7 +728,8 @@ class Pantalla(Modulo):
     def liberar(self):
         if self.dev is not None:
             try:
-                self.dev.clear()
+                if self.mensaje is None:     # al apagar se queda el aviso
+                    self.dev.clear()
             except Exception:
                 pass
             self.dev = None
@@ -798,6 +814,20 @@ class Pantalla(Modulo):
             if "_ip" not in D.v or int(ahora) % 10 == 0:
                 D.v["_ip"] = ip_local()
             D.v["_rec"] = getattr(getattr(self.bus, "grabador", None), "sesion", None) is not None
+            tira = self.bus.modulos.get("tira")
+            boton = self.bus.modulos.get("boton")
+            t_puls = getattr(boton, "t_pulsado", None)
+            if self.mensaje is None and t_puls is not None and ahora - t_puls >= 3:
+                quedan = max(0, math.ceil(boton.cfg["apagar_s"] - (ahora - t_puls)))
+                self._mostrar(aviso(L, "APAGAR", ["SIGUE PULSANDO", f"{quedan} S", "PARA APAGAR"]))
+                self.parar.wait(0.1)
+                continue
+            if self.mensaje is not None:
+                if tira is not None and tira.corriendo():
+                    tira.externo([("ambar", "lento")] * int(tira.cfg["num"]))
+                self._mostrar(aviso(L, *self.mensaje))
+                self.parar.wait(0.2)
+                continue
             disp = [p for p in PAGINAS if p[2](D, ahora)]
             ids = [p[0] for p in disp]
             if self._luces_nuevas is not None:
@@ -825,7 +855,6 @@ class Pantalla(Modulo):
             if manda is not None and manda[1] and manda[0]["pagina"] in ids:
                 ver = ids.index(manda[0]["pagina"])
             self.alerta = manda[0]["nombre"] if manda is not None else None
-            tira = self.bus.modulos.get("tira")
             if tira is not None and tira.corriendo():
                 tira.externo(self.motor.luces(ids[ver], v, int(tira.cfg["num"]), manda))
             im = dibujar(L, D, disp[ver], ahora, c, len(disp), ver, rec=D.v["_rec"], marca=marca)

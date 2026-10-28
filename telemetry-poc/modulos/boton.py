@@ -3,6 +3,8 @@ Pulsador de vuelta y cambio de pagina.
 
   pulsacion corta           = pagina siguiente (al soltar)
   pulsacion larga (>= 1 s)  = vuelta (al cumplirse el segundo, sin soltar)
+  mantenido 10 s            = para la grabacion y apaga la raspi ('apagar_s';
+                              la pantalla avisa desde los 3 s)
 
 CSV (solo cuando hay pulsaciones): t_s, pulsaciones, vuelta, t_vuelta_s
   pulsaciones 1 = corta, 3 = larga (vuelta; el 3 es por compatibilidad con
@@ -23,13 +25,14 @@ class Boton(Modulo):
     NOMBRE = "Pulsador de vuelta"
     COLS = ["t_s", "pulsaciones", "vuelta", "t_vuelta_s"]
     DETECTABLE = False
-    DEFECTOS = {"gpio": 17, "larga_s": 1.0, "rebote_ms": 20}
+    DEFECTOS = {"gpio": 17, "larga_s": 1.0, "apagar_s": 10.0, "rebote_ms": 20}
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
         self.vuelta = 0
         self.t_vuelta = None
         self.pagina = 0
+        self.t_pulsado = None           # desde cuando esta pulsado (lo mira la pantalla)
         self._cb = None
 
     def pines(self):
@@ -46,6 +49,7 @@ class Boton(Modulo):
                                lambda _g, nivel, _t: bordes.append((nivel, self.reloj())))
         self.estado = "activo"
         pulsado, larga = None, False    # cuando se pulso y si ya conto como larga
+        apagado = False
         while not self.parar.wait(0.02):
             while bordes:
                 nivel, t = bordes.pop(0)
@@ -55,9 +59,13 @@ class Boton(Modulo):
                     if not larga:
                         self._pulsacion(t, 1)
                     pulsado = None
+            self.t_pulsado = pulsado
             if pulsado is not None and not larga and self.reloj() - pulsado >= self.cfg["larga_s"]:
                 larga = True
                 self._pulsacion(self.reloj(), 3)
+            if pulsado is not None and not apagado and self.reloj() - pulsado >= self.cfg["apagar_s"]:
+                apagado = True
+                self.bus.apagar()
 
     def simular(self):
         # una vuelta cada sim.VUELTA_S: pulsacion larga en la linea de meta

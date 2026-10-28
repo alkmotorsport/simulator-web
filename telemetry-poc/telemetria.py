@@ -267,6 +267,32 @@ class Maestro:
                 if not m.corriendo() and self.debe_correr(m) and m.estado != "error":
                     m.arrancar()
 
+    def apagar(self):
+        """Boton mantenido: cierra la grabacion y apaga la raspi (se puede quitar
+        la corriente sin estropear la tarjeta). Al parar, systemd sube la sesion."""
+        if getattr(self, "_apagando", False):
+            return
+        self._apagando = True
+
+        def hilo():
+            pantalla = self.modulos.get("pantalla")
+            avisar = (lambda *a: pantalla.avisar(*a)) if pantalla is not None else (lambda *a: None)
+            if self.grabador.activa():
+                avisar("ESPERE", ["GUARDANDO DATOS", "DE LA GRABACION"])
+                print("\nBoton mantenido: parando la grabacion")
+                self.grabador.parar()
+                time.sleep(1.5)
+            avisar("APAGANDO", ["DESCONECTA CUANDO", "EL LED VERDE DE LA", "RASPI SE APAGUE"])
+            print("\nBoton mantenido: apagando la raspi")
+            time.sleep(2)
+            if self.hw.sim or os.geteuid() != 0:
+                print("(simulado o sin root: no se apaga)")
+                return
+            import subprocess
+            subprocess.run(["systemctl", "poweroff"], check=False)
+
+        threading.Thread(target=hilo, name="apagar", daemon=True).start()
+
     def set_activo(self, id_, valor):
         m = self.modulo(id_)
         if valor not in (True, False, "auto"):
