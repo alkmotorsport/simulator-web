@@ -840,14 +840,16 @@ class Pantalla(Modulo):
             self.parar.wait(1.0 / c["fps"])
 
     def _luces_iniciales(self):
+        # validada tambien la plantilla: rellena lo que el motor necesita (pagina de cada alerta...)
+        paginas = [p[0] for p in PAGINAS]
         cfg = self.cfg.get("luces")
         if cfg is None:
-            return luces_mod.por_defecto()
+            return luces_mod.validar(luces_mod.por_defecto(), paginas)
         try:
-            return luces_mod.validar(cfg, [p[0] for p in PAGINAS])
+            return luces_mod.validar(cfg, paginas)
         except ValueError as e:
             print(f"[pantalla] luces en telemetria.json no validas ({e}): uso la plantilla recomendada")
-            return luces_mod.por_defecto()
+            return luces_mod.validar(luces_mod.por_defecto(), paginas)
 
     def _sensores_mal(self):
         return sum(1 for m in self.bus.modulos.values()
