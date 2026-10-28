@@ -130,6 +130,13 @@ ruedas, resumen y sistema.
 - **Pulsación larga** (mantén 1 segundo): **marca vuelta** (en la línea de
   meta). La página **VUELTA** enseña el tiempo de la vuelta y la diferencia
   con tu mejor vuelta.
+- **Mantenido 10 segundos: apagar.** A los 3 segundos la pantalla cuenta
+  atrás («SIGUE PULSANDO… PARA APAGAR»); si sueltas antes, no pasa nada
+  (solo queda marcada la vuelta del primer segundo). A los 10 segundos, si
+  está grabando, para la grabación («ESPERE · GUARDANDO DATOS») y después
+  apaga el sistema («APAGANDO»; las luces en ámbar). Quita la corriente
+  cuando el **LED verde de la raspi se apague**: así no se estropea la
+  tarjeta.
 - **Cabecera:** el nombre de la página y su número (por ejemplo `3/7`). Un
   **punto parpadeando** quiere decir que está **grabando**; un **«!»**, que
   hay una alerta grave reconocida que sigue activa (apartado 7).

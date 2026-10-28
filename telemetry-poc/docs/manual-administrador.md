@@ -189,6 +189,8 @@ app que no esté grabando).
 | `rueda_tras` | `"perimetro_m"` | Perímetro de la rueda trasera. Lo pone la pestaña **Moto** al guardar la ficha |
 | `pantalla` | `"recorrido_mm"` | Recorrido útil de la suspensión trasera (para el % y el tope). Lo pone la pestaña **Moto** |
 | `boton` | `"larga_s"` | Lo que hay que mantener pulsado para marcar vuelta (1 s); la pulsación corta pasa de página |
+| `boton` | `"apagar_s"` | Lo que hay que mantener pulsado para parar la grabación y apagar el sistema (10 s) |
+| `rueda_tras`, `rueda_del` | `"conexion"`: `"modulo"` o `"directo"` | `modulo`: KY-003 con su placa y el divisor 10k + 22k. `directo`: sensor A3144 suelto (patas: 5 V, GND, salida) con la salida directa al GPIO y sin resistencias; usa el pull-up interno. En `directo` no se puede autodetectar: pon `"activo": true` |
 | `suspension` | `"activo"` | Si no arranca aunque esté conectado, revisa que no esté a `false` |
 
 El antiguo módulo de **2 LED RGB** («alertas») ya no existe: las luces y
