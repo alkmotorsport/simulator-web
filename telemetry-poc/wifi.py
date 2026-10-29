@@ -355,6 +355,9 @@ def main():
                 time.sleep(30)
                 continue
             pedida = False
+            if not red:                              # se acabo sin red nueva: la de antes
+                guardar_estado(modo="buscando")
+                esperar_red(ESPERA_S)
         red = conectado()
         guardar_estado(modo="cliente", ssid=red)
         if red:
