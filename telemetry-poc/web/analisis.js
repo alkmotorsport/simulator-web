@@ -129,17 +129,25 @@
   // ---------------------------------------------------- calidad de datos ---
 
   function calidad(S, r, add) {
+    // huecos de todos los sensores en una sola linea (uno por sensor era una lista larga)
+    const con = [];
+    let total = 0, peorTodo = 0, tPeorTodo = NaN;
     for (const s of S.todos) {
       const t = s.ds.t, [i0, i1] = idx(t, r);
       if (i1 - i0 < 2) continue;
-      let huecos = 0, peor = 0, tPeor = NaN;
+      let huecos = 0, peor = 0;
       for (let i = i0 + 1; i < i1; i++) {
         const dt = t[i] - t[i - 1];
-        if (dt > 0.5) { huecos++; if (dt > peor) { peor = dt; tPeor = t[i - 1]; } }
+        if (dt > 0.5) {
+          huecos++;
+          if (dt > peor) peor = dt;
+          if (dt > peorTodo) { peorTodo = dt; tPeorTodo = t[i - 1]; }
+        }
       }
-      if (huecos) add('info', 'Datos', s.ds.name + ': ' + huecos + ' huecos sin lecturas',
-        'El más largo, de ' + n1(peor) + ' s. Ahí la gráfica se corta y las cifras no cuentan ese tiempo.', null, tPeor);
+      if (huecos) { con.push(s.ds.name + ' ' + huecos + ' (máx ' + n1(peor) + ' s)'); total += huecos; }
     }
+    if (con.length) add('info', 'Datos', total + ' huecos sin lecturas en ' + con.length + (con.length === 1 ? ' sensor' : ' sensores'),
+      con.join(' · ') + '. Ahí la gráfica se corta y las cifras no cuentan ese tiempo; el tiempo marcado es el más largo.', null, tPeorTodo);
 
     const imu = S.imu;
     if (imu) {
