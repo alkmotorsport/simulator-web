@@ -209,8 +209,13 @@ class Modulo:
         self.bus.set_vivo(self.id, estado)
 
     def esperar_periodo(self, proximo, periodo):
-        """Espera hasta 'proximo' sin rafagas si hay retraso; devuelve el siguiente."""
+        """Espera hasta 'proximo'; devuelve el siguiente. Un retraso pequeno se
+        recupera (en la Zero cada despertar llega unos ms tarde y, sin
+        recuperarlo, el IMU se quedaba en 27 de 50 Hz); uno grande no se
+        recupera de golpe, para no leer en rafaga."""
         ahora = pc()
         if ahora < proximo:
             self.parar.wait(proximo - ahora)
-        return max(proximo + periodo, pc())
+        siguiente = proximo + periodo
+        ahora = pc()
+        return siguiente if ahora - siguiente < 2 * periodo else ahora

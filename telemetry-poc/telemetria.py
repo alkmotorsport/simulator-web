@@ -589,9 +589,6 @@ def imprimir_deteccion(maestro):
 
 
 def main():
-    # Un hilo que vuelve de leer el I2C espera el GIL hasta 5 ms (por defecto); el
-    # IMU lo pide varias veces por lectura y en la Zero se quedaba en ~27 de 50 Hz
-    sys.setswitchinterval(0.001)
     p = argparse.ArgumentParser(description="Telemetria de moto: programa maestro")
     p.add_argument("--sim", action="store_true",
                    help="todos los modulos simulados (sin hardware)")
