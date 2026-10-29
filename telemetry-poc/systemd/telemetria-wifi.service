@@ -1,0 +1,21 @@
+# Wifi del sistema sin SSH (wifi.py): red conocida o, si no hay, wifi propia
+# con portal para darle la wifi o el punto de acceso del movil.
+#   systemctl status telemetria-wifi
+#   journalctl -u telemetria-wifi -f
+# Lo instala systemd/instalar.sh, que cambia @DIR@ y @PYTHON@.
+
+[Unit]
+Description=Wifi del sistema de telemetria (wifi.py)
+Wants=NetworkManager.service
+After=NetworkManager.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=@DIR@
+ExecStart=@PYTHON@ -u @DIR@/wifi.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

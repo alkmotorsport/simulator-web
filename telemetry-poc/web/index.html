@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Telemetría">
-<link rel="stylesheet" href="style.css?v=20261029b">
+<link rel="stylesheet" href="style.css?v=20261029c">
 </head>
 <body>
 
@@ -153,6 +153,7 @@
     <div class="cfg-tabs" role="tablist" aria-label="Configuración">
       <button type="button" data-cfg="sensores" class="solo-vivo" aria-expanded="false">Sensores <span id="panel-sum" class="muted"></span></button>
       <button type="button" data-cfg="luces" class="solo-vivo" aria-expanded="false">Pantalla y luces</button>
+      <button type="button" data-cfg="wifi" class="solo-vivo" aria-expanded="false">Wifi</button>
       <button type="button" data-cfg="moto" aria-expanded="false">Moto</button>
       <button type="button" data-cfg="params" aria-expanded="false">Parámetros de la sesión</button>
     </div>
@@ -168,6 +169,13 @@
       <ul id="mods" class="mods"></ul>
     </div>
     <div id="cfg-luces" class="cfg-panel" hidden><div id="luces-cfg" class="luces-cfg"></div></div>
+    <div id="cfg-wifi" class="cfg-panel" hidden>
+      <p id="wifi-estado" class="muted"></p>
+      <p class="muted">Para que la moto use otra wifi (por ejemplo el <b>punto de acceso de tu móvil</b>), la moto
+        crea su propia wifi un rato: conéctate a ella con el móvil (nombre y clave en la pantalla de la moto) y se abre
+        una página para elegir la red. Sin ninguna wifi conocida cerca, la crea sola al encender.</p>
+      <div class="bar"><button id="wifi-propia" class="small">Añadir una wifi</button><span id="wifi-msg" class="msg"></span></div>
+    </div>
     <div id="cfg-moto" class="cfg-panel" hidden><div id="moto-cfg"></div></div>
     <div id="cfg-params" class="cfg-panel" hidden><div id="meta-list"></div></div>
   </section>
@@ -231,16 +239,16 @@
   </p>
 </section>
 
-<script src="plot.js?v=20261029b"></script>
-<script src="sensors.js?v=20261029b"></script>
-<script src="analisis.js?v=20261029b"></script>
-<script src="luces.js?v=20261029b"></script>
-<script src="moto.js?v=20261029b"></script>
-<script src="app.js?v=20261029b"></script>
-<script src="config.js?v=20261029b"></script>
-<script src="cripto.js?v=20261029b"></script>
-<script src="repo.js?v=20261029b"></script>
-<script src="cuenta.js?v=20261029b"></script>
+<script src="plot.js?v=20261029c"></script>
+<script src="sensors.js?v=20261029c"></script>
+<script src="analisis.js?v=20261029c"></script>
+<script src="luces.js?v=20261029c"></script>
+<script src="moto.js?v=20261029c"></script>
+<script src="app.js?v=20261029c"></script>
+<script src="config.js?v=20261029c"></script>
+<script src="cripto.js?v=20261029c"></script>
+<script src="repo.js?v=20261029c"></script>
+<script src="cuenta.js?v=20261029c"></script>
 <script>
   // app instalable (PWA); solo en https: la web de la Pi (http) no lo necesita
   if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(() => {});

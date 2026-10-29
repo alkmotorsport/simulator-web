@@ -357,6 +357,14 @@ class Maestro:
                 raise ValueError("la tira de luces no esta en marcha")
             tira.probar(color, efecto)
             return {"ok": True}
+        elif p == ["wifi"]:
+            # que wifi.py de la wifi propia (para anadir una red sin SSH)
+            if cuerpo.get("accion") != "propia":
+                raise ValueError("accion de wifi no valida")
+            if not os.path.isdir(WIFI_RUN):
+                raise ValueError("el servicio de wifi no esta en marcha")
+            open(os.path.join(WIFI_RUN, "wifi-pedir"), "w").close()
+            return {"ok": True}
         elif p == ["grabar"]:
             if cuerpo.get("grabar"):
                 self.grabador.iniciar()
@@ -435,6 +443,7 @@ class Maestro:
                 "ficheros": sorted(s["ficheros"])},
             "sincro": self.sincro.estado() if self.sincro else None,
             "tunel": self.tunel.url if self.tunel else None,
+            "wifi": wifi_estado(),
         }
 
     def publicar_estado(self):
@@ -586,6 +595,20 @@ def imprimir_deteccion(maestro):
         va = "ARRANCA" if maestro.debe_correr(m) else "-"
         print(f"  {marca} {m.id:12} {va:8} activo={str(activo):5}  {m.pines():44} {detalle}")
     print()
+
+
+WIFI_RUN = "/run/telemetria"
+
+
+def wifi_estado():
+    """Lo que dice wifi.py (modo, red), sin la clave de la wifi propia."""
+    try:
+        with open(os.path.join(WIFI_RUN, "wifi.json")) as f:
+            e = json.load(f)
+    except (OSError, ValueError):
+        return None
+    e.pop("clave", None)
+    return e
 
 
 def main():

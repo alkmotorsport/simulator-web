@@ -583,8 +583,30 @@
       });
     } else if (id === 'moto') {
       abrirMoto();
+    } else if (id === 'wifi') {
+      pintarWifi();
     }
   }
+
+  /** Pestana Wifi: red actual (wifi.py) y pedir la wifi propia para anadir otra. */
+  function pintarWifi() {
+    const w = live.estado && live.estado.wifi;
+    const MODOS = { cliente: 'Conectada a', ap: 'Dando su propia wifi', conectando: 'Buscando', buscando: 'Buscando redes', sin_red: 'Sin red' };
+    $('#wifi-estado').textContent = !w ? 'El servicio de wifi no está en este sistema.'
+      : (MODOS[w.modo] || w.modo) + (w.ssid ? ' ' + w.ssid : '') + '.';
+    $('#wifi-propia').disabled = !w;
+  }
+  $('#wifi-propia').addEventListener('click', async () => {
+    if (!confirm('La moto dejará la red actual y creará su propia wifi: esta conexión se cortará. Conéctate a la wifi de la moto (nombre y clave en su pantalla) y elige la red nueva. ¿Seguir?')) return;
+    try {
+      await api('/api/wifi', { accion: 'propia' });
+      $('#wifi-msg').textContent = 'En unos segundos la moto da su wifi: mira su pantalla.';
+      $('#wifi-msg').classList.remove('err');
+    } catch (e) {
+      $('#wifi-msg').textContent = 'No se pudo: ' + e.message;
+      $('#wifi-msg').classList.add('err');
+    }
+  });
 
   /** Ficha de la moto de lo que se ve: la del sistema en vivo o la de la sesion. */
   function motoActual() {

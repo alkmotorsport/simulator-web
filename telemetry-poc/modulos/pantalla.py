@@ -27,6 +27,7 @@ Fuentes (OFL, en ./fuentes): Silkscreen para rotulos (pixel, nitida a 8 px)
 y Rajdhani Bold para las cifras grandes.
 """
 
+import json
 import math
 import os
 import random
@@ -39,6 +40,7 @@ from . import luces as luces_mod
 from . import sim
 
 AQUI = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+WIFI_ESTADO = "/run/telemetria/wifi.json"        # lo escribe wifi.py
 FUENTES = os.path.join(AQUI, "fuentes")
 LOGO = os.path.join(AQUI, "web", "logo.jpg")
 W, H = 128, 64
@@ -664,6 +666,7 @@ class Pantalla(Modulo):
         self.motor = None
         self.alerta = None       # nombre de la alerta que se ve ahora
         self.mensaje = None      # (titulo, lineas): aviso que tapa las paginas (al apagar)
+        self._wifi = (None, 0.0, None)   # (estado de wifi.py, cuando se leyo, aviso oculto)
 
     def pines(self):
         c = self.cfg
@@ -822,6 +825,15 @@ class Pantalla(Modulo):
                 self._mostrar(aviso(L, "APAGAR", ["SIGUE PULSANDO", f"{quedan} S", "PARA APAGAR"]))
                 self.parar.wait(0.1)
                 continue
+            aviso_wifi = self._aviso_wifi(ahora)
+            if self.mensaje is None and aviso_wifi is not None:
+                if self._pulsado:                  # pulsacion corta: a las paginas
+                    self._pulsado = 0
+                    self._wifi = self._wifi[:2] + (aviso_wifi,)
+                else:
+                    self._mostrar(aviso(L, *aviso_wifi))
+                    self.parar.wait(0.2)
+                    continue
             if self.mensaje is not None:
                 if tira is not None and tira.corriendo():
                     tira.externo([("ambar", "lento")] * int(tira.cfg["num"]))
@@ -868,6 +880,35 @@ class Pantalla(Modulo):
                 self.vivo({"png": base64.b64encode(buf.getvalue()).decode(),
                            "pagina": ids[ver], "alerta": self.alerta})
             self.parar.wait(1.0 / c["fps"])
+
+    def _aviso_wifi(self, ahora):
+        """Aviso de wifi.py para la pantalla (wifi propia, buscando red), o None."""
+        e, t_leido, oculto = self._wifi
+        if ahora - t_leido >= 2:
+            try:
+                with open(WIFI_ESTADO) as f:
+                    nuevo = json.load(f)
+            except (OSError, ValueError):
+                nuevo = None
+            if e and nuevo and e.get("modo") == "conectando" and nuevo.get("modo") == "cliente":
+                nuevo["_conectada"] = ahora          # "CONECTADA" unos segundos
+            elif e and nuevo and "_conectada" in e and nuevo.get("modo") == "cliente":
+                nuevo["_conectada"] = e["_conectada"]
+            e, t_leido = nuevo, ahora
+            self._wifi = (e, t_leido, oculto)
+        if not e:
+            return None
+        modo = e.get("modo")
+        if modo == "ap":
+            a = ("WIFI", ["CONECTA EL MOVIL A", e.get("ssid", "").upper()[:21],
+                          "CLAVE " + e.get("clave", "")])
+        elif modo == "conectando":
+            a = ("WIFI", ["BUSCANDO", e.get("ssid", "").upper()[:21], "ENCIENDE TU PUNTO", "DE ACCESO"])
+        elif modo == "cliente" and ahora - e.get("_conectada", -1e9) < 6:
+            a = ("WIFI", ["CONECTADA A", (e.get("ssid") or "").upper()[:21]])
+        else:
+            return None
+        return None if a == oculto else a
 
     def _luces_iniciales(self):
         # validada tambien la plantilla: rellena lo que el motor necesita (pagina de cada alerta...)
