@@ -98,7 +98,7 @@ Pulsa **En vivo** en tu sistema (tiene que estar «en línea»).
   - **Sensores:** lista de lo conectado a la moto. El tick activa o desactiva
     cada sensor; **auto** quiere decir que se activa solo si se detecta
     conectado. Algunos tienen acciones, como **Calibrar** (con la moto quieta).
-    - **IMU (inclinación y cabeceo):** la caja puede ir en cualquier postura
+    - **Acelerómetro/giroscopio (inclinación y cabeceo):** la caja puede ir en cualquier postura
       (tumbada, de lado…), pero **bien sujeta**: si se mueve, los ángulos dejan
       de valer. Pulsa **Calibrar** con la moto **recta y quieta** cada vez que
       cambies la caja de sitio. El sistema también calibra solo al encenderse,
@@ -114,7 +114,7 @@ Pulsa **En vivo** en tu sistema (tiene que estar «en línea»).
 - **Pantalla y luces de la moto:** salen como **bloques** más de la vista en
   vivo, con lo mismo que se ve en la moto en ese momento. Se mueven con **⠿**
   y se ocultan con su casilla, como los sensores.
-- **Bloque de la IMU:** el **diagrama g-g** sale el primero (ver el
+- **Bloque del acelerómetro/giroscopio:** el **diagrama g-g** sale el primero (ver el
   apartado 9); debajo, inclinación, aceleraciones, cabeceo y **vibración
   vertical**.
 
@@ -246,7 +246,7 @@ Pulsa **Sesiones** en tu sistema.
   - Con las **casillas** de arriba ocultas o muestras sensores; con **⠿**
     arrastras un bloque para cambiar el orden. **⚙ Ajustes** guarda ese orden
     y las opciones.
-  - **Bloque de la IMU:**
+  - **Bloque del acelerómetro/giroscopio:**
     - **Diagrama g-g** (círculo de fricción): aceleración lateral en
       horizontal y longitudinal en vertical; más oscuro = más tiempo ahí. Los
       círculos van cada 0,25 g (un neumático de calle da hasta ≈ 1 g). Al
@@ -265,7 +265,7 @@ Pulsa **Sesiones** en tu sistema.
   [formación](https://motorsport.amorgante.es): inclinación y radio de las
   curvas, agarre usado (círculo de fricción), frenadas y transferencia de
   carga, temperatura del disco, suspensión… y cruza los sensores entre sí
-  (por ejemplo, la frenada de la IMU con la de la rueda). Avisa también de
+  (por ejemplo, la frenada del acelerómetro con la de la rueda). Avisa también de
   datos dudosos (caja movida, vibración, huecos). **Ver** lleva a ese momento
   en las gráficas y **Teoría en la formación** abre el capítulo. Si amplías
   otro tramo, pulsa **Analizar el tramo visible**.
@@ -285,8 +285,8 @@ Pulsa **Sesiones** en tu sistema.
 
 - **Encender:** basta con dar corriente. Durante unos **8 segundos** la
   pantalla enseña el **logo** y las luces hacen una **prueba tipo semáforo**
-  (pasadas en rojo, ámbar y verde): en ese tiempo arrancan los sensores y la
-  IMU se calibra, así que deja la moto **recta y quieta** hasta que salga la
+  (pasadas en rojo, ámbar y verde): en ese tiempo arrancan los sensores y el
+  acelerómetro/giroscopio se calibra, así que deja la moto **recta y quieta** hasta que salga la
   primera página. En 1 o 2 minutos sale «en línea» en la app (si tiene
   internet).
 - **Apagar:** pide al administrador cómo hacerlo en tu moto. Si se corta la

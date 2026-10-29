@@ -122,7 +122,7 @@ class _MPUSim:
 
 class IMU(Modulo):
     TIPO = "imu"
-    NOMBRE = "IMU MPU6050"
+    NOMBRE = "Acelerómetro / giroscopio (MPU6050)"
     COLS = ["t_s", "ax_g", "ay_g", "az_g", "gx_dps", "gy_dps", "gz_dps",
             "incl_deg", "cabeceo_deg"]
     DEFECTOS = {

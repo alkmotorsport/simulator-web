@@ -152,7 +152,7 @@
     const imu = S.imu;
     if (imu) {
       const d = imu.derived, ds = imu.ds, t = ds.t, [i0, i1] = idx(t, r);
-      if (d.tumbada) add('info', 'Datos', 'Ángulos de la IMU recalculados (caja a ' + n0(d.tumbada) + '°)',
+      if (d.tumbada) add('info', 'Datos', 'Ángulos del acelerómetro/giroscopio recalculados (caja a ' + n0(d.tumbada) + '°)',
         'La sesión se grabó antes de que la calibración nivelara los ejes. Con la caja tumbada, la inclinación salía de dos ejes que miden casi 0 y daba picos falsos. La app gira los ejes y repite el cálculo: lo que ves ya está corregido.', null, null);
       if (ds.imu && ds.imu.corte >= 0) add('aviso', 'Datos', 'La caja se movió a ' + hms(t[ds.imu.corte]),
         'Desde ahí la caja queda quieta con la gravedad a más de 35° de como estaba al calibrar: se cogió, se soltó o la moto está caída. Esos datos ya no dicen nada de la moto y no se usan.', null, t[ds.imu.corte]);
@@ -166,7 +166,7 @@
         if (a >= 3.95) { sat++; if (tSat !== tSat) tSat = t[i]; }
       }
       if (sat) add('aviso', 'Datos', 'El acelerómetro llega a su tope (±4 g) en ' + sat + ' lecturas',
-        'Son golpes o vibración del motor que no caben en la escala del sensor (' + n2(100 * sat / n) + ' % de las lecturas). Suele ser la caja atornillada rígida al chasis o algo suelta: un soporte con goma lo reduce y mejora todas las medidas de la IMU.', null, tSat);
+        'Son golpes o vibración del motor que no caben en la escala del sensor (' + n2(100 * sat / n) + ' % de las lecturas). Suele ser la caja atornillada rígida al chasis o algo suelta: un soporte con goma lo reduce y mejora todas las medidas del acelerómetro/giroscopio.', null, tSat);
       // vibracion y muestreo (Nyquist)
       const vib = [];
       for (let i = i0; i < i1; i++) if (d.vib[i] > 0.1) vib.push(d.vib[i]);
@@ -174,7 +174,7 @@
       if (vib.length > 100) {
         const med = cuantil(vib, 0.5);
         add(med > 0.3 ? 'aviso' : 'info', 'Datos', 'Vibración en marcha: ' + n2(med) + ' g RMS (mediana)',
-          'El motor vibra a decenas o cientos de Hz y la IMU muestrea a ' + n0(hz) + ' Hz: lo que pase de ' + n0(hz / 2) + ' Hz no se puede ver bien (Nyquist: fs ≥ 2·f) y reaparece como una señal lenta falsa (aliasing). Por eso la aceleración longitudinal se promedia en 0,5 s.' +
+          'El motor vibra a decenas o cientos de Hz y el acelerómetro/giroscopio muestrea a ' + n0(hz) + ' Hz: lo que pase de ' + n0(hz / 2) + ' Hz no se puede ver bien (Nyquist: fs ≥ 2·f) y reaparece como una señal lenta falsa (aliasing). Por eso la aceleración longitudinal se promedia en 0,5 s.' +
           (med > 0.3 ? ' Con tanta vibración, la frenada y la aceleración de pico pueden llevar algo de ruido.' : ''), 'nyq', null);
       }
     }
@@ -342,8 +342,8 @@
       for (let j = j0; j < j1; j++) if (d.ax_f[j] === d.ax_f[j]) { s += d.ax_f[j]; c++; }
       const aImu = c ? -s / c : NaN, aRueda = mayor.a;
       if (aImu === aImu && Math.abs(aImu - aRueda) > 0.3 * Math.max(aImu, aRueda, 0.1))
-        add('aviso', 'Correlación', 'La IMU y la rueda no cuentan la misma frenada',
-          'En esa frenada la rueda da ' + n2(aRueda) + ' g de media y la IMU ' + n2(aImu) + ' g. Deberían coincidir: si la rueda da más, puede haberse bloqueado o patinar; si da menos, revisa el diámetro de rueda configurado o la calibración de la IMU.', 'stop', mayor.t0);
+        add('aviso', 'Correlación', 'El acelerómetro/giroscopio y la rueda no cuentan la misma frenada',
+          'En esa frenada la rueda da ' + n2(aRueda) + ' g de media y el acelerómetro ' + n2(aImu) + ' g. Deberían coincidir: si la rueda da más, puede haberse bloqueado o patinar; si da menos, revisa el diámetro de rueda configurado o la calibración del acelerómetro/giroscopio.', 'stop', mayor.t0);
     }
   }
 

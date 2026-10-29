@@ -755,7 +755,7 @@
         fase += kmh / 3.6 * (s - tPrev) / 1.95; tPrev = s;
         return [Math.floor(fase), 1950 / (kmh / 3.6), kmh / 3.6 / 1.95 * 60, kmh, Math.floor(fase) * 1.95];
       }),
-      mk('imu', 'imu', 'IMU MPU6050', ['ax_g', 'ay_g', 'az_g', 'gx_dps', 'gy_dps', 'gz_dps', 'incl_deg', 'cabeceo_deg'], 50, (s, p) => {
+      mk('imu', 'imu', 'Acelerómetro / giroscopio MPU6050', ['ax_g', 'ay_g', 'az_g', 'gx_dps', 'gy_dps', 'gz_dps', 'incl_deg', 'cabeceo_deg'], 50, (s, p) => {
         const fi = p.incl * Math.PI / 180, w = -9.81 * Math.tan(fi) / Math.max(p.kmh / 3.6, 1);
         return [p.acel + noise(0.03), noise(0.03), 1 / Math.cos(fi) + noise(0.05), noise(0.8),
           w * Math.sin(fi) * 57.3 + noise(0.5), w * Math.cos(fi) * 57.3 + noise(0.5), p.incl + noise(0.5), 2.5 * p.acel + noise(0.2)];

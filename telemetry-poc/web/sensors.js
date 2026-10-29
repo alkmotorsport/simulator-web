@@ -327,7 +327,7 @@
 
   const imu = {
     id: 'imu',
-    name: 'IMU · MPU6050',
+    name: 'Acelerómetro / giroscopio · MPU6050',
     detect: h => ['ax_g', 'gz_dps'].every(c => h.includes(c)),
     options: [],
     derive(ds) {

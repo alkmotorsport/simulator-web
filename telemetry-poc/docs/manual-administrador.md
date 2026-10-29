@@ -85,7 +85,7 @@ que no se vayan a usar.
 - **Encender:** basta con dar corriente. La telemetría arranca sola, en vivo y
   **sin grabar**; en 1 o 2 minutos sale «en línea» en la app. Los primeros
   8 s la pantalla enseña el logo y las luces hacen la prueba tipo semáforo
-  mientras arrancan los sensores y se calibra la IMU: la moto, recta y quieta.
+  mientras arrancan los sensores y se calibra el acelerómetro/giroscopio: la moto, recta y quieta.
 - **Grabar:** desde la app, **● Grabar** y **■ Parar grabación**. Al parar, la
   sesión se sube sola.
 - **Apagar:** con `sudo poweroff` (por SSH), no desenchufándolo: así, si estaba
@@ -116,7 +116,7 @@ usuario*):
 - **Borrar del sistema:** borra la copia local. Si no estaba subida, se
   pierde (la app avisa). La sesión que se está grabando no se puede borrar.
 
-Una sesión de horas pesa mucho (3,5 h de IMU son unos 76 MB): mejor abrirla en
+Una sesión de horas pesa mucho (3,5 h de acelerómetro/giroscopio son unos 76 MB): mejor abrirla en
 un ordenador.
 
 ## 6. Sistemas de telemetría
@@ -145,7 +145,7 @@ en la wifi.
    dtoverlay=spi1-1cs,cs0_pin=12     # pantalla por SPI1
    ```
 
-   Y `sudo raspi-config nonint do_i2c 0` y `do_spi 0` (IMU, sondas de
+   Y `sudo raspi-config nonint do_i2c 0` y `do_spi 0` (acelerómetro/giroscopio, sondas de
    temperatura).
 2. Instala el código y el servicio:
 

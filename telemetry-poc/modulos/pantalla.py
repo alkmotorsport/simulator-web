@@ -566,7 +566,7 @@ def poner_comp(D, comp, t, cfg):
     D.en_tope = tope
 
 
-SISTEMA_DEMO = [("SUSP", True, "40"), ("IMU", True, "100"), ("RTRAS", True, "20"),
+SISTEMA_DEMO = [("SUSP", True, "40"), ("ACEL", True, "50"), ("RTRAS", True, "20"),
                 ("RDEL", True, "20"), ("BUJIA", True, "4"), ("ACEIT", False, "!"),
                 ("DISCO", True, "10"), ("BOTON", False, "--")]
 
@@ -788,7 +788,7 @@ class Pantalla(Modulo):
             ok = m.estado == "activo" and not m.aviso
             txt = "ERR" if m.estado == "error" else "CAL" if m.estado == "calibrando" \
                 else "!" if m.aviso else f"{hz:.0f}"
-            corto = {"suspension": "SUSP", "rueda_tras": "RTRAS", "rueda_del": "RDEL",
+            corto = {"imu": "ACEL", "suspension": "SUSP", "rueda_tras": "RTRAS", "rueda_del": "RDEL",
                      "temp_bujia": "BUJIA", "temp_aceite": "ACEIT", "ir": "DISCO"}
             out.append((corto.get(m.id, m.id.upper()), ok, txt))
         return out
