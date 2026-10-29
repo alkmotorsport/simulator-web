@@ -465,6 +465,15 @@ class Maestro:
         if metas != getattr(self, "_metas", None):
             self._metas = metas
             self.grabador.actualizar_json()
+        # otra red (wifi.py: punto de acceso del movil...): otra direccion local
+        if self.sincro and self.live and time.monotonic() - getattr(self, "_t_ip", 0) >= 30:
+            self._t_ip = time.monotonic()
+            local = self.live.url().rstrip("/")
+            if local != self.sincro.local:
+                if self.sincro.direccion == self.sincro.local:   # sin tunel
+                    self.sincro.direccion = local
+                self.sincro.local = local
+                self.sincro.avisar()
         self.publicar_estado()
 
     def linea_estado(self):

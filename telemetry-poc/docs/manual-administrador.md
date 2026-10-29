@@ -17,7 +17,7 @@ usuario y contraseña. Cada sesión grabada se sube **cifrada** al repo privado
 | --- | --- | --- |
 | **App** (usuarios): sus sistemas, en vivo, grabar, sesiones | <https://motorsport.amorgante.es/telemetry-poc/web/> | Desde cualquier sitio |
 | **Portal de administración**: invitar, cambiar contraseñas, borrar usuarios | <https://motorsport.amorgante.es/telemetry-poc/web/admin.html> | Desde cualquier sitio, con el token de admin |
-| **Web de un sistema en su wifi** (sin internet) | `https://<ip-del-sistema>:8081` (Bultaco Mercurio: `https://192.168.68.41:8081`) | Solo desde la wifi del sistema. Hay que aceptar el aviso del certificado |
+| **Web de un sistema en su wifi** (sin internet) | `https://<ip-del-sistema>:8081` (Bultaco Mercurio: `https://192.168.68.56:8081` en casa) | Solo desde la wifi del sistema. Hay que aceptar el aviso del certificado |
 
 La dirección en la wifi de cada sistema aparece en el portal, en
 **Sistemas de telemetría** («en su wifi»).
@@ -156,6 +156,14 @@ en la wifi.
    sudo sh systemd/instalar.sh
    ```
 
+   `instalar.sh` instala también **telemetria-wifi** (`wifi.py`, solo en
+   sistemas con NetworkManager: Bookworm): si al encender no hay ninguna wifi
+   conocida, el sistema crea la suya (`Telemetria-<nombre>`, clave en
+   `/etc/telemetria/wifi.json` y en su pantalla) con un portal para darle la
+   wifi o el punto de acceso de un móvil, sin SSH (manual de usuario,
+   apartado 11). Redes guardadas: `nmcli con show` (las del portal se llaman
+   `wifi-<nombre>`); olvidar una: `sudo nmcli con delete wifi-<nombre>`.
+   Ver lo que hace: `journalctl -u telemetria-wifi -f`.
 3. Crea un **token para ese sistema** (apartado 7): `telemetry-data`,
    *Contents: Read and write*, con el nombre `telemetria-raspi-<id>`.
 4. Conéctalo al repo de datos. El **id** es corto, en minúsculas y **no se

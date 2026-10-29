@@ -293,19 +293,38 @@ Pulsa **Sesiones** en tu sistema.
   corriente mientras graba, la sesión puede quedar **cortada** (se guarda lo
   grabado hasta ese momento).
 
-## 11. Sin cobertura de internet (circuito)
+## 11. La wifi del sistema (punto de acceso del móvil, circuito)
 
-Si el sistema no tiene internet, la app no lo encuentra («apagado o sin
-internet»). Puedes usarlo igualmente **junto a la moto**:
+El sistema se conecta solo a las **wifis que tiene guardadas** (la de casa,
+el punto de acceso de tu móvil...). Para darle una nueva **no hace falta
+ningún cable ni ordenador**:
 
-1. Conecta el móvil a la **wifi del sistema**.
-2. Abre en el navegador su **dirección en la wifi** (apartado 1, punto 3).
-3. La primera vez en cada dispositivo sale un **aviso de seguridad del
-   certificado**: acéptalo (Chrome: *Configuración avanzada → Acceder*;
-   Safari: *Mostrar detalles → visitar este sitio web*).
-4. Pulsa **Entrar** con tu mismo usuario y contraseña. Funciona sin internet.
+1. **Si al encender no encuentra ninguna wifi conocida** (en 1 minuto), el
+   sistema crea **su propia wifi**: `Telemetria-<moto>`. La pantalla lo dice:
+   «CONECTA EL MÓVIL A TELEMETRIA-… · CLAVE …». También se puede pedir con
+   la app, en *Configuración → Wifi → Añadir una wifi* (la conexión de ese
+   momento se corta).
+2. Con el **punto de acceso del móvil apagado**, conecta el móvil a esa wifi
+   con la clave de la pantalla. Se abre sola una página (si no, abre
+   `http://10.42.0.1` en el navegador).
+3. Elige la red o **escribe el nombre exacto de tu punto de acceso** (apagado
+   no sale en la lista; en iPhone es el nombre del teléfono) y su clave, y
+   pulsa **Guardar y conectar**.
+4. Desconéctate de la wifi del sistema y **enciende el punto de acceso**. La
+   pantalla dice «BUSCANDO…» y, en cuanto lo encuentra, «CONECTADA A …». Si
+   en 2 minutos no lo encuentra (clave mal, punto de acceso apagado), vuelve
+   a dar su wifi para repetirlo.
 
-Lo que grabes se subirá a la nube en cuanto el sistema tenga internet.
+Desde entonces se conecta solo a ese punto de acceso cada vez que esté
+encendido: la app, el túnel y la subida a la nube van igual que en casa. Con
+una pulsación corta del botón se quita el aviso de wifi de la pantalla; la IP
+del sistema sale en la página **SISTEMA**.
+
+**Sin ninguna red** (ni punto de acceso): el sistema da su wifi y puedes
+usarlo **junto a la moto**. Conéctate a ella, abre `https://10.42.0.1:8081`,
+acepta el aviso del certificado (la primera vez en cada dispositivo) y pulsa
+**Entrar** con tu usuario: funciona sin internet. Lo que grabes se sube a la
+nube cuando el sistema vuelva a tener internet.
 
 ## 12. Contraseña olvidada
 
