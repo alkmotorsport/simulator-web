@@ -406,7 +406,7 @@ DEFECTOS = {
     "girar": 0,               # 0-3: pantalla girada 0/90/180/270 grados
     "contraste": 255,
     "virtual": True,          # sin pantalla fisica, seguir y verla solo en la web
-    "fps": 8.0,
+    "fps": 5.0,               # la Zero va justa de CPU: a simple vista no se nota
     "rotar_s": 0.0,           # > 0: cambia de pagina sola cada tantos s sin usar el pulsador
     "logo_s": 8.0,            # logo al arrancar, mientras arrancan y calibran los sensores
     "recorrido_mm": 100.0,    # recorrido util de la suspension (escala y % de uso)
@@ -859,8 +859,9 @@ class Pantalla(Modulo):
                 tira.externo(self.motor.luces(ids[ver], v, int(tira.cfg["num"]), manda))
             im = dibujar(L, D, disp[ver], ahora, c, len(disp), ver, rec=D.v["_rec"], marca=marca)
             self._mostrar(im)
-            # copia para la web, ~2 por segundo
-            if ahora - ult_png >= 0.5:
+            # copia para la web, ~2 por segundo (solo si alguien la mira: PNG cuesta CPU)
+            live = getattr(self.bus, "live", None)
+            if ahora - ult_png >= 0.5 and (live is None or live.hay_clientes()):
                 ult_png = ahora
                 buf = io.BytesIO()
                 im.save(buf, "PNG")

@@ -126,6 +126,7 @@ class LiveServer:
         self.control = control      # el maestro: atiende los POST de la web
         self.acceso = acceso        # acceso.Acceso, o None: web abierta
         self.clientes = {}          # /api/vivo: id -> lo que ya tiene ese cliente
+        self.streams = 0            # conexiones /api/stream abiertas
         self.lock = threading.Lock()
         self.bufs = {}              # id de modulo -> deque de filas
         self.seqs = {}              # id de modulo -> filas publicadas
@@ -147,6 +148,12 @@ class LiveServer:
                 self.seqs[mod] = 0
             buf.append(fila)
             self.seqs[mod] += 1
+
+    def hay_clientes(self):
+        """Alguien mirando en vivo (stream abierto o consulta en los ultimos 10 s)."""
+        ahora = time.monotonic()
+        with self.lock:
+            return self.streams > 0 or any(ahora - v["visto"] < 10 for v in self.clientes.values())
 
     def set_estado(self, estado):
         """Estado de los modulos y de la grabacion; se envia solo si cambia."""
@@ -325,6 +332,8 @@ class LiveServer:
         h.end_headers()
         cli = {"estado": -1, "vivo": 0, "seqs": {}}
         ult_envio = time.monotonic()
+        with self.lock:
+            self.streams += 1
         try:
             while not self.cerrando:
                 estado, vivos, datos = self._pendiente(cli)
@@ -348,6 +357,9 @@ class LiveServer:
                 time.sleep(0.05)  # ~20 envios/s, varias muestras por envio
         except (BrokenPipeError, ConnectionResetError, OSError):
             pass
+        finally:
+            with self.lock:
+                self.streams -= 1
 
     def _vivo(self, h, q):
         """Una consulta del modo en vivo: lo nuevo desde la anterior de ese

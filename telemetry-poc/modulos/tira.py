@@ -111,6 +111,7 @@ class TiraLeds(Modulo):
         self._probar = False
         self._externo = None     # ([(color, efecto)], t): lo que manda la pantalla
         self._prueba = None      # ((color, efecto), hasta): boton Probar de la web
+        self._ultimo = None      # lo ultimo mostrado (cols, valor, texto)
 
     def pines(self):
         return f"datos GPIO{self.cfg['gpio']} (pin 12) · {self.cfg['num']} LEDs"
@@ -140,6 +141,7 @@ class TiraLeds(Modulo):
         self._ejecutar()
 
     def liberar(self):
+        self._ultimo = None
         if self.tira is not None:
             self.tira.cerrar()
             self.tira = None
@@ -152,7 +154,7 @@ class TiraLeds(Modulo):
         en_cambio = False
         self.estado = "activo"
         self._arranque()
-        while not self.parar.wait(0.02):
+        while not self.parar.wait(0.04):          # 25/s: sobra para los parpadeos
             ahora = time.monotonic()
             if self._probar:
                 self._probar = False
@@ -199,6 +201,9 @@ class TiraLeds(Modulo):
             self.parar.wait(0.02)
 
     def _mostrar(self, cols, valor, texto=None):
+        if (cols, valor, texto) == self._ultimo:   # sin cambios: ni LEDs ni web
+            return
+        self._ultimo = (list(cols), valor, texto)
         if self.tira is not None:
             try:
                 self.tira.poner(cols)

@@ -127,7 +127,7 @@ class IMU(Modulo):
             "incl_deg", "cabeceo_deg"]
     DEFECTOS = {
         "direccion": 0x68,
-        "hz": 100.0,
+        "hz": 50.0,              # la Zero no llega a 100 (se quedaba en ~27 irregulares)
         "ejes": "y,-x,z",           # delante, izquierda, arriba (caja impresa del PDF)
         "alfa": 0.98,               # peso del giroscopio en el filtro complementario
         "cero_seg": 2.0,
