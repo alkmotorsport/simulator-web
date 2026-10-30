@@ -23,8 +23,8 @@ Bus a 1 MHz por los 1,8 m de cable. Necesita luma.oled: sudo pip3 install luma.o
 Otra pantalla de luma (sh1107, ssd1306...) o por I2C: cambia 'driver',
 'interfaz' y los pines en telemetria.json; las paginas son de 128x64.
 
-Fuentes (OFL, en ./fuentes): Silkscreen para rotulos (pixel, nitida a 8 px)
-y Rajdhani Bold para las cifras grandes.
+Letras: la de 5x7 de los cuadros LCD (LetraLCD, en este fichero) para rotulos
+y Rajdhani Bold (OFL, en ./fuentes) para las cifras grandes.
 """
 
 import json
@@ -101,14 +101,75 @@ def fmt(v, d=0, signo=False):
 
 # -------------------------------------------------------------- dibujo ---
 
+class LetraLCD:
+    """Letra de 5x7 pixeles, como la de los cuadros LCD (rotulos y lineas
+    pequenas). Solo mayusculas: las minusculas y los acentos se convierten.
+    negrita: cada trazo un pixel mas ancho."""
+
+    G = {
+        "A": "01110 10001 10001 11111 10001 10001 10001", "B": "11110 10001 10001 11110 10001 10001 11110",
+        "C": "01110 10001 10000 10000 10000 10001 01110", "D": "11110 10001 10001 10001 10001 10001 11110",
+        "E": "11111 10000 10000 11110 10000 10000 11111", "F": "11111 10000 10000 11110 10000 10000 10000",
+        "G": "01110 10001 10000 10111 10001 10001 01111", "H": "10001 10001 10001 11111 10001 10001 10001",
+        "I": "01110 00100 00100 00100 00100 00100 01110", "J": "00111 00010 00010 00010 00010 10010 01100",
+        "K": "10001 10010 10100 11000 10100 10010 10001", "L": "10000 10000 10000 10000 10000 10000 11111",
+        "M": "10001 11011 10101 10101 10001 10001 10001", "N": "10001 11001 10101 10011 10001 10001 10001",
+        "O": "01110 10001 10001 10001 10001 10001 01110", "P": "11110 10001 10001 11110 10000 10000 10000",
+        "Q": "01110 10001 10001 10001 10101 10010 01101", "R": "11110 10001 10001 11110 10100 10010 10001",
+        "S": "01111 10000 10000 01110 00001 00001 11110", "T": "11111 00100 00100 00100 00100 00100 00100",
+        "U": "10001 10001 10001 10001 10001 10001 01110", "V": "10001 10001 10001 10001 10001 01010 00100",
+        "W": "10001 10001 10001 10101 10101 10101 01010", "X": "10001 10001 01010 00100 01010 10001 10001",
+        "Y": "10001 10001 01010 00100 00100 00100 00100", "Z": "11111 00001 00010 00100 01000 10000 11111",
+        "Ñ": "01110 00000 10001 11001 10101 10011 10001",
+        "0": "01110 10001 10011 10101 11001 10001 01110", "1": "00100 01100 00100 00100 00100 00100 01110",
+        "2": "01110 10001 00001 00010 00100 01000 11111", "3": "11111 00010 00100 00010 00001 10001 01110",
+        "4": "00010 00110 01010 10010 11111 00010 00010", "5": "11111 10000 11110 00001 00001 10001 01110",
+        "6": "00110 01000 10000 11110 10001 10001 01110", "7": "11111 00001 00010 00100 01000 01000 01000",
+        "8": "01110 10001 10001 01110 10001 10001 01110", "9": "01110 10001 10001 01111 00001 00010 01100",
+        "/": "00001 00010 00010 00100 01000 01000 10000", ".": "00000 00000 00000 00000 00000 01100 01100",
+        ",": "00000 00000 00000 00000 01100 00100 01000", ":": "00000 01100 01100 00000 01100 01100 00000",
+        "-": "00000 00000 00000 11111 00000 00000 00000", "+": "00000 00100 00100 11111 00100 00100 00000",
+        "=": "00000 00000 11111 00000 11111 00000 00000", "%": "11001 11010 00010 00100 01000 01011 10011",
+        "°": "01100 10010 10010 01100 00000 00000 00000", "!": "00100 00100 00100 00100 00100 00000 00100",
+        "?": "01110 10001 00001 00010 00100 00000 00100", "(": "00010 00100 01000 01000 01000 00100 00010",
+        ")": "01000 00100 00010 00010 00010 00100 01000", "<": "00010 00100 01000 10000 01000 00100 00010",
+        ">": "01000 00100 00010 00001 00010 00100 01000", "_": "00000 00000 00000 00000 00000 00000 11111",
+        "'": "00100 00100 01000 00000 00000 00000 00000", "#": "01010 01010 11111 01010 11111 01010 01010",
+        " ": "00000 00000 00000 00000 00000 00000 00000",
+    }
+    ACENTOS = str.maketrans("ÁÉÍÓÚÜÀÈÌÒÙ", "AEIOUUAEIOU")
+    ALTO, PASO = 7, 6            # alto de la letra y avance (5 + 1 de espacio)
+
+    def __init__(self, negrita=False):
+        self.negrita = negrita
+
+    def _txt(self, txt):
+        return str(txt).upper().translate(self.ACENTOS)
+
+    def getbbox(self, txt):
+        n = len(self._txt(txt))
+        return (0, 0, max(0, n * self.PASO - 1), self.ALTO)
+
+    def dibujar(self, d, x, y, txt, color):
+        for ch in self._txt(txt):
+            g = self.G.get(ch, self.G["?"]).split()
+            for j, fila in enumerate(g):
+                for i, b in enumerate(fila):
+                    if b == "1":
+                        d.point((x + i, y + j), fill=color)
+                        if self.negrita and i < 4:
+                            d.point((x + i + 1, y + j), fill=color)
+            x += self.PASO
+
+
 class Lienzo:
     """Imagen 1 bit de 128x64 con ayudas de dibujo (compatibles con Pillow 5)."""
 
     def __init__(self):
         from PIL import ImageFont
         f = lambda n, s: ImageFont.truetype(os.path.join(FUENTES, n), s)
-        self.px = f("Silkscreen-Regular.ttf", 8)        # rotulos
-        self.pxb = f("Silkscreen-Bold.ttf", 8)
+        self.px = LetraLCD()                             # rotulos
+        self.pxb = LetraLCD(negrita=True)
         self.n = {s: f("Rajdhani-Bold.ttf", s) for s in (18, 22, 30, 36, 44, 52)}
         self.im = self.d = None
 
@@ -134,7 +195,10 @@ class Lienzo:
         l, t, r, b = self.caja(font, txt)
         w = r - l
         x0 = x if alin == "i" else x - w // 2 if alin == "c" else x - w
-        self.d.text((x0 - l, y - t), txt, font=font, fill=color)
+        if isinstance(font, LetraLCD):
+            font.dibujar(self.d, x0, y, txt, color)
+        else:
+            self.d.text((x0 - l, y - t), txt, font=font, fill=color)
         return w
 
     def rect(self, x0, y0, x1, y1, relleno=1, borde=None):
@@ -153,9 +217,9 @@ class Lienzo:
 
     def cabecera(self, titulo, derecha=""):
         self.rect(0, 0, W - 1, 8)
-        self.texto(2, 2, titulo, self.pxb, color=0)
+        self.texto(2, 1, titulo, self.pxb, color=0)
         if derecha:
-            self.texto(W - 2, 2, derecha, self.px, "d", color=0)
+            self.texto(W - 2, 1, derecha, self.px, "d", color=0)
 
     def pie(self, izq="", der="", fuente=None):
         f = fuente or self.px
@@ -375,11 +439,11 @@ def pag_sistema(L, D, ahora, c):
     L.texto(0, PIE + 1, D.get("_ip", "--"), L.px)
     # el boton mantenido 3 s aqui graba o para (boton.py)
     if D.get("_rec"):
-        w = L.texto(W - 1, PIE + 1, "3S=PARAR", L.px, "d")
+        w = L.texto(W - 1, PIE + 1, "3S:FIN", L.px, "d")
         if _parpadeo(ahora, 1):
             L.d.ellipse((W - w - 7, PIE + 1, W - w - 2, PIE + 6), fill=1)
     else:
-        L.texto(W - 1, PIE + 1, "3S=GRABAR", L.px, "d")
+        L.texto(W - 1, PIE + 1, "3S:REC", L.px, "d")
 
 
 def _alguna(*ks):
