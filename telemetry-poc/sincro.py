@@ -180,7 +180,7 @@ class Sincro:
             raise RuntimeError("git {}: {}".format(args[0], r.stdout.strip()[-300:]))
         return r
 
-    def _actualizar(self):
+    def _actualizar(self, reintento=False):
         """Deja la copia local igual que el remoto (lo local se rehace siempre
         desde datos/, asi que no hay nada que fusionar)."""
         if not os.path.isdir(os.path.join(self.repo, ".git")):
@@ -197,6 +197,13 @@ class Sincro:
             self._git("clean", "-fdq")
         elif "couldn't find remote ref" in r.stdout.lower():
             self._git("checkout", "--orphan", RAMA, check=False)  # repo recien creado
+        elif not reintento and re.search(r"empty|corrupt|bad object|unable to read|vac[ií]o|corromp",
+                                         r.stdout, re.I):
+            # copia rota por quitar la corriente a lo bruto: se rehace (lo local
+            # sale siempre de datos/, asi que no se pierde nada)
+            print("\n[sincro] copia del repo de datos rota: se vuelve a descargar", flush=True)
+            shutil.rmtree(self.repo)
+            return self._actualizar(reintento=True)
         else:
             raise RuntimeError("git fetch: " + r.stdout.strip()[-300:])
         self._leer_usuarios()
