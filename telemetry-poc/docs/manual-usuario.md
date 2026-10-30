@@ -130,6 +130,11 @@ ruedas, resumen y sistema.
 - **Pulsación larga** (mantén 1 segundo): **marca vuelta** (en la línea de
   meta). La página **VUELTA** enseña el tiempo de la vuelta y la diferencia
   con tu mejor vuelta.
+- **Grabar sin el móvil: en la página SISTEMA, mantén 3 segundos.** Empieza a
+  grabar («GRABANDO») o, si ya grababa, para y guarda («PARADA Y GUARDADA»). El
+  pie de esa página lo recuerda («3S=GRABAR» / «3S=PARAR»). En SISTEMA la
+  pulsación de 1 segundo no marca vuelta. La sesión se sube a la nube en
+  cuanto el sistema tenga internet.
 - **Mantenido 10 segundos: apagar.** A los 3 segundos la pantalla cuenta
   atrás («SIGUE PULSANDO… PARA APAGAR»); si sueltas antes, no pasa nada
   (solo queda marcada la vuelta del primer segundo). A los 10 segundos, si

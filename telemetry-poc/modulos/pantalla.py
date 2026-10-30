@@ -375,7 +375,7 @@ def pag_sistema(L, D, ahora, c):
     L.texto(0, PIE + 1, D.get("_ip", "--"), L.px)
     # el boton mantenido 3 s aqui graba o para (boton.py)
     if D.get("_rec"):
-        w = L.texto(W - 1, PIE + 1, "REC 3S=FIN", L.pxb, "d")
+        w = L.texto(W - 1, PIE + 1, "3S=PARAR", L.px, "d")
         if _parpadeo(ahora, 1):
             L.d.ellipse((W - w - 7, PIE + 1, W - w - 2, PIE + 6), fill=1)
     else:
