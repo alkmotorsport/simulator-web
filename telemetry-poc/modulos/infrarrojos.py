@@ -33,7 +33,13 @@ class _MLX:
             amb = bus.read_word_data(self.addr, RAM_AMB)
         if obj & 0x8000:            # bit de error del MLX
             return None, _a_celsius(amb)
-        return _a_celsius(obj), _a_celsius(amb)
+        # 0 y 0x7FFF (-273 y 382 C) son lecturas rotas del bus (ruido del encendido)
+        if not 0 < obj < 0x7FFF or not 0 < amb < 0x7FFF:
+            return None, None
+        o, a = _a_celsius(obj), _a_celsius(amb)
+        if not (-70 <= o <= 380 and -40 <= a <= 125):   # fuera de lo que mide el sensor
+            return None, None
+        return o, a
 
 
 class _MLXSim:

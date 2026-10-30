@@ -156,16 +156,16 @@
         'La sesión se grabó antes de que la calibración nivelara los ejes. Con la caja tumbada, la inclinación salía de dos ejes que miden casi 0 y daba picos falsos. La app gira los ejes y repite el cálculo: lo que ves ya está corregido.', null, null);
       if (ds.imu && ds.imu.corte >= 0) add('aviso', 'Datos', 'La caja se movió a ' + hms(t[ds.imu.corte]),
         'Desde ahí la caja queda quieta con la gravedad a más de 35° de como estaba al calibrar: se cogió, se soltó o la moto está caída. Esos datos ya no dicen nada de la moto y no se usan.', null, t[ds.imu.corte]);
-      // tope del sensor (+-4 g): golpes o caja rigida/suelta
-      const c = ds.cols;
+      // tope del sensor (+-4 g las sesiones viejas, +-16 g las nuevas): golpes o caja rigida/suelta
+      const c = ds.cols, tope = (ds.meta && ds.meta.rango_g) || 4;
       let sat = 0, n = 0, tSat = NaN;
       for (let i = i0; i < i1; i++) {
         const a = Math.max(Math.abs(c.ax_g[i]), Math.abs(c.ay_g[i]), Math.abs(c.az_g[i]));
         if (a !== a) continue;
         n++;
-        if (a >= 3.95) { sat++; if (tSat !== tSat) tSat = t[i]; }
+        if (a >= tope * 0.99) { sat++; if (tSat !== tSat) tSat = t[i]; }
       }
-      if (sat) add('aviso', 'Datos', 'El acelerómetro llega a su tope (±4 g) en ' + sat + ' lecturas',
+      if (sat) add('aviso', 'Datos', 'El acelerómetro llega a su tope (±' + tope + ' g) en ' + sat + ' lecturas',
         'Son golpes o vibración del motor que no caben en la escala del sensor (' + n2(100 * sat / n) + ' % de las lecturas). Suele ser la caja atornillada rígida al chasis o algo suelta: un soporte con goma lo reduce y mejora todas las medidas del acelerómetro/giroscopio.', null, tSat);
       // vibracion y muestreo (Nyquist)
       const vib = [];

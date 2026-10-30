@@ -30,7 +30,7 @@ from . import sim
 
 
 class _HallPigpio:
-    def __init__(self, pi, gpio, directo=False):
+    def __init__(self, pi, gpio, directo=False, min_s=0.0):
         import pigpio
         self.pigpio, self.pi = pigpio, pi
         pi.set_mode(gpio, pigpio.INPUT)
@@ -38,11 +38,16 @@ class _HallPigpio:
         pi.set_pull_up_down(gpio, pigpio.PUD_UP if directo else pigpio.PUD_OFF)
         pi.set_glitch_filter(gpio, 100)              # ignora pulsos < 100 us
         self.gpio = gpio
+        self.min_us = int(min_s * 1e6)              # pulsos mas seguidos: ruido
+        self.ruido = 0
         self.ticks = collections.deque(maxlen=2)
         self.pulsos = 0
         self.cb = pi.callback(gpio, pigpio.FALLING_EDGE, self._flanco)
 
     def _flanco(self, gpio, nivel, tick):
+        if self.ticks and self.pigpio.tickDiff(self.ticks[-1], tick) < self.min_us:
+            self.ruido += 1                          # mas rapido que 'vmax_kmh': imposible
+            return
         self.ticks.append(tick)
         self.pulsos += 1
 
@@ -101,6 +106,7 @@ class Rueda(Modulo):
         "perimetro_m": 1.95,     # calibrar: distancia recorrida en una vuelta
         "hz": 20.0,
         "timeout_s": 2.0,        # sin pulsos en este tiempo = parada
+        "vmax_kmh": 250.0,       # pulsos que darian mas que esto son ruido (encendido)
         "sim_desliz": 0.0,       # solo --sim: deslizamiento al acelerar
     }
 
@@ -139,7 +145,9 @@ class Rueda(Modulo):
         return ("no", f"GPIO{g} inestable: revisa el cableado")
 
     def bucle(self):
-        self._medir(_HallPigpio(self.hw.pi(), self.cfg["gpio"], self._directo()))
+        c = self.cfg
+        min_s = c["perimetro_m"] / c["imanes"] / (c["vmax_kmh"] / 3.6)
+        self._medir(_HallPigpio(self.hw.pi(), c["gpio"], self._directo(), min_s))
 
     def simular(self):
         self._medir(_HallSim(self))

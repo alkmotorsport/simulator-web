@@ -37,7 +37,8 @@ REG_GYRO = 0x1B
 REG_ACC = 0x1C
 REG_DATOS = 0x3B
 REG_WHOAMI = 0x75
-ESCALA_ACC = 8192.0     # LSB/g a +-4 g
+RANGO_G = 16            # una monocilindrica 2T llega a +-4 g solo con la vibracion
+ESCALA_ACC = 2048.0     # LSB/g a +-16 g
 ESCALA_GYRO = 65.5      # LSB/(grado/s) a +-500 grados/s
 G = 9.81
 GIRO_MIN = math.radians(8)  # giro (rad/s) a partir del cual se usa atan(gy / gz)
@@ -86,9 +87,11 @@ class _MPU:
         time.sleep(0.05)
         with hw.lock_i2c:
             bus.write_byte_data(addr, REG_PWR, 0x01)    # reloj del giroscopio X
-            bus.write_byte_data(addr, REG_DLPF, 0x03)   # filtro ~44 Hz
+            # filtro ~21 Hz: por debajo de la mitad del muestreo (50 Hz), si no la
+            # vibracion del motor (cientos de Hz) se cuela como movimiento lento falso
+            bus.write_byte_data(addr, REG_DLPF, 0x04)
             bus.write_byte_data(addr, REG_GYRO, 0x08)   # +-500 grados/s
-            bus.write_byte_data(addr, REG_ACC, 0x08)    # +-4 g
+            bus.write_byte_data(addr, REG_ACC, 0x18)    # +-16 g
 
     def leer(self):
         """(ax, ay, az) en g y (gx, gy, gz) en grados/s, ejes del sensor."""
@@ -152,6 +155,7 @@ class IMU(Modulo):
         m["sesgo_gyro_dps"] = [round(x, 3) for x in self.sesgo]
         m["cero_deg"] = [round(math.degrees(x), 2) for x in self.cero]
         m["giro"] = [[round(x, 4) for x in f] for f in self.giro]
+        m["rango_g"] = RANGO_G
         return m
 
     def accion(self, nombre):
