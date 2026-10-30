@@ -169,7 +169,7 @@ class Lienzo:
         from PIL import ImageFont
         f = lambda n, s: ImageFont.truetype(os.path.join(FUENTES, n), s)
         self.px = LetraLCD()                             # rotulos
-        self.pxb = LetraLCD(negrita=True)
+        self.pxb = LetraLCD()        # tambien fina: en negrita se lee peor en la OLED
         self.n = {s: f("Rajdhani-Bold.ttf", s) for s in (18, 22, 30, 36, 44, 52)}
         self.im = self.d = None
 
