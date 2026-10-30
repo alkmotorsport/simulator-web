@@ -32,6 +32,7 @@ import math
 import os
 import random
 import socket
+import threading
 import time
 from collections import deque
 
@@ -735,6 +736,7 @@ class Pantalla(Modulo):
         self.mensaje = None      # (titulo, lineas): aviso que tapa las paginas (al apagar)
         self._wifi = (None, 0.0, None)   # (estado de wifi.py, cuando se leyo, aviso oculto)
         self._temporal = (None, 0.0)     # (aviso, hasta): p. ej. "GRABANDO" al pulsar el boton
+        self._despierta = threading.Event()  # pulsacion: redibujar ya, sin esperar al siguiente fotograma
 
     def pines(self):
         c = self.cfg
@@ -769,6 +771,7 @@ class Pantalla(Modulo):
         else:
             self._mover -= 1
         self.t_manual = self.reloj()
+        self._despierta.set()
         return "cambiando de pagina"
 
     def detectar(self):
@@ -842,6 +845,7 @@ class Pantalla(Modulo):
             if v == 1:
                 self._pulsado += 1
                 self.t_manual = t
+                self._despierta.set()
         elif clave == "vuelta":
             if v != D.get("vuelta"):
                 D.poner("t_ini_vuelta", t, t)
@@ -910,7 +914,8 @@ class Pantalla(Modulo):
                     self._wifi = self._wifi[:2] + (aviso_wifi,)
                 else:
                     self._mostrar(aviso(L, *aviso_wifi))
-                    self.parar.wait(0.2)
+                    self._despierta.wait(0.2)        # una pulsacion lo quita al momento
+                    self._despierta.clear()
                     continue
             if self.mensaje is not None:
                 if tira is not None and tira.corriendo():
@@ -957,7 +962,9 @@ class Pantalla(Modulo):
                 im.save(buf, "PNG")
                 self.vivo({"png": base64.b64encode(buf.getvalue()).decode(),
                            "pagina": ids[ver], "alerta": self.alerta})
-            self.parar.wait(1.0 / c["fps"])
+            # hasta el siguiente fotograma o, si se pulsa el boton, ya
+            self._despierta.wait(1.0 / c["fps"])
+            self._despierta.clear()
 
     def _aviso_wifi(self, ahora):
         """Aviso de wifi.py para la pantalla (wifi propia, buscando red), o None."""
