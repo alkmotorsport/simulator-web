@@ -3,8 +3,11 @@ Pulsador de vuelta y cambio de pagina.
 
   pulsacion corta           = pagina siguiente (al soltar)
   pulsacion larga (>= 1 s)  = vuelta (al cumplirse el segundo, sin soltar)
+  en la pagina SISTEMA:
+    mantenido 3 s           = empieza a grabar, o para si ya grababa ('grabar_s';
+                              ahi la pulsacion de 1 s no marca vuelta)
   mantenido 10 s            = para la grabacion y apaga la raspi ('apagar_s';
-                              la pantalla avisa desde los 3 s)
+                              la pantalla avisa desde los 3 s, en SISTEMA desde los 5)
 
 CSV (solo cuando hay pulsaciones): t_s, pulsaciones, vuelta, t_vuelta_s
   pulsaciones 1 = corta, 3 = larga (vuelta; el 3 es por compatibilidad con
@@ -25,7 +28,8 @@ class Boton(Modulo):
     NOMBRE = "Pulsador de vuelta"
     COLS = ["t_s", "pulsaciones", "vuelta", "t_vuelta_s"]
     DETECTABLE = False
-    DEFECTOS = {"gpio": 17, "larga_s": 1.0, "apagar_s": 10.0, "rebote_ms": 20}
+    DEFECTOS = {"gpio": 17, "larga_s": 1.0, "grabar_s": 3.0, "apagar_s": 10.0, "rebote_ms": 20}
+    PAGINA_GRABAR = "sistema"     # pagina de la pantalla donde el boton graba
 
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
@@ -49,23 +53,34 @@ class Boton(Modulo):
                                lambda _g, nivel, _t: bordes.append((nivel, self.reloj())))
         self.estado = "activo"
         pulsado, larga = None, False    # cuando se pulso y si ya conto como larga
-        apagado = False
+        apagado = grabado = False
         while not self.parar.wait(0.02):
             while bordes:
                 nivel, t = bordes.pop(0)
                 if nivel == 0 and pulsado is None:
-                    pulsado, larga = t, False
+                    pulsado, larga, grabado = t, False, False
                 elif nivel == 1 and pulsado is not None:
                     if not larga:
                         self._pulsacion(t, 1)
                     pulsado = None
             self.t_pulsado = pulsado
+            en_grabar = self._en_pagina_grabar()
             if pulsado is not None and not larga and self.reloj() - pulsado >= self.cfg["larga_s"]:
                 larga = True
-                self._pulsacion(self.reloj(), 3)
+                if not en_grabar:
+                    self._pulsacion(self.reloj(), 3)
+            if pulsado is not None and en_grabar and not grabado and \
+                    self.reloj() - pulsado >= self.cfg["grabar_s"]:
+                grabado = True
+                self.bus.grabar_alternar()
             if pulsado is not None and not apagado and self.reloj() - pulsado >= self.cfg["apagar_s"]:
                 apagado = True
                 self.bus.apagar()
+
+    def _en_pagina_grabar(self):
+        pantalla = self.bus.modulos.get("pantalla")
+        return pantalla is not None and pantalla.corriendo() and \
+            getattr(pantalla, "_pid", None) == self.PAGINA_GRABAR
 
     def simular(self):
         # una vuelta cada sim.VUELTA_S: pulsacion larga en la linea de meta

@@ -373,10 +373,13 @@ def pag_sistema(L, D, ahora, c):
         L.texto(x + 7, y, nombre[:5], L.px)
         L.texto(x + 61, y, txt[:3], L.px, "d")
     L.texto(0, PIE + 1, D.get("_ip", "--"), L.px)
+    # el boton mantenido 3 s aqui graba o para (boton.py)
     if D.get("_rec"):
+        w = L.texto(W - 1, PIE + 1, "REC 3S=FIN", L.pxb, "d")
         if _parpadeo(ahora, 1):
-            L.d.ellipse((W - 24, PIE + 1, W - 19, PIE + 6), fill=1)
-        L.texto(W - 1, PIE + 1, "REC", L.pxb, "d")
+            L.d.ellipse((W - w - 7, PIE + 1, W - w - 2, PIE + 6), fill=1)
+    else:
+        L.texto(W - 1, PIE + 1, "3S=GRABAR", L.px, "d")
 
 
 def _alguna(*ks):
@@ -667,6 +670,7 @@ class Pantalla(Modulo):
         self.alerta = None       # nombre de la alerta que se ve ahora
         self.mensaje = None      # (titulo, lineas): aviso que tapa las paginas (al apagar)
         self._wifi = (None, 0.0, None)   # (estado de wifi.py, cuando se leyo, aviso oculto)
+        self._temporal = (None, 0.0)     # (aviso, hasta): p. ej. "GRABANDO" al pulsar el boton
 
     def pines(self):
         c = self.cfg
@@ -679,6 +683,10 @@ class Pantalla(Modulo):
         m = super().meta()
         m["direccion"] = f"0x{int(self.cfg['direccion']):02X}"
         return m
+
+    def aviso_temporal(self, titulo, lineas, seg=2.5):
+        """Aviso unos segundos y vuelta a la pagina."""
+        self._temporal = ((titulo, list(lineas)), time.monotonic() + seg)
 
     def avisar(self, titulo, lineas):
         """Aviso fijo en pantalla (y luces en ambar) hasta que se pare el modulo."""
@@ -820,7 +828,13 @@ class Pantalla(Modulo):
             tira = self.bus.modulos.get("tira")
             boton = self.bus.modulos.get("boton")
             t_puls = getattr(boton, "t_pulsado", None)
-            if self.mensaje is None and t_puls is not None and ahora - t_puls >= 3:
+            temporal, hasta = self._temporal
+            if self.mensaje is None and temporal is not None and time.monotonic() < hasta:
+                self._mostrar(aviso(L, *temporal))
+                self.parar.wait(0.1)
+                continue
+            umbral = 5 if self._pid == "sistema" else 3      # en SISTEMA, a los 3 s se graba
+            if self.mensaje is None and t_puls is not None and ahora - t_puls >= umbral:
                 quedan = max(0, math.ceil(boton.cfg["apagar_s"] - (ahora - t_puls)))
                 self._mostrar(aviso(L, "APAGAR", ["SIGUE PULSANDO", f"{quedan} S", "PARA APAGAR"]))
                 self.parar.wait(0.1)

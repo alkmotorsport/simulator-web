@@ -267,6 +267,19 @@ class Maestro:
                 if not m.corriendo() and self.debe_correr(m) and m.estado != "error":
                     m.arrancar()
 
+    def grabar_alternar(self):
+        """Boton mantenido en la pagina SISTEMA: graba o para (como la app)."""
+        pantalla = self.modulos.get("pantalla")
+        if self.grabador.activa():
+            self.grabador.parar()
+            aviso = ("GRABACION", ["PARADA Y GUARDADA"])
+        else:
+            self.grabador.iniciar()
+            aviso = ("GRABACION", ["GRABANDO"])
+        if pantalla is not None:
+            pantalla.aviso_temporal(*aviso)
+        self.publicar_estado()
+
     def apagar(self):
         """Boton mantenido: cierra la grabacion y apaga la raspi (se puede quitar
         la corriente sin estropear la tarjeta). Al parar, systemd sube la sesion."""
