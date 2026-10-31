@@ -77,7 +77,10 @@ class Tunel:
     def _bucle(self):
         espera = 5
         while not self.parado:
-            orden = ["cloudflared", "tunnel", "--no-autoupdate", "--url", self.origen]
+            # http2 (TCP 443) y no QUIC (UDP 7844): por el punto de acceso de un
+            # movil, algunas operadoras bloquean o estrangulan ese UDP
+            orden = ["cloudflared", "tunnel", "--no-autoupdate", "--protocol", "http2",
+                     "--url", self.origen]
             if self.https:
                 orden.append("--no-tls-verify")     # el certificado local es autofirmado
             t0 = time.monotonic()
