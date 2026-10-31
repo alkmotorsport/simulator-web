@@ -99,12 +99,20 @@
     resize() {
       const r = this.wrap.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
-      this.w = Math.max(10, r.width); this.h = Math.max(10, r.height);
+      this.w = Math.max(10, r.width); this.h = Math.max(10, r.height); this.dpr = dpr;
       for (const c of [this.base, this.over]) {
         c.width = Math.round(this.w * dpr); c.height = Math.round(this.h * dpr);
-        c.style.width = this.w + 'px'; c.style.height = this.h + 'px';
+        // siempre a todo el recuadro: con un tamano viejo se veria en miniatura en una esquina
+        c.style.width = '100%'; c.style.height = '100%';
         c.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
       }
+    }
+    /** Antes de dibujar: si el recuadro o la escala han cambiado y no se ha
+     *  avisado (algunos moviles no lo hacen al cargar), se rehace el lienzo. */
+    fit() {
+      const r = this.wrap.getBoundingClientRect();
+      if (Math.abs(r.width - this.w) > 0.5 || Math.abs(r.height - this.h) > 0.5 ||
+          (window.devicePixelRatio || 1) !== this.dpr) this.resize();
     }
     plotRect() {
       return { x: PAD.l, y: PAD.t, w: this.w - PAD.l - PAD.r, h: this.h - PAD.t - PAD.b };
@@ -240,7 +248,7 @@
     }
 
     draw() {
-      const s = this.s; if (!s.w || !this.group) return;
+      const s = this.s; s.fit(); if (!s.w || !this.group) return;
       const ctx = s.base.getContext('2d');
       const C = themeColors();
       ctx.clearRect(0, 0, s.w, s.h);
@@ -374,7 +382,7 @@
     destroy() { this.s.destroy(); }
 
     draw() {
-      const s = this.s; if (!s.w) return;
+      const s = this.s; s.fit(); if (!s.w) return;
       const ctx = s.base.getContext('2d');
       const C = themeColors();
       ctx.clearRect(0, 0, s.w, s.h);
@@ -461,7 +469,7 @@
     }
 
     draw() {
-      const s = this.s; if (!s.w) return;
+      const s = this.s; s.fit(); if (!s.w) return;
       const ctx = s.base.getContext('2d'), C = themeColors();
       ctx.clearRect(0, 0, s.w, s.h);
       const Q = this.cuadro();
