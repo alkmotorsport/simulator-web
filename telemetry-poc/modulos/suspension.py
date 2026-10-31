@@ -5,8 +5,11 @@ CSV: t_s, echo_us, dist_mm, rel_mm
   echo_us  ancho bruto del pulso de eco (permite recalcular todo despues)
   dist_mm  distancia al objetivo, compensada por temperatura
   rel_mm   dist_mm menos la referencia medida en reposo al arrancar
-           (negativo = el objetivo se acerca al sensor)
+           (negativo = el objetivo se acerca al sensor), mediana de las 5
+           ultimas lecturas validas: el ultrasonidos rebota en marcha
   Sin eco: echo_us/dist_mm/rel_mm vacios, para que los huecos se vean.
+  Lectura imposible (fuera del recorrido o salto mas rapido que una
+  suspension): echo_us y dist_mm se guardan, rel_mm vacio.
 
 Conexion: VCC a 3,3 V (pin 17), GND (pin 6), TRIG GPIO23 (pin 16) y ECHO
 GPIO24 (pin 18), todo directo: a 3,3 V el ECHO nunca pasa de 3,3 V. Nunca lo
@@ -14,6 +17,7 @@ alimentes a 5 V con el ECHO directo (a 5 V necesita divisor 22k + 22k).
 Temporizacion por hardware con pigpio (resolucion de 1 us).
 """
 
+import collections
 import math
 import random
 import statistics
@@ -95,6 +99,10 @@ class Suspension(Modulo):
         "temp_c": 20.0,         # temperatura del aire para el sonido
         "cero_seg": 2.0,        # calibracion en reposo al arrancar
         "montaje": "acerca",    # al comprimir el objetivo se acerca / aleja
+        # lecturas imposibles (rebotes del ultrasonidos) que no se dan por buenas:
+        "extension_mm": 30.0,   # mas extendida que en reposo, como mucho esto
+        "margen_comp": 1.25,    # comprimida, como mucho el recorrido de la ficha x esto
+        "vmax_m_s": 3.0,        # una suspension no se mueve mas rapido entre dos lecturas
     }
     ACCIONES = {"calibrar": "Recalibrar reposo"}
 
@@ -157,6 +165,7 @@ class Suspension(Modulo):
         def a_mm(us):
             return us * v / 2000.0
 
+        self._ultimas = collections.deque(maxlen=5)   # para la mediana de rel_mm
         self._recalibrar = c["cero_seg"] > 0
         if not self._recalibrar:
             self.referencia = 0.0
@@ -175,10 +184,29 @@ class Suspension(Modulo):
             t = self.reloj()
             if us is None:
                 self.publicar(t, [None, None, None], perdida=True)
-            else:
-                d = a_mm(us)
-                self.publicar(t, [round(us), round(d, 1),
-                                  round(d - self.referencia, 1)])
+                continue
+            d = a_mm(us)
+            rel = d - self.referencia
+            if self._valida(rel, t):
+                self._ultimas.append(rel)
+                self.publicar(t, [round(us), round(d, 1), round(statistics.median(self._ultimas), 1)])
+            else:   # eco raro: se guarda el bruto (para revisarlo) pero no cuenta
+                self.publicar(t, [round(us), round(d, 1), None], perdida=True)
+
+    def _valida(self, rel, t):
+        """Lectura posible para una suspension: dentro del recorrido (desde la
+        referencia de reposo) y sin saltos mas rapidos que 'vmax_m_s'."""
+        c = self.cfg
+        comp = -rel if c["montaje"] == "acerca" else rel          # + = comprimida
+        recorrido = (self.bus.cfg.get("moto") or {}).get("susp_tras_mm") or c.get("recorrido_mm", 100.0)
+        if not -c["extension_mm"] <= comp <= recorrido * c["margen_comp"]:
+            return False
+        ult = getattr(self, "_ult_valida", None)
+        if ult is not None and t - ult[1] < 0.3 and \
+                abs(comp - ult[0]) > c["vmax_m_s"] * 1000 * (t - ult[1]) + 10:
+            return False
+        self._ult_valida = (comp, t)
+        return True
 
     def _calibrar(self, eco, timeout_s, periodo, a_mm):
         """Referencia en reposo; reintenta hasta tener lecturas."""

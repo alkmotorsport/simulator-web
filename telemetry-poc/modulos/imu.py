@@ -24,8 +24,10 @@ coordinada, atan(v * giro / g); si no, en curva, el reparto del giro entre
 los ejes Z e Y de la moto, atan(gy / gz); en recta, el acelerometro.
 """
 
+import collections
 import math
 import random
+import statistics
 import time
 
 from .base import Modulo, pc
@@ -145,6 +147,8 @@ class IMU(Modulo):
         self.giro = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]   # nivela los ejes (calibrar)
         self.cero = [0.0, 0.0]      # inclinacion y cabeceo de la caja al calibrar (rad)
         self.vel = (None, -1e9)     # (m/s, t)
+        self._recal_pendiente = False   # calibrado con la moto moviendose: repetir quieta
+        self._quieto = collections.deque(maxlen=100)   # (|a|, |giro|) de los ultimos ~2 s
 
     def pines(self):
         return f"I2C 0x{self.cfg['direccion']:02X} · SDA pin 3 · SCL pin 5"
@@ -248,13 +252,37 @@ class IMU(Modulo):
                 incl = alfa * (incl + gx * dt) + (1 - alfa) * incl_ref
                 cab = alfa * (cab + d_cab * dt) + (1 - alfa) * cab_ref
             t_prev = t
+            if self._recal_pendiente:
+                self._vigilar_quieto(ax, ay, az, g, t)
             self.publicar(t, [round(ax, 3), round(ay, 3), round(az, 3),
                               round(g[0], 2), round(g[1], 2), round(g[2], 2),
                               round(math.degrees(incl), 2), round(math.degrees(cab), 2)])
 
+    # calibracion valida: el giroscopio casi quieto y la aceleracion casi constante
+    QUIETO_GYRO_DPS = 3.0
+    QUIETO_ACC_G = 0.08
+
+    def _vigilar_quieto(self, ax, ay, az, g, t):
+        """Calibracion pendiente: en cuanto la moto lleve ~2 s quieta, repetirla."""
+        self._quieto.append((math.sqrt(ax * ax + ay * ay + az * az),
+                             math.sqrt(sum(x * x for x in g))))
+        v, tv = self.vel
+        parada = v is None or t - tv > 2 or v < 0.3
+        if parada and len(self._quieto) == self._quieto.maxlen and \
+                statistics.pstdev(x[0] for x in self._quieto) < self.QUIETO_ACC_G and \
+                max(x[1] for x in self._quieto) < self.QUIETO_GYRO_DPS + max(map(abs, self.sesgo or [0])):
+            self._recalibrar = True
+            self._quieto.clear()
+
+    def _avisar_pantalla(self, *lineas, seg=4):
+        pantalla = self.bus.modulos.get("pantalla")
+        if pantalla is not None and pantalla.corriendo():
+            pantalla.aviso_temporal("ACELEROMETRO", list(lineas), seg)
+
     def _calibrar(self, mpu, mapa, periodo):
         self.estado = "calibrando"
         sa, sg, n = [0.0] * 3, [0.0] * 3, 0
+        mods, gyros = [], []
         fin = pc() + self.cfg["cero_seg"]
         while pc() < fin and not self.parar.is_set():
             try:
@@ -264,6 +292,8 @@ class IMU(Modulo):
             a, g = [s * a[i] for i, s in mapa], [s * g[i] for i, s in mapa]
             sa = [x + y for x, y in zip(sa, a)]
             sg = [x + y for x, y in zip(sg, g)]
+            mods.append(math.sqrt(sum(x * x for x in a)))
+            gyros.append(g)
             n += 1
             self.parar.wait(periodo)
         if n >= 10:
@@ -272,12 +302,23 @@ class IMU(Modulo):
             self.sesgo = _girar(self.giro, [x / n for x in sg])
             self.cero = [math.atan2(ay, az), math.atan2(ax, math.hypot(ay, az))]
             self.aviso = None
+            # caja de lado o de pie: se corrige al calibrar (no es un fallo, solo se anota)
             tumbada = math.degrees(math.acos(max(-1, min(1, az / math.sqrt(ax * ax + ay * ay + az * az)))))
             if tumbada > 45:
-                # se corrige, pero conviene saberlo: si delante/izquierda salen
-                # cambiados es que la caja tambien se ha girado sobre si misma
-                self.aviso = (f"caja inclinada {tumbada:.0f} grados respecto a 'ejes' "
-                              f"({self.cfg['ejes']}): corregido al calibrar")
+                print(f"[{self.id}] caja a {tumbada:.0f} grados de 'ejes' ({self.cfg['ejes']}): corregido")
+            # moto moviendose o motor en marcha al calibrar: el cero no es fiable
+            mov_acc = statistics.pstdev(mods)
+            mov_gyro = max(statistics.pstdev(x[i] for x in gyros) for i in range(3))
+            fue_pendiente = self._recal_pendiente
+            self._recal_pendiente = mov_acc > self.QUIETO_ACC_G or mov_gyro > self.QUIETO_GYRO_DPS
+            if self._recal_pendiente:
+                self.aviso = ("calibrado con la moto moviendose o el motor en marcha: "
+                              "se repite solo en cuanto este quieta")
+                self._avisar_pantalla("MOTO EN MOVIMIENTO", "SE CALIBRARA SOLO", "AL ESTAR QUIETA", seg=14)
+                print(f"[{self.id}] calibracion con movimiento (acel {mov_acc:.2f} g, "
+                      f"giro {mov_gyro:.1f} grados/s): se repetira")
+            elif fue_pendiente:
+                self._avisar_pantalla("CALIBRADO")
             self.meta_ver += 1
             print(f"[{self.id}] calibrado: sesgo {[round(x, 2) for x in self.sesgo]} "
                   f"grados/s, cero {[round(math.degrees(x), 1) for x in self.cero]} grados")
