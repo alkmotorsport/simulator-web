@@ -33,10 +33,6 @@ KillSignal=SIGTERM
 TimeoutStopSec=300
 Restart=on-failure
 RestartSec=5
-# perro guardian: telemetria.py avisa cada segundo mientras la pantalla se
-# redibuja; si se cuelga (ruido del encendido...), se reinicia en 30 s
-WatchdogSec=30
-NotifyAccess=main
 
 [Install]
 WantedBy=multi-user.target

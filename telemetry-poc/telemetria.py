@@ -593,12 +593,6 @@ class Maestro:
                     ult_fsync = ahora
                 self._cada_segundo(ahora - ult)
                 ult = ahora
-                # perro guardian: sin aviso en 30 s, systemd reinicia el programa.
-                # Si la pantalla lleva 15 s sin redibujarse, algo se ha colgado: no se avisa
-                pantalla = self.modulos.get("pantalla")
-                if pantalla is None or not pantalla.corriendo() or \
-                        time.monotonic() - pantalla.t_fotograma < 15:
-                    avisar_systemd("WATCHDOG=1")
                 if sys.stdout.isatty():  # con systemd el \r llenaria el journal
                     print(self.linea_estado(), end="", flush=True)
         except KeyboardInterrupt:
@@ -660,22 +654,6 @@ def imprimir_deteccion(maestro):
 
 
 WIFI_RUN = "/run/telemetria"
-
-
-def avisar_systemd(msg):
-    """sd_notify sin librerias: 'WATCHDOG=1' para el perro guardian de systemd
-    (WatchdogSec en el servicio). Sin systemd no hace nada."""
-    import socket
-    dest = os.environ.get("NOTIFY_SOCKET")
-    if not dest:
-        return
-    if dest.startswith("@"):
-        dest = "\0" + dest[1:]
-    try:
-        with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as s:
-            s.sendto(msg.encode(), dest)
-    except OSError:
-        pass
 
 
 def wifi_estado():

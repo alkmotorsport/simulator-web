@@ -737,7 +737,6 @@ class Pantalla(Modulo):
         self._wifi = (None, 0.0, None)   # (estado de wifi.py, cuando se leyo, aviso oculto)
         self._temporal = (None, 0.0)     # (aviso, hasta): p. ej. "GRABANDO" al pulsar el boton
         self._despierta = threading.Event()  # pulsacion: redibujar ya, sin esperar al siguiente fotograma
-        self.t_fotograma = time.monotonic()  # ultimo redibujado (perro guardian de telemetria.py)
 
     def pines(self):
         c = self.cfg
@@ -888,7 +887,6 @@ class Pantalla(Modulo):
         esperar_seguro(self.parar, c["logo_s"])
         ult_png = 0.0
         while not self.parar.is_set():
-            self.t_fotograma = time.monotonic()
             ahora = self.reloj()
             D = self.D
             D.v["_sistema"] = self._sistema()
