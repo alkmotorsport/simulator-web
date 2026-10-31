@@ -172,7 +172,20 @@
       grip.title = 'Arrastra para mover el bloque';
       grip.setAttribute('aria-label', 'Mover ' + s.ds.name);
       dragBlock(grip, sec);
-      el('h3', '', tit, s.ds.name);
+      // plegar el bloque entero tocando su nombre (se recuerda en este navegador)
+      const h3 = el('h3', 'plegable', tit, s.ds.name);
+      h3.setAttribute('role', 'button');
+      h3.tabIndex = 0;
+      const kPleg = 'tele-plegado-' + s.ds.id;
+      const plegar = p => { sec.classList.toggle('plegado', p); h3.setAttribute('aria-expanded', String(!p)); };
+      plegar(store(kPleg) === '1');
+      const alternar = () => {
+        const p = !sec.classList.contains('plegado');
+        plegar(p);
+        try { if (p) localStorage.setItem(kPleg, '1'); else localStorage.removeItem(kPleg); } catch (e) { /* sin almacenamiento */ }
+      };
+      h3.addEventListener('click', alternar);
+      h3.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternar(); } });
       if (s.def.name !== s.ds.name) el('p', 'muted', tit, s.def.name);
       const opts = el('div', 'bar', head);
       const tiles = el('div', 'tiles', sec);
@@ -185,8 +198,10 @@
       }
       // el diagrama g-g va el primero, antes de las graficas de tiempo
       const gBox = el('div', 'charts', sec), tBox = el('div', 'charts', sec), hBox = el('div', 'charts hist', sec);
+      // compacto en pantalla grande (mas sensores a la vista); en el movil, a su tamano
+      const escala = matchMedia('(max-width: 640px)').matches ? 1 : 0.75;
       for (const c0 of s.def.charts(s.ds)) {
-        const c = Object.assign({}, c0, { height: Math.round((c0.height || 200) * 0.75) });   // compacto: mas sensores a la vista
+        const c = Object.assign({}, c0, { height: Math.round((c0.height || 200) * escala), id: s.ds.id + ':' + c0.key });
         if (c.type === 'time') s.charts[c.key] = view.group.add(new Plot.TimeChart(tBox, c));
         else s.hists[c.key] = new (c.type === 'gg' ? Plot.GG : Plot.Histogram)(c.type === 'gg' ? gBox : hBox, c);
       }

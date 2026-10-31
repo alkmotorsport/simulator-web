@@ -70,6 +70,25 @@
       if (opts.note) el('span', 'chart-note', cap).textContent = opts.note;
       this.readout = el('span', 'chart-readout', cap);
       this.wrap = el('div', 'chart-wrap', this.root);
+      // opts.id: la grafica se pliega tocando su titulo (y se recuerda en este navegador)
+      if (opts.id) {
+        const k = 'tele-plegada-' + opts.id;
+        title.classList.add('plegable');
+        title.setAttribute('role', 'button');
+        title.tabIndex = 0;
+        const poner = p => {
+          this.root.classList.toggle('plegada', p);
+          title.setAttribute('aria-expanded', String(!p));
+        };
+        try { poner(localStorage.getItem(k) === '1'); } catch (e) { poner(false); }
+        const cambiar = () => {
+          const p = !this.root.classList.contains('plegada');
+          poner(p);
+          try { if (p) localStorage.setItem(k, '1'); else localStorage.removeItem(k); } catch (e) { /* sin almacenamiento */ }
+        };
+        title.addEventListener('click', cambiar);
+        title.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cambiar(); } });
+      }
       this.wrap.style.height = (opts.height || 200) + 'px';
       this.base = el('canvas', '', this.wrap);
       this.over = el('canvas', 'chart-over', this.wrap);

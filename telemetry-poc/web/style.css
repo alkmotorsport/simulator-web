@@ -263,6 +263,18 @@ details.fold[open] > summary { margin-bottom: 8px; }
 .grip { background: none; border: 1px solid transparent; color: var(--sub); padding: 0 6px; font-size: 1.1rem; line-height: 1.4; cursor: grab; touch-action: none; border-radius: 6px; }
 .grip:hover { border-color: var(--border); color: var(--text); }
 .block.dragging { outline: 2px dashed var(--accent); outline-offset: 2px; opacity: .85; }
+/* plegar: el bloque tocando su nombre (quedan nombre y cifras), una grafica tocando su titulo */
+.plegable { cursor: pointer; user-select: none; }
+.plegable::after { content: " ▾"; font-size: 0.75em; color: var(--sub); }
+.block.plegado h3.plegable::after, .chart.plegada .chart-title.plegable::after { content: " ▸"; }
+.block.plegado > .charts, .block.plegado > .out-body, .block.plegado > .block-head > .bar { display: none; }
+.block.plegado > .tiles { margin-bottom: 0; }
+.block.plegado > .tiles > .tile:not(.now) { display: none; }   /* plegado: solo el valor de ahora */
+.block.plegado .block-head { margin-bottom: 6px; }
+.block.plegado > .block-head .block-title > p { display: none; }
+.chart.plegada > .chart-wrap { display: none; }
+.chart.plegada { padding-bottom: 0; }
+.plegable:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 body.dragging-block, body.dragging-block * { cursor: grabbing !important; user-select: none; }
 
 /* menu de ajustes */
