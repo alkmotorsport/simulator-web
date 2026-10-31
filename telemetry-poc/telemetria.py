@@ -75,13 +75,37 @@ def guardar_config(ruta, cfg):
 # --------------------------------------------------------------- grabacion ---
 
 class Grabador:
-    """Una carpeta por sesion: <modulo>.csv por sensor + sesion.json."""
+    """Una carpeta por sesion: <modulo>.csv por sensor + sesion.json.
+
+    Mientras graba existe la marca '.grabando' (se toca cada 30 s): si el
+    sistema se reinicia sin parar la grabacion (se colgo y lo reinicio el
+    perro guardian), al arrancar sigue grabando en una sesion nueva. Con la
+    marca vieja (corriente quitada hace rato) no se retoma."""
+
+    RETOMAR_S = 600
 
     def __init__(self, dir_, maestro):
         self.dir = dir_
         self.m = maestro
         self.lock = threading.Lock()
         self.sesion = None
+        self.marca = os.path.join(dir_, ".grabando")
+        self._t_marca = 0.0
+
+    def retomar(self):
+        """True si se corto una grabacion hace poco (reinicio sin parar)."""
+        try:
+            return time.time() - os.path.getmtime(self.marca) < self.RETOMAR_S
+        except OSError:
+            return False
+
+    def _tocar_marca(self):
+        try:
+            with open(self.marca, "w") as f:
+                f.write(self.sesion["nombre"] if self.sesion else "")
+            self._t_marca = time.monotonic()
+        except OSError:
+            pass
 
     def activa(self):
         return self.sesion is not None
@@ -99,6 +123,7 @@ class Grabador:
                            # la moto de ese momento: se analiza con ella aunque luego cambie
                            "moto": dict(self.m.cfg.get("moto") or {})}
             self._json()
+            self._tocar_marca()
         print(f"\nGrabando en {ruta}")
 
     def parar(self):
@@ -112,6 +137,10 @@ class Grabador:
             s["fin"] = datetime.now().isoformat(timespec="seconds")
             self._json()
             self.sesion = None
+            try:
+                os.remove(self.marca)
+            except OSError:
+                pass
         print(f"\nSesion guardada: {os.path.abspath(s['ruta'])}")
         if self.m.sincro:
             self.m.sincro.avisar()
@@ -137,6 +166,8 @@ class Grabador:
     def volcar(self, fsync=False):
         with self.lock:
             self._volcar(fsync)
+            if self.sesion is not None and time.monotonic() - self._t_marca >= 30:
+                self._tocar_marca()
 
     def actualizar_json(self):
         with self.lock:
@@ -546,6 +577,9 @@ class Maestro:
         self.aplicar()
         if not a.no_grabar:
             self.grabador.iniciar()
+        elif self.grabador.retomar():
+            print("\nLa grabacion anterior se corto sin parar (reinicio): sigo grabando")
+            self.grabador.iniciar()
         self.publicar_estado()
 
         ult = pc()
@@ -559,6 +593,12 @@ class Maestro:
                     ult_fsync = ahora
                 self._cada_segundo(ahora - ult)
                 ult = ahora
+                # perro guardian: sin aviso en 30 s, systemd reinicia el programa.
+                # Si la pantalla lleva 15 s sin redibujarse, algo se ha colgado: no se avisa
+                pantalla = self.modulos.get("pantalla")
+                if pantalla is None or not pantalla.corriendo() or \
+                        time.monotonic() - pantalla.t_fotograma < 15:
+                    avisar_systemd("WATCHDOG=1")
                 if sys.stdout.isatty():  # con systemd el \r llenaria el journal
                     print(self.linea_estado(), end="", flush=True)
         except KeyboardInterrupt:
@@ -620,6 +660,22 @@ def imprimir_deteccion(maestro):
 
 
 WIFI_RUN = "/run/telemetria"
+
+
+def avisar_systemd(msg):
+    """sd_notify sin librerias: 'WATCHDOG=1' para el perro guardian de systemd
+    (WatchdogSec en el servicio). Sin systemd no hace nada."""
+    import socket
+    dest = os.environ.get("NOTIFY_SOCKET")
+    if not dest:
+        return
+    if dest.startswith("@"):
+        dest = "\0" + dest[1:]
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as s:
+            s.sendto(msg.encode(), dest)
+    except OSError:
+        pass
 
 
 def wifi_estado():
